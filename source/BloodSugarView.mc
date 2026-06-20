@@ -1,9 +1,10 @@
 import Toybox.Graphics;
+import Toybox.Lang;
 import Toybox.WatchUi;
 
-class BloodSugerView extends WatchUi.View {
-
-    function initialize() {
+class BloodSugarView extends WatchUi.View {
+    
+    function initialize(DeviceManager as DeviceManager) {
         View.initialize();
     }
 
@@ -19,9 +20,16 @@ class BloodSugerView extends WatchUi.View {
     }
 
     // Update the view
-    function onUpdate(dc as Dc) as Void {
-        // Call the parent onUpdate function to redraw the layout
-        View.onUpdate(dc);
+    public function onUpdate(dc as Dc) as Void {
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+        dc.clear();
+
+        var dy = dc.getFontHeight(Graphics.FONT_SMALL);
+        var x = dc.getWidth() / 2;
+        var y = dc.getHeight() / 2;
+        y -= (4 * dy) / 2;
+
+        dc.drawText(x, y, Graphics.FONT_SMALL, Constants.Keys.BloodSugar.toString() , Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Called when this View is removed from the screen. Save the

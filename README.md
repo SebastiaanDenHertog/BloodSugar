@@ -1,3 +1,3 @@
-# BloodSuger
+# BloodSugar
 
-A Connect IQ app for logging your blood sugers.
+A Connect IQ app for logging your blood sugars.
