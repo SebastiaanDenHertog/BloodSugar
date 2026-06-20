@@ -2,7 +2,6 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 import Toybox.System;
 
-
 public enum Action {
     ACTION_CLICK_HOLD     = "CLICK_TYPE_HOLD",
     ACTION_CLICK_RELEASE  = "CLICK_TYPE_RELEASE",
@@ -61,7 +60,6 @@ public enum Status {
     STATUS_NONE     = "NO_EVENT"
 }
 
-//! Handles the behavior / input events
 class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
 
     private var _lastKey as Key?;
@@ -70,8 +68,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     private var _buttonsExpected as ButtonInputs?;
     private var _parentView as BloodSugarView;
 
-    //! Constructor
-    //! @param view The InputView to operate on
     public function initialize(view as BloodSugarView) {
         BehaviorDelegate.initialize();
 
@@ -82,32 +78,24 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         _buttonsExpected = deviceSettings.inputButtons;
     }
 
-    //! Handle going to the next view
-    //! @return true if handled, false otherwise
     public function onNextPage() as Boolean {
         _lastBehavior = $.BEHAVIOR_NEXT_PAGE;
         _parentView.setBehavior($.BEHAVIOR_NEXT_PAGE);
         return false;
     }
 
-    //! Handle going to the previous view
-    //! @return true if handled, false otherwise
     public function onPreviousPage() as Boolean {
         _lastBehavior = $.BEHAVIOR_PREV_PAGE;
         _parentView.setBehavior($.BEHAVIOR_PREV_PAGE);
         return false;
     }
 
-    //! Handle the menu event
-    //! @return true if handled, false otherwise
     public function onMenu() as Boolean {
         _lastBehavior = $.BEHAVIOR_MENU;
         _parentView.setBehavior($.BEHAVIOR_MENU);
         return false;
     }
 
-    //! Handle the back event
-    //! @return true if handled, false otherwise
     public function onBack() as Boolean {
         if ($.BEHAVIOR_BACK == _lastBehavior) {
             System.exit();
@@ -117,57 +105,39 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         return false;
     }
 
-    //! Handle the next event
-    //! @return true if handled, false otherwise
     public function onNextMode() as Boolean {
         _lastBehavior = $.BEHAVIOR_NEXT_MODE;
         _parentView.setBehavior($.BEHAVIOR_NEXT_MODE);
         return false;
     }
 
-    //! Handle the previous event
-    //! @return true if handled, false otherwise
     public function onPreviousMode() as Boolean {
         _lastBehavior = $.BEHAVIOR_PREV_MODE;
         _parentView.setBehavior($.BEHAVIOR_PREV_MODE);
         return false;
     }
 
-    //! Handle the select button
-    //! @return true if handled, false otherwise
     public function onSelect() as Boolean {
         _lastBehavior = $.BEHAVIOR_SELECT;
         _parentView.setBehavior($.BEHAVIOR_SELECT);
         return false;
     }
 
-    //! Handle a screen tap event
-    //! @param evt The click event that occurred
-    //! @return true if handled, false otherwise
     public function onTap(evt as ClickEvent) as Boolean {
         _parentView.setAction($.ACTION_CLICK_TAP);
         return true;
     }
 
-    //! Handle the touch screen hold event
-    //! @param evt The click event that occurred
-    //! @return true if handled, false otherwise
     public function onHold(evt as ClickEvent) as Boolean {
         _parentView.setAction($.ACTION_CLICK_HOLD);
         return true;
     }
 
-    //! Handle the touch screen release event
-    //! @param evt The click event that occurred
-    //! @return true if handled, false otherwise
     public function onRelease(evt as ClickEvent) as Boolean {
         _parentView.setAction($.ACTION_CLICK_RELEASE);
         return true;
     }
 
-    //! Handle the touch screen swipe event
-    //! @param evt The swipe event that occurred
-    //! @return true if handled, false otherwise
     public function onSwipe(evt as SwipeEvent) as Boolean {
         var swipe = evt.getDirection();
 
@@ -184,9 +154,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    //! Handle a physical button being pressed and released
-    //! @param evt The key event that occurred
-    //! @return true if handled, false otherwise
     public function onKey(evt as KeyEvent) as Boolean {
         var key = evt.getKey();
 
@@ -211,21 +178,14 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    //! Handle a physical button being pressed
-    //! @param evt The key event that occurred
-    //! @return true if handled, false otherwise
     public function onKeyPressed(evt as KeyEvent) as Boolean {
         var key = getKeyAction(evt.getKey());
         if (key != null) {
-            Constants.Key.BloodSugar++;
         }
 
         return true;
     }
 
-    //! Handle a physical button being released
-    //! @param evt The key event that occurred
-    //! @return true if handled, false otherwise
     public function onKeyReleased(evt as KeyEvent) as Boolean {
         var key = getKeyAction(evt.getKey());
         if (key != null) {
@@ -234,9 +194,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    //! Get the action enum corresponding to the given key enum
-    //! @param key The key enum
-    //! @return Action enum of key, or null if key not found
     private function getKeyAction(key as Key) as Action? {
         if (key == KEY_POWER) {
             return $.ACTION_KEY_POWER;
@@ -265,8 +222,7 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         } else if (key == KEY_RIGHT) {
             return $.ACTION_KEY_RIGHT;
         } else if (key == KEY_UP) {
-            Constants.keys.Key.BloodSugar++;
-            return;
+            return $.ACTION_KEY_UP;
         } else if (key == KEY_UP_LEFT) {
             return $.ACTION_KEY_UP_LEFT;
         } else if (key == KEY_UP_RIGHT) {
@@ -290,10 +246,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         return null;
     }
 
-    //! Find the button that corresponds to the given key and return
-    //! whether there are buttons that haven't been pressed
-    //! @param key The key that was pressed
-    //! @return Button enum telling whether all buttons have been pressed
     private function getButton(key as Key) as Button {
         var buttonBit = getButtonBit(key);
         if ((buttonBit == null) || (_buttonsPressed == null)) {

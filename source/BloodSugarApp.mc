@@ -2,7 +2,6 @@ import Toybox.Application;
 import Toybox.BluetoothLowEnergy;
 import Toybox.Lang;
 import Toybox.WatchUi;
-import Application.Properties;
 
 class BloodSugarApp extends Application.AppBase {
 
@@ -15,7 +14,6 @@ class BloodSugarApp extends Application.AppBase {
         Properties.setValue("diabeteMode", false);
     }
 
-    // onStart() is called on application start up
     function onStart(state as Dictionary?) as Void {
         _profileManager = new $.ProfileManager();
         _bleDelegate = new $.BloodSugarServiceDelegate(_profileManager as ProfileManager);
@@ -26,7 +24,6 @@ class BloodSugarApp extends Application.AppBase {
         (_deviceManager as DeviceManager).start();
     }
 
-    // onStop() is called when your application is exiting
     function onInactive(state as Dictionary or Null) as Void {
         if (Properties.getValue("diabeteMode")){
             _deviceManager = null;
@@ -36,16 +33,13 @@ class BloodSugarApp extends Application.AppBase {
 
     }
 
-    // onStop() is called when your application is exiting
     function onStop(state as Dictionary?) as Void {
         _deviceManager = null;
         _bleDelegate = null;
         _profileManager = null;
     }
 
-    //! Return the initial view for the app
-    //! @return Array [View]
-    public function getInitialView() as [Views] or [Views, InputDelegates] {
+    public function getInitialView() as [Views] or [Views, BloodSugarDelegate] {
         if (_deviceManager != null) {
             return [new $.BloodSugarView(_deviceManager)];
         }

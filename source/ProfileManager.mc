@@ -1,9 +1,3 @@
-//
-// Copyright 2019-2021 by Garmin Ltd. or its subsidiaries.
-// Subject to Garmin SDK License Agreement and Wearables
-// Application Developer Agreement.
-//
-
 import Toybox.BluetoothLowEnergy;
 
 class ProfileManager {
@@ -24,7 +18,6 @@ class ProfileManager {
         }]
     };
 
-    //! Register the bluetooth profile
     public function registerProfiles() as Void {
        BluetoothLowEnergy.registerProfile(_BloodSugarProfile);
     }

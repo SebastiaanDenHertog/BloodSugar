@@ -8,15 +8,11 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
     private var _onConnection as WeakReference?;
     private var _onCharWrite as WeakReference?;
 
-    //! Constructor
-    //! @param profileManager The profile manager
     public function initialize(profileManager as ProfileManager) {
         BleDelegate.initialize();
         _profileManager = profileManager;
     }
 
-    //! Handle new Scan Results being received
-    //! @param scanResults An iterator of new scan result objects
     public function onScanResults(scanResults as Iterator) as Void {
         for (var result = scanResults.next(); result != null; result = scanResults.next()) {
             if (result instanceof ScanResult) {
@@ -27,9 +23,6 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    //! Handle pairing and connecting to a device
-    //! @param device The device state that was changed
-    //! @param state The state of the connection
     public function onConnectedStateChanged(device as Device, state as ConnectionState) as Void {
         if (_onConnection != null) {
             if (_onConnection.stillAlive()) {
@@ -38,9 +31,6 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    //! Handle the completion of a write operation on a characteristic
-    //! @param characteristic The characteristic that was written
-    //! @param status The BluetoothLowEnergy status indicating the result of the operation
     public function onCharacteristicWrite(characteristic as Characteristic, status as Status) as Void {
         if (_onCharWrite != null) {
             if (_onCharWrite.stillAlive()) {
@@ -49,26 +39,18 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    //! Store a new manager to manage scan results
-    //! @param manager The manager of the scan results
     public function notifyScanResult(manager as DeviceManager) as Void {
         _onScanResult = manager.weak();
     }
 
-    //! Store a new manager to manage device connections
-    //! @param manager The manager for devices
     public function notifyConnection(manager as DeviceManager) as Void {
         _onConnection = manager.weak();
     }
 
-    //! Store a new manager to handle characteristic writes
-    //! @param manager The manager for characteristics
     public function notifyCharWrite(manager as DeviceManager) as Void {
         _onCharWrite = manager.weak();
     }
 
-    //! Broadcast a new scan result
-    //! @param scanResult The new scan result
     private function broadcastScanResult(scanResult as ScanResult) as Void {
         if (_onScanResult != null) {
             if (_onScanResult.stillAlive()) {
@@ -77,10 +59,12 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    //! Get whether the iterator contains a specific uuid
-    //! @param iter Iterator of uuid objects
-    //! @param obj Uuid to search for
-    //! @return true if object found, false otherwise
+    function onCharacteristicChanged(characteristic, value) {
+        var BloodSugarValue = parseBloodSugarBytes(value);
+        BloodSugarStore.addReading(BloodSugarValue);
+        WatchUi.requestUpdate();
+    }
+
     private function contains(iter as Iterator, obj as Uuid) as Boolean {
         for (var uuid = iter.next(); uuid != null; uuid = iter.next()) {
             if (uuid.equals(obj)) {
@@ -89,5 +73,14 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
 
         return false;
+    }
+
+    private function parseBloodSugarBytes(bytes) {
+        var f = bytes.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {
+            :offset => 0,
+            :endianness => Lang.ENDIAN_BIG // Use ENDIAN_LITTLE if reversed
+        });
+
+        return f;
     }
 }
