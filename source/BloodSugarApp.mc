@@ -6,17 +6,16 @@ import Toybox.WatchUi;
 class BloodSugarApp extends Application.AppBase {
 
     private var _profileManager as ProfileManager?;
-    private var _bleDelegate as BloodSugarDelegate?;
+    private var _bleDelegate as BloodSugarServiceDelegate?;
     private var _deviceManager as DeviceManager?;
 
     public function initialize() {
         AppBase.initialize();
-        Properties.setValue("diabeteMode", false);
     }
 
     function onStart(state as Dictionary?) as Void {
         _profileManager = new $.ProfileManager();
-        _bleDelegate = new $.BloodSugarServiceDelegate(_profileManager as ProfileManager);
+        _bleDelegate = new $.BloodSugarServiceDelegate(_profileManager);
         _deviceManager = new $.DeviceManager(_bleDelegate as BloodSugarServiceDelegate, _profileManager as ProfileManager);
         
         BluetoothLowEnergy.setDelegate(_bleDelegate as BloodSugarServiceDelegate);
@@ -25,12 +24,11 @@ class BloodSugarApp extends Application.AppBase {
     }
 
     function onInactive(state as Dictionary or Null) as Void {
-        if (Properties.getValue("diabeteMode")){
+        if (Properties.getValue("DiabeteMode")){
             _deviceManager = null;
             _bleDelegate = null;
             _profileManager = null;
         }
-
     }
 
     function onStop(state as Dictionary?) as Void {
@@ -39,11 +37,12 @@ class BloodSugarApp extends Application.AppBase {
         _profileManager = null;
     }
 
-    public function getInitialView() as [Views] or [Views, BloodSugarDelegate] {
-        if (_deviceManager != null) {
-            return [new $.BloodSugarView(_deviceManager)];
+    public function getInitialView() as [Views] or [Views, InputDelegates] {
+        if(Properties.getValue("DiabeteMode")==null){
+            return [new $.BloodSugarSetupView(), new $.BloodSugarSetupDelegate()];
         }
-        System.error("DeviceManager uninitialized.");
+        return [new $.BloodSugarView(), new $.BloodSugarDelegate(new $.BloodSugarView())];
+        
     }
 
 }

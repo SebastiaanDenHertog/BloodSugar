@@ -1,5 +1,7 @@
-using Toybox.Application.Storage;
-using Toybox.Time;
+import Toybox.Application.Storage;
+import Toybox.Time;
+import Toybox.System;
+import Toybox.Lang;
 
 module BloodSugarStore {
 
@@ -65,5 +67,13 @@ module BloodSugarStore {
     function clear() {
         _history = [];
         Storage.setValue(STORAGE_KEY, _history);
+    }
+
+    function MollToMgdl(Moll) as Float {
+        return Moll*18.018;
+    }
+
+    function MgdlToMoll(Mgdl) as Float {
+        return Mgdl/18.018;
     }
 }

@@ -31,7 +31,7 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    public function onCharacteristicWrite(characteristic as Characteristic, status as Status) as Void {
+    public function onCharacteristicWrite(characteristic, status) as Void {
         if (_onCharWrite != null) {
             if (_onCharWrite.stillAlive()) {
                 (_onCharWrite.get() as DeviceManager).procCharWrite(characteristic, status);
