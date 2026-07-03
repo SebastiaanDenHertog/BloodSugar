@@ -76,4 +76,9 @@ module BloodSugarStore {
     function MgdlToMoll(Mgdl) as Float {
         return Mgdl/18.018;
     }
+
+    function getSaveValues() {
+        System.println(Storage.getValue("BloodSugarZones"));
+        return Storage.getValue("BloodSugarZones");
+    }
 }

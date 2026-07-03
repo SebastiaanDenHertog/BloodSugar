@@ -5,101 +5,186 @@ import Toybox.System;
 class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
 
     private var _parentView as BloodSugarView;
-    private var _buttonsPressed as Number?;
-    private var _buttonsExpected as ButtonInputs?;
-    private var _lastKey as Key?;
-    private var _lastBehavior as String?;
-    private var _bloodSugar as Float?;
 
-    private var userInput;
+    // 0 = waiting
+    // 1 = edit whole number
+    // 2 = edit decimal
+    // 3 = select unit
+    // 4 = confirm
+    private var _stage as Number;
+
+    // Always store the internal value in mmol/L.
+    private var _bloodSugarMmol as Float;
+
+    // false = mmol/L
+    // true  = mg/dL
+    private var _useMgdl as Boolean;
 
     public function initialize(view as BloodSugarView) {
         BehaviorDelegate.initialize();
 
-        _buttonsPressed = 0;
         _parentView = view;
-        _bloodSugar = 0.0;
+        _stage = 0;
+        _bloodSugarMmol = 0.0f;
+        _useMgdl = false;
 
-        var deviceSettings = System.getDeviceSettings();
-        _buttonsExpected = deviceSettings.inputButtons;
-        userInput = [false,false,false]; // number, decial if there , confirm
-        System.println("BloodSugerDelegate initialized:");
+        updateView();
+
+        System.println("BloodSugarDelegate initialized");
     }
 
     public function onSelect() as Boolean {
-        System.println(userInput);
-        System.println($.BEHAVIOR_SELECT);
-        System.println(_lastBehavior);
-        System.println($.BEHAVIOR_SELECT == _lastBehavior);
-        if($.BEHAVIOR_SELECT.equals(_lastBehavior) && userInput[0] == false && userInput[1] == false && userInput[2] == false){
-            userInput = [true,false,false];
-            _lastBehavior = $.BEHAVIOR_SELECT;
-            System.println("onSelect1" +userInput );
-        }
-        if($.BEHAVIOR_SELECT.equals(_lastBehavior) && userInput == [true,false,false]){
-            userInput = [true,true,false];
-            _lastBehavior = $.BEHAVIOR_SELECT;
-            System.println("onSelect2" +userInput );
-        }
-        if($.BEHAVIOR_SELECT.equals(_lastBehavior) && userInput == [true,true,false]){
-            userInput = [true,true,true];
-            _lastBehavior = $.BEHAVIOR_SELECT;
-            System.println("onSelect3" +userInput );
-        }
-        if($.BEHAVIOR_SELECT.equals(_lastBehavior) && userInput == [true,true,true]){
-            _lastBehavior = $.BEHAVIOR_SELECT;
-            System.println("onSelect4" +userInput );
-            WatchUi.pushView(new $.BloodSugarHistoryView(), new $.BloodSugarHistoryDelegate(), WatchUi.SLIDE_RIGHT);
+        if (_stage < 4) {
+            _stage += 1;
+
+            System.println("New stage: " + _stage);
+
+            updateView();
+            return true;
         }
 
-        _lastBehavior = $.BEHAVIOR_SELECT;
-       
+        saveReading();
+        return true;
+    }
+
+    // UP
+    public function onPreviousPage() as Boolean {
+        if (_stage == 1) {
+            // Increase by 1.0 in the currently selected unit.
+            adjustDisplayedValue(1.0f);
+            return true;
+        } else if (_stage == 2) {
+            // Increase by 0.1 in the currently selected unit.
+            adjustDisplayedValue(0.1f);
+            return true;
+        } else if (_stage == 3) {
+            // Select mmol/L.
+            selectUnit(false);
+            return true;
+        }
+
+        var view = new $.BloodSugarHistoryView();
+        var delegate = new $.BloodSugarHistoryDelegate(view);
+
+        WatchUi.pushView(
+            view,
+            delegate,
+            WatchUi.SLIDE_RIGHT
+        );
+
+        return true;
+    }
+
+    // DOWN
+    public function onNextPage() as Boolean {
+        if (_stage == 1) {
+            // Decrease by 1.0 in the currently selected unit.
+            adjustDisplayedValue(-1.0f);
+        } else if (_stage == 2) {
+            // Decrease by 0.1 in the currently selected unit.
+            adjustDisplayedValue(-0.1f);
+        } else if (_stage == 3) {
+            // Select mg/dL.
+            selectUnit(true);
+        }
+
         return true;
     }
 
     public function onBack() as Boolean {
-        if($.BEHAVIOR_BACK.equals(_lastBehavior) && userInput == [false,false,false]){
-            System.exit();
-        }
-        if($.BEHAVIOR_BACK.equals(_lastBehavior) && userInput == [true,false,false]){
-            userInput = [false,false,false];
-            _lastBehavior = $.BEHAVIOR_BACK;
-        }
-        if($.BEHAVIOR_BACK.equals(_lastBehavior) && userInput == [true,true,false]){
-            userInput = [true,false,false];
-            _lastBehavior = $.BEHAVIOR_BACK;
-        }
-        if($.BEHAVIOR_BACK.equals(_lastBehavior) && userInput == [true,true,true]){
-            userInput = [true,true,false];
-            _lastBehavior = $.BEHAVIOR_BACK;
+        if (_stage > 0) {
+            _stage -= 1;
+            updateView();
+
+            return true;
         }
 
-        _lastBehavior = $.BEHAVIOR_BACK;
-        return true;
+        System.exit();
+
+        //return true;
     }
 
-    public function onPreviousPage() as Boolean {
-        if(userInput == [false,false,false]){
-            _lastBehavior = $.BEHAVIOR_PREV_PAGE;
-        }
-        if(userInput == [true,false,false]){
-            _lastBehavior = $.BEHAVIOR_BACK;
-            _bloodSugar = _bloodSugar + 1.0;
-            _parentView.setBloodSugar(_bloodSugar);
-            System.println("bloodsuger: " + _bloodSugar);
-        }
-        if(userInput == [true,true,false]){
-            _lastBehavior = $.BEHAVIOR_BACK;
-            _bloodSugar = _bloodSugar + 0.1;
-            _parentView.setBloodSugar(_bloodSugar);
-            System.println("bloodsuger: " + _bloodSugar);
-        }
-        if($.BEHAVIOR_BACK.equals(_lastBehavior) && userInput == [true,true,true]){
-            _lastBehavior = $.BEHAVIOR_BACK;
-        }
-        
-        _lastBehavior = $.BEHAVIOR_BACK;
-        return true;
+    private function selectUnit(useMgdl as Boolean) as Void {
+        _useMgdl = useMgdl;
+
+        System.println(
+            "Selected unit: " + getUnitText()
+        );
+
+        // updateView() recalculates the displayed value.
+        updateView();
     }
 
+    private function adjustDisplayedValue(
+        delta as Float
+    ) as Void {
+        // Convert the adjustment to mmol/L before modifying
+        // the internally stored value.
+        if (_useMgdl) {
+            _bloodSugarMmol +=
+                BloodSugarStore.MgdlToMoll(delta);
+        } else {
+            _bloodSugarMmol += delta;
+        }
+
+        if (_bloodSugarMmol < 0.0f) {
+            _bloodSugarMmol = 0.0f;
+        }
+
+        updateView();
+    }
+
+    private function getDisplayedValue() as Float {
+        if (_useMgdl) {
+            return BloodSugarStore.MollToMgdl(
+                _bloodSugarMmol
+            );
+        }
+
+        return _bloodSugarMmol;
+    }
+
+    private function saveReading() as Void {
+        var displayedValue = getDisplayedValue();
+
+        System.println(
+            "Entered value: "
+            + displayedValue
+            + " "
+            + getUnitText()
+        );
+
+        System.println(
+            "Stored mmol/L value: "
+            + _bloodSugarMmol
+        );
+
+        // The store receives a consistent mmol/L value.
+        BloodSugarStore.addReading(_bloodSugarMmol);
+
+        var view = new $.BloodSugarHistoryView();
+        var delegate = new $.BloodSugarHistoryDelegate(view);
+
+        WatchUi.pushView(
+            view,
+            delegate,
+            WatchUi.SLIDE_RIGHT
+        );
+    }
+
+    private function updateView() as Void {
+        _parentView.setBloodSugar(
+            getDisplayedValue(),
+            _stage,
+            _useMgdl
+        );
+    }
+
+    private function getUnitText() as String {
+        if (_useMgdl) {
+            return "mg/dL";
+        }
+
+        return "mmol/L";
+    }
 }
