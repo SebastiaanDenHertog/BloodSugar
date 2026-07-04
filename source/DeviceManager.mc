@@ -11,7 +11,10 @@ class DeviceManager {
     private var _configComplete as Boolean = false;
     private var _sampleInProgress as Boolean = false;
 
-    public function initialize(bleDelegate as BloodSugarServiceDelegate, profileManager as ProfileManager) {
+    public function initialize(
+        bleDelegate as BloodSugarServiceDelegate,
+        profileManager as ProfileManager
+    ) {
         _device = null;
 
         bleDelegate.notifyScanResult(self);
@@ -23,7 +26,6 @@ class DeviceManager {
     public function start() as Void {
         BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
     }
-
 
     public function procScanResult(scanResult as ScanResult) as Void {
         // Pair the first Thingy we see with good RSSI
@@ -44,5 +46,4 @@ class DeviceManager {
     public function procCharWrite(char, status) as Void {
         System.println("Proc Write: (" + char.getUuid() + ") - " + status);
     }
-
 }

@@ -3,7 +3,6 @@ import Toybox.WatchUi;
 import Toybox.System;
 
 class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
-
     private var _parentView as BloodSugarView;
 
     // 0 = waiting
@@ -37,8 +36,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         if (_stage < 4) {
             _stage += 1;
 
-            System.println("New stage: " + _stage);
-
             updateView();
             return true;
         }
@@ -66,11 +63,7 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         var view = new $.BloodSugarHistoryView();
         var delegate = new $.BloodSugarHistoryDelegate(view);
 
-        WatchUi.pushView(
-            view,
-            delegate,
-            WatchUi.SLIDE_RIGHT
-        );
+        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
 
         return true;
     }
@@ -107,22 +100,15 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     private function selectUnit(useMgdl as Boolean) as Void {
         _useMgdl = useMgdl;
 
-        System.println(
-            "Selected unit: " + getUnitText()
-        );
-
         // updateView() recalculates the displayed value.
         updateView();
     }
 
-    private function adjustDisplayedValue(
-        delta as Float
-    ) as Void {
+    private function adjustDisplayedValue(delta as Float) as Void {
         // Convert the adjustment to mmol/L before modifying
         // the internally stored value.
         if (_useMgdl) {
-            _bloodSugarMmol +=
-                BloodSugarStore.MgdlToMoll(delta);
+            _bloodSugarMmol += BloodSugarStore.MgdlToMoll(delta);
         } else {
             _bloodSugarMmol += delta;
         }
@@ -136,48 +122,24 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
 
     private function getDisplayedValue() as Float {
         if (_useMgdl) {
-            return BloodSugarStore.MollToMgdl(
-                _bloodSugarMmol
-            );
+            return BloodSugarStore.MollToMgdl(_bloodSugarMmol);
         }
 
         return _bloodSugarMmol;
     }
 
     private function saveReading() as Void {
-        var displayedValue = getDisplayedValue();
-
-        System.println(
-            "Entered value: "
-            + displayedValue
-            + " "
-            + getUnitText()
-        );
-
-        System.println(
-            "Stored mmol/L value: "
-            + _bloodSugarMmol
-        );
-
         // The store receives a consistent mmol/L value.
         BloodSugarStore.addReading(_bloodSugarMmol);
 
         var view = new $.BloodSugarHistoryView();
         var delegate = new $.BloodSugarHistoryDelegate(view);
 
-        WatchUi.pushView(
-            view,
-            delegate,
-            WatchUi.SLIDE_RIGHT
-        );
+        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
     }
 
     private function updateView() as Void {
-        _parentView.setBloodSugar(
-            getDisplayedValue(),
-            _stage,
-            _useMgdl
-        );
+        _parentView.setBloodSugar(getDisplayedValue(), _stage, _useMgdl);
     }
 
     private function getUnitText() as String {

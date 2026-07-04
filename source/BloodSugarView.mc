@@ -3,7 +3,6 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 class BloodSugarView extends WatchUi.View {
-
     private var _bloodSugar as Float;
     private var _stage as Number;
     private var _useMgdl as Boolean;
@@ -16,10 +15,7 @@ class BloodSugarView extends WatchUi.View {
         _useMgdl = false;
     }
 
-    public function onLayout(
-        dc as Graphics.Dc
-    ) as Void {
-    }
+    public function onLayout(dc as Graphics.Dc) as Void {}
 
     public function setBloodSugar(
         bloodSugar as Float,
@@ -33,13 +29,8 @@ class BloodSugarView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    public function onUpdate(
-        dc as Graphics.Dc
-    ) as Void {
-        dc.setColor(
-            Graphics.COLOR_WHITE,
-            Graphics.COLOR_BLACK
-        );
+    public function onUpdate(dc as Graphics.Dc) as Void {
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
 
         dc.clear();
 
@@ -50,9 +41,7 @@ class BloodSugarView extends WatchUi.View {
         }
     }
 
-    private function drawValueScreen(
-        dc as Graphics.Dc
-    ) as Void {
+    private function drawValueScreen(dc as Graphics.Dc) as Void {
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
 
@@ -64,7 +53,6 @@ class BloodSugarView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        // The unit is always visible.
         dc.drawText(
             centerX,
             centerY - 15,
@@ -82,9 +70,7 @@ class BloodSugarView extends WatchUi.View {
         );
     }
 
-    private function drawUnitSelection(
-        dc as Graphics.Dc
-    ) as Void {
+    private function drawUnitSelection(dc as Graphics.Dc) as Void {
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
 
@@ -96,7 +82,6 @@ class BloodSugarView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        // The number changes as the selected unit changes.
         dc.drawText(
             centerX,
             centerY - 60,
@@ -113,7 +98,6 @@ class BloodSugarView extends WatchUi.View {
             unitText = "mmol/L";
         }
 
-        // The two units appear above each other.
         dc.drawText(
             centerX - 5,
             centerY + 15,
@@ -132,9 +116,7 @@ class BloodSugarView extends WatchUi.View {
     }
 
     private function getValueText() as String {
-        return formatValue(_bloodSugar)
-            + " "
-            + getUnitText();
+        return formatValue(_bloodSugar) + " " + getUnitText();
     }
 
     private function formatValue(value as Float) as String {

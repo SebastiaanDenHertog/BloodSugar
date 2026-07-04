@@ -3,7 +3,6 @@ import Toybox.System;
 import Toybox.WatchUi;
 
 class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
-
     function initialize() {
         MenuInputDelegate.initialize();
     }
@@ -15,5 +14,4 @@ class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
             System.println("item 2");
         }
     }
-
 }

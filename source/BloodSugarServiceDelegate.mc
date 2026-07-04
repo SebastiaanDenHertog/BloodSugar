@@ -32,16 +32,23 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
                 BluetoothLowEnergy.SCAN_STATE_SCANNING
             );
         } else {
-            System.println(
-                "Registratie BLE-profiel mislukt: " + status
-            );
+            System.println("Registratie BLE-profiel mislukt: " + status);
         }
     }
 
     public function onScanResults(scanResults as Iterator) as Void {
-        for (var result = scanResults.next(); result != null; result = scanResults.next()) {
+        for (
+            var result = scanResults.next();
+            result != null;
+            result = scanResults.next()
+        ) {
             if (result instanceof ScanResult) {
-                if (contains(result.getServiceUuids(), _profileManager.BloodSugar_SERVICE_UUID)) {
+                if (
+                    contains(
+                        result.getServiceUuids(),
+                        _profileManager.BloodSugar_SERVICE_UUID
+                    )
+                ) {
                     broadcastScanResult(result);
                 }
             }
@@ -53,15 +60,17 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         state as BluetoothLowEnergy.ConnectionState
     ) as Void {
         if (_onConnection != null && _onConnection.stillAlive()) {
-            (_onConnection.get() as DeviceManager)
-                .procConnection(device);
+            (_onConnection.get() as DeviceManager).procConnection(device);
         }
     }
 
     public function onCharacteristicWrite(characteristic, status) as Void {
         if (_onCharWrite != null) {
             if (_onCharWrite.stillAlive()) {
-                (_onCharWrite.get() as DeviceManager).procCharWrite(characteristic, status);
+                (_onCharWrite.get() as DeviceManager).procCharWrite(
+                    characteristic,
+                    status
+                );
             }
         }
     }
@@ -81,49 +90,46 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
     private function broadcastScanResult(scanResult as ScanResult) as Void {
         if (_onScanResult != null) {
             if (_onScanResult.stillAlive()) {
-                (_onScanResult.get() as DeviceManager).procScanResult(scanResult);
+                (_onScanResult.get() as DeviceManager).procScanResult(
+                    scanResult
+                );
             }
         }
     }
 
     public function onCharacteristicChanged(
-    characteristic as BluetoothLowEnergy.Characteristic,
-    value as Lang.ByteArray
+        characteristic as BluetoothLowEnergy.Characteristic,
+        value as Lang.ByteArray
     ) as Void {
         // Negeer andere characteristics.
-        if (!characteristic.getUuid().equals(
-            _profileManager.BloodSugar_MEASUREMENT_UUID
-        )) {
+        if (
+            !characteristic
+                .getUuid()
+                .equals(_profileManager.BloodSugar_MEASUREMENT_UUID)
+        ) {
             return;
         }
 
         if (value.size() < 4) {
-            System.println(
-                "Blood sugar-pakket is te kort: " + value.size()
-            );
+            System.println("Blood sugar-pakket is te kort: " + value.size());
             return;
         }
 
         var bloodSugarValue = parseBloodSugarBytes(value);
 
-        System.println(
-            "Ontvangen blood sugar: " + bloodSugarValue
-        );
+        System.println("Ontvangen blood sugar: " + bloodSugarValue);
 
         BloodSugarStore.addReading(bloodSugarValue);
         WatchUi.requestUpdate();
     }
 
-    private function parseBloodSugarBytes(
-        bytes as Lang.ByteArray
-    ) as Float {
-        return bytes.decodeNumber(
-            Lang.NUMBER_FORMAT_FLOAT,
-            {
+    private function parseBloodSugarBytes(bytes as Lang.ByteArray) as Float {
+        return (
+            bytes.decodeNumber(Lang.NUMBER_FORMAT_FLOAT, {
                 :offset => 0,
-                :endianness => Lang.ENDIAN_LITTLE
-            }
-        ) as Float;
+                :endianness => Lang.ENDIAN_LITTLE,
+            }) as Float
+        );
     }
 
     private function contains(iter as Iterator, obj as Uuid) as Boolean {

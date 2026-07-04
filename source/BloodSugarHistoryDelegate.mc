@@ -3,7 +3,6 @@ import Toybox.WatchUi;
 import Toybox.System;
 
 class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
-
     private var _parentView as BloodSugarHistoryView;
 
     public function initialize(view as BloodSugarHistoryView) {
@@ -18,16 +17,12 @@ class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
         var BloodSugarHistory = BloodSugarStore.getHistory();
         var time = [];
         var bloodsugar = [];
-        var saveValues = BloodSugarStore.getSaveValues();
+        var saveValues = BloodSugarStore.getBloodSugarZones();
         for (var i = 0; i < BloodSugarHistory.size(); i++) {
             time.add(BloodSugarHistory[i][0]);
             bloodsugar.add(BloodSugarHistory[i][1]);
         }
-        _parentView.setBloodSugarHistory(
-                bloodsugar,
-                time,
-                saveValues
-            );
+        _parentView.setBloodSugarHistory(bloodsugar, time, saveValues);
         requestUpdate();
     }
 
@@ -38,7 +33,7 @@ class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-     public function onNextPage() as Boolean {
+    public function onNextPage() as Boolean {
         var view = new $.BloodSugarView();
         var delegate = new $.BloodSugarDelegate(view);
         WatchUi.switchToView(view, delegate, WatchUi.SLIDE_DOWN);

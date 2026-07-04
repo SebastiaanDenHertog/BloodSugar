@@ -5,7 +5,6 @@ import Toybox.WatchUi;
 import Toybox.Math;
 
 class BloodSugarHistoryView extends WatchUi.View {
-
     private var _bloodSugar;
     private var _time;
     private var _saveValues;
@@ -18,11 +17,7 @@ class BloodSugarHistoryView extends WatchUi.View {
         _saveValues = [];
     }
 
-    public function setBloodSugarHistory(
-        bloodSugar,
-        time,
-        saveValues
-    ) as Void {
+    public function setBloodSugarHistory(bloodSugar, time, saveValues) as Void {
         _bloodSugar = bloodSugar;
         _time = time;
         _saveValues = saveValues;
@@ -30,13 +25,8 @@ class BloodSugarHistoryView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    public function onUpdate(
-        dc as Graphics.Dc
-    ) as Void {
-        dc.setColor(
-            Graphics.COLOR_WHITE,
-            Graphics.COLOR_BLACK
-        );
+    public function onUpdate(dc as Graphics.Dc) as Void {
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
         if (!hasValidData()) {
@@ -63,9 +53,7 @@ class BloodSugarHistoryView extends WatchUi.View {
         return true;
     }
 
-    private function drawNoData(
-        dc as Graphics.Dc
-    ) as Void {
+    private function drawNoData(dc as Graphics.Dc) as Void {
         dc.drawText(
             dc.getWidth() / 2,
             dc.getHeight() / 2,
@@ -75,9 +63,7 @@ class BloodSugarHistoryView extends WatchUi.View {
         );
     }
 
-    private function drawHistoryGraph(
-        dc as Graphics.Dc
-    ) as Void {
+    private function drawHistoryGraph(dc as Graphics.Dc) as Void {
         var count = _bloodSugar.size();
 
         var screenWidth = dc.getWidth();
@@ -86,8 +72,7 @@ class BloodSugarHistoryView extends WatchUi.View {
         var font = Graphics.FONT_XTINY;
         var fontHeight = dc.getFontHeight(font);
 
-        var shape =
-            System.getDeviceSettings().screenShape;
+        var shape = System.getDeviceSettings().screenShape;
 
         var minValue = getMinimumValue();
         var maxValue = getMaximumValue();
@@ -96,8 +81,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             minValue -= 1.0f;
             maxValue += 1.0f;
         } else {
-            var valuePadding =
-                (maxValue - minValue) * 0.10f;
+            var valuePadding = (maxValue - minValue) * 0.10f;
 
             minValue -= valuePadding;
             maxValue += valuePadding;
@@ -107,36 +91,17 @@ class BloodSugarHistoryView extends WatchUi.View {
             }
         }
 
-        var middleValue =
-            minValue + ((maxValue - minValue) / 2.0f);
+        var middleValue = minValue + (maxValue - minValue) / 2.0f;
 
         /*
-        * Scale spacing from the smaller screen dimension,
-        * but keep sensible minimum and maximum sizes.
-        */
-        var gap = scaledSize(
-            screenWidth,
-            screenHeight,
-            0.018f,
-            3,
-            9
-        );
+         * Scale spacing from the smaller screen dimension,
+         * but keep sensible minimum and maximum sizes.
+         */
+        var gap = scaledSize(screenWidth, screenHeight, 0.018f, 3, 9);
 
-        var edgePadding = scaledSize(
-            screenWidth,
-            screenHeight,
-            0.012f,
-            2,
-            7
-        );
+        var edgePadding = scaledSize(screenWidth, screenHeight, 0.012f, 2, 7);
 
-        var pointRadius = scaledSize(
-            screenWidth,
-            screenHeight,
-            0.011f,
-            2,
-            4
-        );
+        var pointRadius = scaledSize(screenWidth, screenHeight, 0.011f, 2, 4);
 
         var verticalInset;
 
@@ -160,28 +125,21 @@ class BloodSugarHistoryView extends WatchUi.View {
 
         var titleY = verticalInset;
 
-        var timeLabelY =
-            screenHeight
-            - verticalInset
-            - fontHeight;
+        var timeLabelY = screenHeight - verticalInset - fontHeight;
 
-        var graphTop =
-            titleY + fontHeight + gap;
+        var graphTop = titleY + fontHeight + gap;
 
-        var graphBottom =
-            timeLabelY - gap;
+        var graphBottom = timeLabelY - gap;
 
         /*
-        * Move the graph away from the narrow upper and lower
-        * sections of a round screen. This generally gives a
-        * wider and more readable graph.
-        */
+         * Move the graph away from the narrow upper and lower
+         * sections of a round screen. This generally gives a
+         * wider and more readable graph.
+         */
         if (shape == System.SCREEN_SHAPE_ROUND) {
-            var preferredTop =
-                (screenHeight.toFloat() * 0.18f).toNumber();
+            var preferredTop = (screenHeight.toFloat() * 0.18f).toNumber();
 
-            var preferredBottom =
-                (screenHeight.toFloat() * 0.82f).toNumber();
+            var preferredBottom = (screenHeight.toFloat() * 0.82f).toNumber();
 
             if (graphTop < preferredTop) {
                 graphTop = preferredTop;
@@ -193,10 +151,10 @@ class BloodSugarHistoryView extends WatchUi.View {
         }
 
         /*
-        * Calculate safe horizontal boundaries at both the top
-        * and bottom of the graph. On round screens the narrowest
-        * of the two positions determines the usable width.
-        */
+         * Calculate safe horizontal boundaries at both the top
+         * and bottom of the graph. On round screens the narrowest
+         * of the two positions determines the usable width.
+         */
         var topSafeLeft = getSafeLeft(
             screenWidth,
             screenHeight,
@@ -242,54 +200,44 @@ class BloodSugarHistoryView extends WatchUi.View {
         }
 
         /*
-        * Reserve only the width actually required by the
-        * Y-axis values.
-        */
-        var valueLabelWidth =
-            dc.getTextWidthInPixels(
-                maxValue.format("%.1f"),
-                font
-            );
-
-        var width = dc.getTextWidthInPixels(
-            middleValue.format("%.1f"),
+         * Reserve only the width actually required by the
+         * Y-axis values.
+         */
+        var valueLabelWidth = dc.getTextWidthInPixels(
+            maxValue.format("%.1f"),
             font
         );
+
+        var width = dc.getTextWidthInPixels(middleValue.format("%.1f"), font);
 
         if (width > valueLabelWidth) {
             valueLabelWidth = width;
         }
 
-        width = dc.getTextWidthInPixels(
-            minValue.format("%.1f"),
-            font
-        );
+        width = dc.getTextWidthInPixels(minValue.format("%.1f"), font);
 
         if (width > valueLabelWidth) {
             valueLabelWidth = width;
         }
 
-        var graphLeft =
-            safeLeft + valueLabelWidth + gap;
+        var graphLeft = safeLeft + valueLabelWidth + gap;
 
         var graphRight = safeRight;
 
-        var graphWidth =
-            graphRight - graphLeft;
+        var graphWidth = graphRight - graphLeft;
 
-        var graphHeight =
-            graphBottom - graphTop;
+        var graphHeight = graphBottom - graphTop;
 
         /*
-        * Use the full heading when it fits. Shorten it on
-        * smaller round screens.
-        */
+         * Use the full heading when it fits. Shorten it on
+         * smaller round screens.
+         */
         var title = "Blood Sugar History";
 
         var titleSafeLeft = getSafeLeft(
             screenWidth,
             screenHeight,
-            titleY + (fontHeight / 2),
+            titleY + fontHeight / 2,
             shape,
             edgePadding
         );
@@ -297,40 +245,31 @@ class BloodSugarHistoryView extends WatchUi.View {
         var titleSafeRight = getSafeRight(
             screenWidth,
             screenHeight,
-            titleY + (fontHeight / 2),
+            titleY + fontHeight / 2,
             shape,
             edgePadding
         );
 
         if (
-            dc.getTextWidthInPixels(title, font)
-            > titleSafeRight - titleSafeLeft
+            dc.getTextWidthInPixels(title, font) >
+            titleSafeRight - titleSafeLeft
         ) {
             title = "Blood Sugar";
         }
 
-        drawHeader(
-            dc,
-            title,
-            titleY,
-            font
-        );
+        drawHeader(dc, title, titleY, font);
 
-        drawAxes(
-            dc,
-            graphLeft,
-            graphRight,
-            graphTop,
-            graphBottom
-        );
+        drawAxes(dc, graphLeft, graphRight, graphTop, graphBottom);
 
         drawValueLabels(
             dc,
             minValue,
             maxValue,
             graphLeft,
+            graphRight,
             graphTop,
             graphBottom,
+            graphHeight,
             font
         );
 
@@ -347,13 +286,13 @@ class BloodSugarHistoryView extends WatchUi.View {
         );
 
         /*
-        * Time labels sit lower than the graph, so calculate
-        * their own safe round-screen boundaries.
-        */
+         * Time labels sit lower than the graph, so calculate
+         * their own safe round-screen boundaries.
+         */
         var timeLeft = getSafeLeft(
             screenWidth,
             screenHeight,
-            timeLabelY + (fontHeight / 2),
+            timeLabelY + fontHeight / 2,
             shape,
             edgePadding
         );
@@ -361,18 +300,12 @@ class BloodSugarHistoryView extends WatchUi.View {
         var timeRight = getSafeRight(
             screenWidth,
             screenHeight,
-            timeLabelY + (fontHeight / 2),
+            timeLabelY + fontHeight / 2,
             shape,
             edgePadding
         );
 
-        drawTimeLabels(
-            dc,
-            timeLeft,
-            timeRight,
-            timeLabelY,
-            font
-        );
+        drawTimeLabels(dc, timeLeft, timeRight, timeLabelY, font);
     }
 
     private function drawHeader(
@@ -381,10 +314,7 @@ class BloodSugarHistoryView extends WatchUi.View {
         titleY as Number,
         font
     ) as Void {
-        dc.setColor(
-            Graphics.COLOR_WHITE,
-            Graphics.COLOR_TRANSPARENT
-        );
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
         dc.drawText(
             dc.getWidth() / 2,
@@ -402,37 +332,18 @@ class BloodSugarHistoryView extends WatchUi.View {
         graphTop as Number,
         graphBottom as Number
     ) as Void {
-        dc.setColor(
-            Graphics.COLOR_DK_GRAY,
-            Graphics.COLOR_TRANSPARENT
-        );
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
 
         // Y-axis.
-        dc.drawLine(
-            graphLeft,
-            graphTop,
-            graphLeft,
-            graphBottom
-        );
+        dc.drawLine(graphLeft, graphTop, graphLeft, graphBottom);
 
         // X-axis.
-        dc.drawLine(
-            graphLeft,
-            graphBottom,
-            graphRight,
-            graphBottom
-        );
+        dc.drawLine(graphLeft, graphBottom, graphRight, graphBottom);
 
         // Middle horizontal guide line.
-        var middleY =
-            graphTop + ((graphBottom - graphTop) / 2);
+        var middleY = graphTop + (graphBottom - graphTop) / 2;
 
-        dc.drawLine(
-            graphLeft,
-            middleY,
-            graphRight,
-            middleY
-        );
+        dc.drawLine(graphLeft, middleY, graphRight, middleY);
     }
 
     private function drawValueLabels(
@@ -440,20 +351,17 @@ class BloodSugarHistoryView extends WatchUi.View {
         minValue as Float,
         maxValue as Float,
         graphLeft as Number,
+        graphRight as Number,
         graphTop as Number,
         graphBottom as Number,
+        graphHeight as Number,
         font
     ) as Void {
-        var middleValue =
-            minValue + ((maxValue - minValue) / 2.0f);
+        var middleValue = minValue + (maxValue - minValue) / 2.0f;
 
-        var middleY =
-            graphTop + ((graphBottom - graphTop) / 2);
+        var middleY = graphTop + (graphBottom - graphTop) / 2;
 
-        dc.setColor(
-            Graphics.COLOR_LT_GRAY,
-            Graphics.COLOR_TRANSPARENT
-        );
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
 
         dc.drawText(
             graphLeft - 4,
@@ -478,6 +386,24 @@ class BloodSugarHistoryView extends WatchUi.View {
             minValue.format("%.1f"),
             Graphics.TEXT_JUSTIFY_RIGHT
         );
+
+        var valueRange = maxValue - minValue;
+
+        for (var i = 0; i < _saveValues.size(); i++) {
+            var value = BloodSugarStore.MgdlToMoll(_saveValues[i]);
+            if (i == 1 || i == 2) {
+                dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
+            } else {
+                dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+            }
+
+            var y =
+                graphTop.toFloat() +
+                graphHeight.toFloat() -
+                ((value - minValue) / valueRange) * graphHeight.toFloat();
+
+            dc.drawLine(graphLeft, y.toFloat(), graphRight, y.toFloat());
+        }
     }
 
     private function drawLines(
@@ -495,10 +421,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             return;
         }
 
-        dc.setColor(
-            Graphics.COLOR_GREEN,
-            Graphics.COLOR_TRANSPARENT
-        );
+        dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
 
         var valueRange = maxValue - minValue;
 
@@ -531,11 +454,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             graphHeight
         );
 
-        dc.fillCircle(
-            previousX.toNumber(),
-            previousY.toNumber(),
-            pointRadius
-        );
+        dc.fillCircle(previousX.toNumber(), previousY.toNumber(), pointRadius);
 
         // Start at the second point.
         for (var i = 1; i < count; i++) {
@@ -565,11 +484,7 @@ class BloodSugarHistoryView extends WatchUi.View {
                 y.toNumber()
             );
 
-            dc.fillCircle(
-                x.toNumber(),
-                y.toNumber(),
-                pointRadius
-            );
+            dc.fillCircle(x.toNumber(), y.toNumber(), pointRadius);
 
             previousX = x;
             previousY = y;
@@ -585,28 +500,22 @@ class BloodSugarHistoryView extends WatchUi.View {
         graphWidth as Number
     ) as Float {
         if (count == 1) {
-            return (
-                graphLeft + (graphWidth / 2.0f)
-            ).toFloat();
+            return (graphLeft + graphWidth / 2.0f).toFloat();
         }
 
         if (timeRange > 0) {
             var currentTime = _time[index] as Number;
 
             var position =
-                (currentTime - firstTime).toFloat()
-                / timeRange.toFloat();
+                (currentTime - firstTime).toFloat() / timeRange.toFloat();
 
-            return graphLeft.toFloat()
-                + (position * graphWidth.toFloat());
+            return graphLeft.toFloat() + position * graphWidth.toFloat();
         }
 
         // Fallback when timestamps are identical.
-        var equalPosition =
-            index.toFloat() / (count - 1).toFloat();
+        var equalPosition = index.toFloat() / (count - 1).toFloat();
 
-        return graphLeft.toFloat()
-            + (equalPosition * graphWidth.toFloat());
+        return graphLeft.toFloat() + equalPosition * graphWidth.toFloat();
     }
 
     private function getPointY(
@@ -616,12 +525,13 @@ class BloodSugarHistoryView extends WatchUi.View {
         graphTop as Number,
         graphHeight as Number
     ) as Float {
-        var normalizedValue =
-            (value - minValue) / valueRange;
+        var normalizedValue = (value - minValue) / valueRange;
 
-        return graphTop.toFloat()
-            + graphHeight.toFloat()
-            - (normalizedValue * graphHeight.toFloat());
+        return (
+            graphTop.toFloat() +
+            graphHeight.toFloat() -
+            normalizedValue * graphHeight.toFloat()
+        );
     }
 
     private function drawTimeLabels(
@@ -633,30 +543,25 @@ class BloodSugarHistoryView extends WatchUi.View {
     ) as Void {
         var count = _time.size();
 
-        var firstMoment =
-            new Time.Moment(_time[0]);
+        var firstMoment = new Time.Moment(_time[0]);
 
-        var lastMoment =
-            new Time.Moment(_time[count - 1]);
+        var lastMoment = new Time.Moment(_time[count - 1]);
 
-        var firstLabel =
-            formatMoment(firstMoment);
+        var firstLabel = formatMoment(firstMoment);
 
-        var lastLabel =
-            formatMoment(lastMoment);
+        var lastLabel = formatMoment(lastMoment);
 
         var requiredWidth =
-            dc.getTextWidthInPixels(firstLabel, font)
-            + dc.getTextWidthInPixels(lastLabel, font)
-            + 6;
+            dc.getTextWidthInPixels(firstLabel, font) +
+            dc.getTextWidthInPixels(lastLabel, font) +
+            6;
 
-        var availableWidth =
-            labelRight - labelLeft;
+        var availableWidth = labelRight - labelLeft;
 
         /*
-        * Use shorter labels when both complete timestamps
-        * cannot fit.
-        */
+         * Use shorter labels when both complete timestamps
+         * cannot fit.
+         */
         if (requiredWidth > availableWidth) {
             if (isSameDate(firstMoment, lastMoment)) {
                 firstLabel = formatTime(firstMoment);
@@ -667,10 +572,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             }
         }
 
-        dc.setColor(
-            Graphics.COLOR_LT_GRAY,
-            Graphics.COLOR_TRANSPARENT
-        );
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
 
         dc.drawText(
             labelLeft,
@@ -693,90 +595,51 @@ class BloodSugarHistoryView extends WatchUi.View {
         firstMoment as Time.Moment,
         lastMoment as Time.Moment
     ) as Boolean {
-        var first =
-            Gregorian.info(
-                firstMoment,
-                Time.FORMAT_SHORT
-            );
+        var first = Gregorian.info(firstMoment, Time.FORMAT_SHORT);
 
-        var last =
-            Gregorian.info(
-                lastMoment,
-                Time.FORMAT_SHORT
-            );
+        var last = Gregorian.info(lastMoment, Time.FORMAT_SHORT);
 
-        return first.year == last.year
-            && first.month == last.month
-            && first.day == last.day;
-    }
-
-    private function formatTime(
-        moment as Time.Moment
-    ) as String {
-        var info =
-            Gregorian.info(
-                moment,
-                Time.FORMAT_SHORT
-            );
-
-        return Lang.format(
-            "$1$:$2$",
-            [
-                info.hour.format("%02d"),
-                info.min.format("%02d")
-            ]
+        return (
+            first.year == last.year &&
+            first.month == last.month &&
+            first.day == last.day
         );
     }
 
-    private function formatDate(
-        moment as Time.Moment
-    ) as String {
-        var info =
-            Gregorian.info(
-                moment,
-                Time.FORMAT_SHORT
-            );
+    private function formatTime(moment as Time.Moment) as String {
+        var info = Gregorian.info(moment, Time.FORMAT_SHORT);
 
-        return Lang.format(
-            "$1$/$2$",
-            [
-                (info.month as Number).format("%02d"),
-                info.day.format("%02d")
-            ]
-        );
+        return Lang.format("$1$:$2$", [
+            info.hour.format("%02d"),
+            info.min.format("%02d"),
+        ]);
     }
 
-    private function formatMoment(
-        moment as Time.Moment
-    ) as String {
-        var info =
-            Gregorian.info(
-                moment,
-                Time.FORMAT_SHORT
-            );
+    private function formatDate(moment as Time.Moment) as String {
+        var info = Gregorian.info(moment, Time.FORMAT_SHORT);
 
-        return Lang.format(
-            "$1$/$2$ $3$:$4$",
-            [
-                (info.month as Number).format("%02d"),
-                info.day.format("%02d"),
-                info.hour.format("%02d"),
-                info.min.format("%02d")
-            ]
-        );
+        return Lang.format("$1$/$2$", [
+            (info.month as Number).format("%02d"),
+            info.day.format("%02d"),
+        ]);
+    }
+
+    private function formatMoment(moment as Time.Moment) as String {
+        var info = Gregorian.info(moment, Time.FORMAT_SHORT);
+
+        return Lang.format("$1$/$2$ $3$:$4$", [
+            (info.month as Number).format("%02d"),
+            info.day.format("%02d"),
+            info.hour.format("%02d"),
+            info.min.format("%02d"),
+        ]);
     }
 
     private function getMinimumValue() as Float {
-        var minimum =
-            _bloodSugar[0].toFloat();
+        var minimum = _bloodSugar[0].toFloat();
 
-        for (
-            var i = 1;
-            i < _bloodSugar.size();
-            i++
-        ) {
-            var value =
-                _bloodSugar[i].toFloat();
+        for (var i = 1; i < _bloodSugar.size(); i++) {
+            var value = _bloodSugar[i].toFloat();
 
             if (value < minimum) {
                 minimum = value;
@@ -787,16 +650,10 @@ class BloodSugarHistoryView extends WatchUi.View {
     }
 
     private function getMaximumValue() as Float {
-        var maximum =
-            _bloodSugar[0].toFloat();
+        var maximum = _bloodSugar[0].toFloat();
 
-        for (
-            var i = 1;
-            i < _bloodSugar.size();
-            i++
-        ) {
-            var value =
-                _bloodSugar[i].toFloat();
+        for (var i = 1; i < _bloodSugar.size(); i++) {
+            var value = _bloodSugar[i].toFloat();
 
             if (value > maximum) {
                 maximum = value;
@@ -819,8 +676,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             smallest = height;
         }
 
-        var result =
-            (smallest.toFloat() * ratio).toNumber();
+        var result = (smallest.toFloat() * ratio).toNumber();
 
         if (result < minimum) {
             return minimum;
@@ -844,18 +700,13 @@ class BloodSugarHistoryView extends WatchUi.View {
             smallest = height;
         }
 
-        var radius =
-            smallest.toFloat() / 2.0f;
+        var radius = smallest.toFloat() / 2.0f;
 
-        var centerY =
-            height.toFloat() / 2.0f;
+        var centerY = height.toFloat() / 2.0f;
 
-        var distanceY =
-            y.toFloat() - centerY;
+        var distanceY = y.toFloat() - centerY;
 
-        var inside =
-            (radius * radius)
-            - (distanceY * distanceY);
+        var inside = radius * radius - distanceY * distanceY;
 
         if (inside <= 0.0f) {
             return 0.0f;
@@ -872,27 +723,21 @@ class BloodSugarHistoryView extends WatchUi.View {
         padding as Number
     ) as Number {
         if (shape == System.SCREEN_SHAPE_ROUND) {
-            var halfWidth =
-                getRoundHalfWidth(width, height, y);
+            var halfWidth = getRoundHalfWidth(width, height, y);
 
-            return (
-                (width.toFloat() / 2.0f)
-                - halfWidth
-            ).toNumber() + padding;
+            return (width.toFloat() / 2.0f - halfWidth).toNumber() + padding;
         }
 
         var ratio = 0.035f;
 
         if (
-            shape == System.SCREEN_SHAPE_SEMI_ROUND
-            || shape == System.SCREEN_SHAPE_SEMI_OCTAGON
+            shape == System.SCREEN_SHAPE_SEMI_ROUND ||
+            shape == System.SCREEN_SHAPE_SEMI_OCTAGON
         ) {
             ratio = 0.080f;
         }
 
-        return (
-            width.toFloat() * ratio
-        ).toNumber() + padding;
+        return (width.toFloat() * ratio).toNumber() + padding;
     }
 
     private function getSafeRight(
@@ -903,33 +748,23 @@ class BloodSugarHistoryView extends WatchUi.View {
         padding as Number
     ) as Number {
         if (shape == System.SCREEN_SHAPE_ROUND) {
-            var halfWidth =
-                getRoundHalfWidth(width, height, y);
+            var halfWidth = getRoundHalfWidth(width, height, y);
 
-            return (
-                (width.toFloat() / 2.0f)
-                + halfWidth
-            ).toNumber() - padding;
+            return (width.toFloat() / 2.0f + halfWidth).toNumber() - padding;
         }
 
         var ratio = 0.035f;
 
         if (
-            shape == System.SCREEN_SHAPE_SEMI_ROUND
-            || shape == System.SCREEN_SHAPE_SEMI_OCTAGON
+            shape == System.SCREEN_SHAPE_SEMI_ROUND ||
+            shape == System.SCREEN_SHAPE_SEMI_OCTAGON
         ) {
             ratio = 0.080f;
         }
 
-        return width
-            - (width.toFloat() * ratio).toNumber()
-            - padding;
+        return width - (width.toFloat() * ratio).toNumber() - padding;
     }
 
     //in storage we have some lines that tell what values are danger i want lines in the grapth to be able to see easy when that was
-    private function setSavetyLines(
-        dc as Graphics.Dc
-    ){
-
-    }
+    private function setSavetyLines(dc as Graphics.Dc) {}
 }

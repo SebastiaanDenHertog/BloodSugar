@@ -1,10 +1,9 @@
-import Toybox.Application.Storage;
+import Toybox.Application;
 import Toybox.Time;
 import Toybox.System;
 import Toybox.Lang;
 
 module BloodSugarStore {
-
     const MAX_POINTS = 240;
 
     const STORAGE_KEY = "BloodSugerHistory";
@@ -43,10 +42,7 @@ module BloodSugarStore {
         _history.add(point);
 
         if (_history.size() > MAX_POINTS) {
-            _history = _history.slice(
-                _history.size() - MAX_POINTS,
-                null
-            );
+            _history = _history.slice(_history.size() - MAX_POINTS, null);
         }
 
         save();
@@ -69,16 +65,30 @@ module BloodSugarStore {
         Storage.setValue(STORAGE_KEY, _history);
     }
 
+    // from 8 to 144.125
     function MollToMgdl(Moll) as Float {
-        return Moll*18.018;
+        return Moll * 18.018;
     }
 
+    // from 144.125 to 8
     function MgdlToMoll(Mgdl) as Float {
-        return Mgdl/18.018;
+        return Mgdl / 18.018;
     }
 
-    function getSaveValues() {
-        System.println(Storage.getValue("BloodSugarZones"));
-        return Storage.getValue("BloodSugarZones");
+    function getBloodSugarZones() {
+        return [
+            Application.Properties.getValue("dangerLow"),
+            Application.Properties.getValue("Low"),
+            Application.Properties.getValue("High"),
+            Application.Properties.getValue("dangerHigh"),
+        ];
+    }
+
+    function getDiabeteMode() {
+        return Application.Properties.getValue("diabeteMode") as Boolean;
+    }
+
+    function getSetupDone() {
+        return Application.Properties.getValue("setupDone") as Boolean;
     }
 }
