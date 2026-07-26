@@ -1,71 +1,11 @@
-<resources>
-    <properties>
-        <property id="diabeteMode" type="boolean">false</property>
-        <property id="setupDone" type="boolean">false</property>
-        <property id="appVersion" type="string">1.0.0</property>
+<properties>
+    <!-- Keep this below 1.0.0 while the app is manual-entry only. -->
+    <property id="appVersion" type="string">0.2.0</property>
 
-        <property id="dangerLow" type="float">80.0</property>
-        <property id="Low" type="float">90.0</property>
-        <property id="High" type="float">140.0</property>
-        <property id="dangerHigh" type="float">220.0</property>
-    </properties>
-
-    <strings>
-        <string id="diabeteModeTitle">Diabetes mode</string>
-        <string id="setupDoneTitle">Setup done</string>
-        <string id="dangerLowTitle">Danger low</string>
-        <string id="lowTitle">Low</string>
-        <string id="highTitle">High</string>
-        <string id="dangerHighTitle">Danger high</string>
-    </strings>
-
-    <settings>
-        <setting
-            propertyKey="@Properties.diabeteMode"
-            title="@Strings.diabeteModeTitle">
-            <settingConfig type="boolean"/>
-        </setting>
-
-        <setting
-            propertyKey="@Properties.setupDone"
-            title="@Strings.setupDoneTitle">
-            <settingConfig type="boolean"/>
-        </setting>
-
-        <setting
-            propertyKey="@Properties.dangerLow"
-            title="@Strings.dangerLowTitle">
-            <settingConfig
-                type="numeric"
-                min="0"
-                max="500"/>
-        </setting>
-
-        <setting
-            propertyKey="@Properties.Low"
-            title="@Strings.lowTitle">
-            <settingConfig
-                type="numeric"
-                min="0"
-                max="500"/>
-        </setting>
-
-        <setting
-            propertyKey="@Properties.High"
-            title="@Strings.highTitle">
-            <settingConfig
-                type="numeric"
-                min="0"
-                max="500"/>
-        </setting>
-
-        <setting
-            propertyKey="@Properties.dangerHigh"
-            title="@Strings.dangerHighTitle">
-            <settingConfig
-                type="numeric"
-                min="0"
-                max="500"/>
-        </setting>
-    </settings>
-</resources>
+    <property id="setupDone" type="boolean">false</property>
+    <property id="useMgdl" type="boolean">false</property>
+    <property id="targetLowMmol" type="float">4.0</property>
+    <property id="targetHighMmol" type="float">10.0</property>
+    <property id="defaultContextIndex" type="number">0</property>
+    <property id="confirmBeforeSave" type="boolean">true</property>
+</properties>

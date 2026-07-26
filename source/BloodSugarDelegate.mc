@@ -1,84 +1,89 @@
-import Toybox.Lang;
-import Toybox.WatchUi;
 import Toybox.System;
+import Toybox.WatchUi;
+import Toybox.Lang;
 
 class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarView;
 
-    // 0 = waiting
-    // 1 = edit whole number
-    // 2 = edit decimal
-    // 3 = select unit
-    // 4 = confirm
+    // 0 = ready, 1 = value, 2 = context, 3 = confirm
     private var _stage as Number;
-
-    // Always store the internal value in mmol/L.
     private var _bloodSugarMmol as Float;
-
-    // false = mmol/L
-    // true  = mg/dL
     private var _useMgdl as Boolean;
+    private var _contextIndex as Number;
+    private var _message as String;
 
     public function initialize(view as BloodSugarView) {
         BehaviorDelegate.initialize();
 
         _parentView = view;
         _stage = 0;
-        _bloodSugarMmol = 0.0f;
-        _useMgdl = false;
+        _useMgdl = BloodSugarStore.getUseMgdl();
+        _contextIndex = BloodSugarStore.getDefaultContextIndex();
+        _message = "";
+
+        var latest = BloodSugarStore.getLatestReading();
+
+        if (
+            latest != null &&
+            latest.size() > BloodSugarStore.READING_VALUE_MMOL
+        ) {
+            _bloodSugarMmol =
+                latest[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+        } else {
+            _bloodSugarMmol = 5.5f;
+        }
 
         updateView();
-
-        System.println("BloodSugarDelegate initialized");
     }
 
     public function onSelect() as Boolean {
-        if (_stage < 4) {
-            _stage += 1;
+        _message = "";
 
-            updateView();
+        if (_stage == 0) {
+            _stage = 1;
+        } else if (_stage == 1) {
+            _stage = 2;
+        } else if (_stage == 2) {
+            if (BloodSugarStore.getConfirmBeforeSave()) {
+                _stage = 3;
+            } else {
+                saveReading();
+                return true;
+            }
+        } else {
+            saveReading();
             return true;
         }
 
-        saveReading();
+        updateView();
         return true;
     }
 
-    // UP
     public function onPreviousPage() as Boolean {
         if (_stage == 1) {
-            // Increase by 1.0 in the currently selected unit.
-            adjustDisplayedValue(1.0f);
-            return true;
+            adjustDisplayedValue(getStepSize());
         } else if (_stage == 2) {
-            // Increase by 0.1 in the currently selected unit.
-            adjustDisplayedValue(0.1f);
-            return true;
-        } else if (_stage == 3) {
-            // Select mmol/L.
-            selectUnit(false);
-            return true;
+            _contextIndex = BloodSugarStore.normalizeContextIndex(
+                _contextIndex - 1
+            );
+            updateView();
+        } else if (_stage == 0) {
+            var view = new BloodSugarHistoryView();
+            var delegate = new BloodSugarHistoryDelegate(view);
+            WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
         }
-
-        var view = new $.BloodSugarHistoryView();
-        var delegate = new $.BloodSugarHistoryDelegate(view);
-
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
 
         return true;
     }
 
-    // DOWN
     public function onNextPage() as Boolean {
         if (_stage == 1) {
-            // Decrease by 1.0 in the currently selected unit.
-            adjustDisplayedValue(-1.0f);
+            adjustDisplayedValue(-getStepSize());
         } else if (_stage == 2) {
-            // Decrease by 0.1 in the currently selected unit.
-            adjustDisplayedValue(-0.1f);
-        } else if (_stage == 3) {
-            // Select mg/dL.
-            selectUnit(true);
+            _contextIndex = BloodSugarStore.normalizeContextIndex(
+                _contextIndex + 1
+            );
+            updateView();
         }
 
         return true;
@@ -87,34 +92,32 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     public function onBack() as Boolean {
         if (_stage > 0) {
             _stage -= 1;
+            _message = "";
             updateView();
-
             return true;
         }
 
-        System.exit();
-
-        //return true;
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
     }
 
-    private function selectUnit(useMgdl as Boolean) as Void {
-        _useMgdl = useMgdl;
+    private function getStepSize() as Float {
+        if (_useMgdl) {
+            return 1.0f;
+        }
 
-        // updateView() recalculates the displayed value.
-        updateView();
+        return 0.1f;
     }
 
     private function adjustDisplayedValue(delta as Float) as Void {
-        // Convert the adjustment to mmol/L before modifying
-        // the internally stored value.
         if (_useMgdl) {
             _bloodSugarMmol += BloodSugarStore.MgdlToMoll(delta);
         } else {
             _bloodSugarMmol += delta;
         }
 
-        if (_bloodSugarMmol < 0.0f) {
-            _bloodSugarMmol = 0.0f;
+        if (_bloodSugarMmol < 0.1f) {
+            _bloodSugarMmol = 0.1f;
         }
 
         updateView();
@@ -129,24 +132,30 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     }
 
     private function saveReading() as Void {
-        // The store receives a consistent mmol/L value.
-        BloodSugarStore.addReading(_bloodSugarMmol);
+        var context = BloodSugarStore.getContextKey(_contextIndex);
+        var saved = BloodSugarStore.addReading(
+            _bloodSugarMmol,
+            "manual",
+            context
+        );
 
-        var view = new $.BloodSugarHistoryView();
-        var delegate = new $.BloodSugarHistoryDelegate(view);
+        if (!saved) {
+            _message = "Could not save reading";
+            _stage = 3;
+            updateView();
+            return;
+        }
 
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
     }
 
     private function updateView() as Void {
-        _parentView.setBloodSugar(getDisplayedValue(), _stage, _useMgdl);
-    }
-
-    private function getUnitText() as String {
-        if (_useMgdl) {
-            return "mg/dL";
-        }
-
-        return "mmol/L";
+        _parentView.setEntry(
+            getDisplayedValue(),
+            _stage,
+            _useMgdl,
+            BloodSugarStore.getContextLabel(_contextIndex),
+            _message
+        );
     }
 }

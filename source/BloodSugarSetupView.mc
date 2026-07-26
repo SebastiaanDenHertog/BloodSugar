@@ -3,75 +3,55 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 class BloodSugarSetupView extends WatchUi.View {
-    private var _status as String = "Tap Search to Start";
-    private var _deviceName as String = "";
-    private var _isScanning as Boolean = false;
+    private var _useMgdl as Boolean;
 
     public function initialize() {
         View.initialize();
+        _useMgdl = BloodSugarStore.getUseMgdl();
     }
 
-    function onLayout(dc as Dc) as Void {
-        //setLayout(Rez.Layouts.BloodSugarSetupLayout(dc));
+    public function setUseMgdl(useMgdl as Boolean) as Void {
+        _useMgdl = useMgdl;
+        WatchUi.requestUpdate();
     }
 
-    function onShow() as Void {}
-
-    public function onUpdate(dc as Dc) as Void {
-        // Clear screen
+    public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        // Draw title
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        var centerX = dc.getWidth() / 2;
+        var centerY = dc.getHeight() / 2;
+
         dc.drawText(
-            120,
-            30,
+            centerX,
+            centerY - 90,
             Graphics.FONT_MEDIUM,
-            "Blood Sugar Setup",
+            "Blood sugar setup",
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        // Draw status
-        var y = 80;
-        if (_isScanning) {
-            _status = "Searching...";
-        }
         dc.drawText(
-            120,
-            y,
-            Graphics.FONT_LARGE,
-            _status,
+            centerX,
+            centerY - 35,
+            Graphics.FONT_XTINY,
+            "Choose your display unit",
             Graphics.TEXT_JUSTIFY_CENTER
         );
-        y += 50;
 
-        // Show device name if found
-        if (_deviceName) {
-            dc.drawText(
-                120,
-                y,
-                Graphics.FONT_MEDIUM,
-                "Found: " + _deviceName,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
-        }
-    }
+        dc.drawText(
+            centerX,
+            centerY + 5,
+            Graphics.FONT_LARGE,
+            BloodSugarStore.getUnitText(_useMgdl),
+            Graphics.TEXT_JUSTIFY_CENTER
+        );
 
-    function onHide() as Void {}
-
-    public function setStatus(status as String) as Void {
-        _status = status;
-        WatchUi.requestUpdate();
-    }
-
-    public function setDeviceName(name as String) as Void {
-        _deviceName = name;
-        WatchUi.requestUpdate();
-    }
-
-    public function setIsScanning(scanning as Boolean) as Void {
-        _isScanning = scanning;
-        WatchUi.requestUpdate();
+        dc.drawText(
+            centerX,
+            centerY + 75,
+            Graphics.FONT_XTINY,
+            "UP/DOWN change | SELECT save",
+            Graphics.TEXT_JUSTIFY_CENTER
+        );
     }
 }

@@ -13,8 +13,6 @@ class ProfileManager {
         0x9b1052ffa9740042l
     );
 
-    // Voorkomt meerdere registerProfile()-aanroepen,
-    // ook wanneer per ongeluk meerdere ProfileManagers worden gemaakt.
     private static var _registrationRequested as Boolean = false;
 
     private var _profileReady as Boolean = false;
@@ -23,7 +21,6 @@ class ProfileManager {
 
     public function registerProfiles() as Void {
         if (_registrationRequested) {
-            System.println("BLE-profiel is al aangevraagd");
             return;
         }
 
@@ -35,7 +32,6 @@ class ProfileManager {
             BluetoothLowEnergy.ProfileRegistrationException) {
             _registrationRequested = false;
 
-            System.println("BLE-profiel kon niet worden geregistreerd");
             exception.printStackTrace();
         }
     }
@@ -48,7 +44,6 @@ class ProfileManager {
                 {
                     :uuid => BloodSugar_MEASUREMENT_UUID,
 
-                    // De echte standaard CCCD voor notifications.
                     :descriptors => [BluetoothLowEnergy.cccdUuid()],
                 },
             ],
@@ -61,7 +56,6 @@ class ProfileManager {
         _profileReady = status == BluetoothLowEnergy.STATUS_SUCCESS;
 
         if (!_profileReady) {
-            // Hiermee kan eventueel later opnieuw worden geprobeerd.
             _registrationRequested = false;
         }
     }

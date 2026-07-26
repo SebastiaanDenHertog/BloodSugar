@@ -1,0 +1,47 @@
+<settings>
+    <setting
+        propertyKey="@Properties.useMgdl"
+        title="@Strings.settingUseMgdl">
+        <settingConfig type="boolean" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.targetLowMmol"
+        title="@Strings.settingTargetLow">
+        <settingConfig
+            type="numeric"
+            min="1"
+            max="30"
+            errorMessage="@Strings.settingTargetError" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.targetHighMmol"
+        title="@Strings.settingTargetHigh">
+        <settingConfig
+            type="numeric"
+            min="1"
+            max="50"
+            errorMessage="@Strings.settingTargetError" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.defaultContextIndex"
+        title="@Strings.settingDefaultContext">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.contextNone</listEntry>
+            <listEntry value="1">@Strings.contextFasting</listEntry>
+            <listEntry value="2">@Strings.contextBeforeMeal</listEntry>
+            <listEntry value="3">@Strings.contextAfterMeal</listEntry>
+            <listEntry value="4">@Strings.contextBedtime</listEntry>
+            <listEntry value="5">@Strings.contextBeforeExercise</listEntry>
+            <listEntry value="6">@Strings.contextAfterExercise</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting
+        propertyKey="@Properties.confirmBeforeSave"
+        title="@Strings.settingConfirmSave">
+        <settingConfig type="boolean" />
+    </setting>
+</settings>

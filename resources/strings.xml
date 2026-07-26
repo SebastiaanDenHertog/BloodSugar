@@ -1,8 +1,22 @@
-<strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+<strings>
     <string id="AppName">BloodSugar</string>
 
-    <string id="prompt">Click the menu button</string>
+    <string id="settingUseMgdl">Use mg/dL instead of mmol/L</string>
+    <string id="settingTargetLow">Target low (mmol/L)</string>
+    <string id="settingTargetHigh">Target high (mmol/L)</string>
+    <string id="settingTargetError">Enter a valid target value</string>
+    <string id="settingDefaultContext">Default measurement context</string>
+    <string id="settingConfirmSave">Confirm before saving</string>
 
-    <string id="menu_label_1">Item 1</string>
-    <string id="menu_label_2">Item 2</string>
+    <string id="contextNone">No context</string>
+    <string id="contextFasting">Fasting</string>
+    <string id="contextBeforeMeal">Before meal</string>
+    <string id="contextAfterMeal">After meal</string>
+    <string id="contextBedtime">Bedtime</string>
+    <string id="contextBeforeExercise">Before exercise</string>
+    <string id="contextAfterExercise">After exercise</string>
+
+    <string id="prompt">Click the menu button</string>
+    <string id="settings">Settings</string>
+    <string id="history">History</string>
 </strings>

@@ -3,7 +3,7 @@ import Toybox.BluetoothLowEnergy;
 import Toybox.WatchUi;
 import Toybox.System;
 
-class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
+class BloodSugarServiceBleDelegate extends BluetoothLowEnergy.BleDelegate {
     private var _profileManager as ProfileManager;
 
     private var _onScanResult as WeakReference?;
@@ -26,13 +26,7 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         _profileManager.profileRegistrationFinished(status);
 
         if (status == BluetoothLowEnergy.STATUS_SUCCESS) {
-            System.println("Blood sugar BLE-profiel geregistreerd");
-
-            BluetoothLowEnergy.setScanState(
-                BluetoothLowEnergy.SCAN_STATE_SCANNING
-            );
         } else {
-            System.println("Registratie BLE-profiel mislukt: " + status);
         }
     }
 
@@ -43,6 +37,7 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
             result = scanResults.next()
         ) {
             if (result instanceof ScanResult) {
+                System.println(result);
                 if (
                     contains(
                         result.getServiceUuids(),
@@ -101,7 +96,6 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         characteristic as BluetoothLowEnergy.Characteristic,
         value as Lang.ByteArray
     ) as Void {
-        // Negeer andere characteristics.
         if (
             !characteristic
                 .getUuid()
@@ -111,15 +105,12 @@ class BloodSugarServiceDelegate extends BluetoothLowEnergy.BleDelegate {
         }
 
         if (value.size() < 4) {
-            System.println("Blood sugar-pakket is te kort: " + value.size());
             return;
         }
 
         var bloodSugarValue = parseBloodSugarBytes(value);
 
-        System.println("Ontvangen blood sugar: " + bloodSugarValue);
-
-        BloodSugarStore.addReading(bloodSugarValue);
+        BloodSugarStore.addReading(bloodSugarValue, "ble", "none");
         WatchUi.requestUpdate();
     }
 
