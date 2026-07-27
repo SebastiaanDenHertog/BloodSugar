@@ -96,10 +96,10 @@ class BloodSugarHistoryView extends WatchUi.View {
     private function drawGraph(dc as Graphics.Dc) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var left = (width * 0.2).toNumber();
-        var right = (width - width * 0.2).toNumber();
-        var top = (height * 0.2).toNumber();
-        var bottom = (height - height * 0.2).toNumber();
+        var left = (width * 0.15).toNumber();
+        var right = (width - width * 0.15).toNumber();
+        var top = (height * 0.15).toNumber();
+        var bottom = (height - height * 0.15).toNumber();
         var startIndex = 0;
 
         if (_bloodSugar.size() > MAX_VISIBLE_POINTS) {
@@ -144,8 +144,8 @@ class BloodSugarHistoryView extends WatchUi.View {
         );
 
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-        dc.drawLine(left, top, left, bottom);
-        dc.drawLine(left, bottom, right, bottom);
+        //dc.drawLine(left, top, left, bottom);
+        //dc.drawLine(left, bottom, right, bottom);
 
         _graphLeft = left;
         _graphRight = right;
