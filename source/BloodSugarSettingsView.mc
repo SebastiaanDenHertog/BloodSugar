@@ -63,36 +63,30 @@ class BloodSugarSettingsView extends WatchUi.View {
         dc.drawText(
             centerX,
             centerY - 48,
-            Graphics.FONT_XTINY,
+            Graphics.FONT_TINY,
             getItemTitle(),
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
         dc.drawText(
             centerX,
-            centerY - 5,
+            centerY,
             Graphics.FONT_MEDIUM,
             getItemValue(),
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        var instruction = "UP/DOWN change | SELECT next";
+        var instruction = "UP/DOWN change \n SELECT next";
 
         if (isActionItem()) {
-            instruction = "SELECT open | UP/DOWN next";
+            instruction = "SELECT open \n UP/DOWN next";
         }
 
         if (!_status.equals("")) {
             instruction = _status;
         }
 
-        dc.drawText(
-            centerX,
-            dc.getHeight() - 42,
-            Graphics.FONT_XTINY,
-            instruction,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawBottom(dc, instruction);
     }
 
     private function getClearIndex() as Number {

@@ -16,6 +16,9 @@ module BloodSugarStore {
     const CURRENT_READING_SCHEMA = 1;
 
     const PROP_APP_VERSION = "appVersion";
+    const PROP_APP_CREATOR = "appCreator";
+    const PROP_APP_NAME = "appName";
+    const PROP_APP_DESCRIPTION = "appDescription";
     const PROP_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
     const PROP_TARGET_LOW = "targetLowMmol";
@@ -400,6 +403,36 @@ module BloodSugarStore {
 
     function normalizeContext(context as String) as String {
         return getContextKey(getContextIndex(context));
+    }
+
+    function getAppCreator() as String {
+        var value = Application.Properties.getValue(PROP_APP_CREATOR);
+
+        if (value == null) {
+            return "Sebastiaan den Hertog";
+        }
+
+        return value.toString();
+    }
+
+    function getAppName() as String {
+        var value = Application.Properties.getValue(PROP_APP_NAME);
+
+        if (value == null) {
+            return "Blood Sugar Monitor";
+        }
+
+        return value.toString();
+    }
+
+    function getAppDescription() as String {
+        var value = Application.Properties.getValue(PROP_APP_DESCRIPTION);
+
+        if (value == null) {
+            return "Blood Sugar Monitor";
+        }
+
+        return value.toString();
     }
 
     function getAppVersion() as String {

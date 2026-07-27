@@ -24,9 +24,9 @@ class BloodSugarSetupView extends WatchUi.View {
 
         dc.drawText(
             centerX,
-            centerY - 90,
+            centerY - 120,
             Graphics.FONT_MEDIUM,
-            "Blood sugar setup",
+            "Setup",
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
@@ -46,12 +46,6 @@ class BloodSugarSetupView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        dc.drawText(
-            centerX,
-            centerY + 75,
-            Graphics.FONT_XTINY,
-            "UP/DOWN change | SELECT save",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawBottom(dc, "UP/DOWN change \n SELECT save");
     }
 }

@@ -80,13 +80,7 @@ class BloodSugarView extends WatchUi.View {
             footer = _message;
         }
 
-        dc.drawText(
-            centerX,
-            dc.getHeight() - 42,
-            Graphics.FONT_XTINY,
-            footer,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawBottom(dc, footer);
     }
 
     private function formatValue() as String {
@@ -115,11 +109,11 @@ class BloodSugarView extends WatchUi.View {
             return "SELECT to start";
         }
         if (_stage == 1) {
-            return "UP/DOWN adjust | SELECT next";
+            return "UP/DOWN adjust \n SELECT next";
         }
         if (_stage == 2) {
-            return "UP/DOWN context | SELECT next";
+            return "UP/DOWN context \n SELECT next";
         }
-        return "SELECT save | BACK edit";
+        return "SELECT save \n BACK edit";
     }
 }

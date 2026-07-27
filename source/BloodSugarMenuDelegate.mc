@@ -16,6 +16,10 @@ class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
             var historyView = new BloodSugarHistoryView();
             var historyDelegate = new BloodSugarHistoryDelegate(historyView);
             WatchUi.pushView(historyView, historyDelegate, WatchUi.SLIDE_RIGHT);
+        } else if (item == :appInfo) {
+            var infoView = new BloodSugarInfoView();
+            var infoDelegate = new BloodSugarInfoDelegate(infoView);
+            WatchUi.pushView(infoView, infoDelegate, WatchUi.SLIDE_RIGHT);
         }
     }
 }

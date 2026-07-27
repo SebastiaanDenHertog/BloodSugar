@@ -30,13 +30,7 @@ class BloodSugarHomeView extends WatchUi.View {
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
 
-        dc.drawText(
-            centerX,
-            centerY - 95,
-            Graphics.FONT_SMALL,
-            "Blood sugar",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawTop(dc, "Blood sugar");
 
         if (_reading == null || _reading.size() < 2) {
             dc.drawText(
@@ -47,7 +41,8 @@ class BloodSugarHomeView extends WatchUi.View {
                 Graphics.TEXT_JUSTIFY_CENTER
             );
         } else {
-            var valueMmol = _reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+            var valueMmol =
+                _reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
             var valueText = BloodSugarStore.formatValue(valueMmol, _useMgdl);
             var unitText = BloodSugarStore.getUnitText(_useMgdl);
 
@@ -76,13 +71,7 @@ class BloodSugarHomeView extends WatchUi.View {
             );
         }
 
-        dc.drawText(
-            centerX,
-            dc.getHeight() - 42,
-            Graphics.FONT_XTINY,
-            "SELECT add | UP history",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawBottom(dc, "SELECT add \n UP history");
     }
 
     private function getReadingSubtitle() as String {

@@ -67,13 +67,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        dc.drawText(
-            dc.getWidth() / 2,
-            dc.getHeight() / 2 + 20,
-            Graphics.FONT_XTINY,
-            "SELECT or BACK to return",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawBottom(dc, "SELECT or BACK to return");
     }
 
     private function drawGraph(dc as Graphics.Dc) as Void {
