@@ -1,7 +1,8 @@
 import Toybox.Application;
-import Toybox.Time;
-import Toybox.System;
+import Toybox.Application.Storage;
 import Toybox.Lang;
+import Toybox.System;
+import Toybox.Time;
 
 module BloodSugarStore {
     const MAX_POINTS = 240;
@@ -21,8 +22,10 @@ module BloodSugarStore {
     const PROP_APP_DESCRIPTION = "appDescription";
     const PROP_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
-    const PROP_TARGET_LOW = "targetLowMmol";
-    const PROP_TARGET_HIGH = "targetHighMmol";
+    const PROP_DANGER_LOW = "dangerLow";
+    const PROP_LOW = "Low";
+    const PROP_HIGH = "High";
+    const PROP_DANGER_HIGH = "dangerHigh";
     const PROP_DEFAULT_CONTEXT = "defaultContextIndex";
     const PROP_CONFIRM_SAVE = "confirmBeforeSave";
 
@@ -74,7 +77,7 @@ module BloodSugarStore {
                 continue;
             }
 
-            var valueMmol = value.toFloat();
+            var valueMmol = value.toFloat() as Float;
 
             if (valueMmol <= 0.0f) {
                 continue;
@@ -231,44 +234,98 @@ module BloodSugarStore {
         Application.Properties.setValue(PROP_USE_MGDL, useMgdl);
     }
 
-    function getTargetLowMmol() as Float {
-        var value = Application.Properties.getValue(PROP_TARGET_LOW);
+    function getRangePropertyMmol(
+        propertyKey as String,
+        defaultMgdl as Float
+    ) as Float {
+        var value = Application.Properties.getValue(propertyKey);
 
         if (value == null) {
-            return 4.0f;
+            return MgdlToMoll(defaultMgdl);
         }
 
-        return value.toFloat();
+        return MgdlToMoll(value.toFloat());
     }
 
-    function setTargetLowMmol(value as Float) as Void {
-        Application.Properties.setValue(PROP_TARGET_LOW, value);
+    function setRangePropertyMmol(
+        propertyKey as String,
+        valueMmol as Float
+    ) as Void {
+        Application.Properties.setValue(propertyKey, MollToMgdl(valueMmol));
     }
 
-    function getTargetHighMmol() as Float {
-        var value = Application.Properties.getValue(PROP_TARGET_HIGH);
-
-        if (value == null) {
-            return 10.0f;
-        }
-
-        return value.toFloat();
+    function getDangerLowMmol() as Float {
+        return getRangePropertyMmol(PROP_DANGER_LOW, 80.0f);
     }
 
-    function setTargetHighMmol(value as Float) as Void {
-        Application.Properties.setValue(PROP_TARGET_HIGH, value);
+    function setDangerLowMmol(value as Float) as Void {
+        setRangePropertyMmol(PROP_DANGER_LOW, value);
+    }
+
+    function getLowMmol() as Float {
+        return getRangePropertyMmol(PROP_LOW, 90.0f);
+    }
+
+    function setLowMmol(value as Float) as Void {
+        setRangePropertyMmol(PROP_LOW, value);
+    }
+
+    function getHighMmol() as Float {
+        return getRangePropertyMmol(PROP_HIGH, 140.0f);
+    }
+
+    function setHighMmol(value as Float) as Void {
+        setRangePropertyMmol(PROP_HIGH, value);
+    }
+
+    function getDangerHighMmol() as Float {
+        return getRangePropertyMmol(PROP_DANGER_HIGH, 220.0f);
+    }
+
+    function setDangerHighMmol(value as Float) as Void {
+        setRangePropertyMmol(PROP_DANGER_HIGH, value);
     }
 
     function getBloodSugarZones() {
-        var low = getTargetLowMmol();
-        var high = getTargetHighMmol();
-        var dangerLow = low - 1.0f;
+        var dangerLow = getDangerLowMmol();
+        var low = getLowMmol();
+        var high = getHighMmol();
+        var dangerHigh = getDangerHighMmol();
+        var minimumGap = MgdlToMoll(1.0f);
 
-        if (dangerLow < 0.0f) {
-            dangerLow = 0.0f;
+        if (dangerLow < minimumGap) {
+            dangerLow = minimumGap;
         }
 
-        return [dangerLow, low, high, high + 3.0f];
+        if (low <= dangerLow) {
+            low = dangerLow + minimumGap;
+        }
+
+        if (high <= low) {
+            high = low + minimumGap;
+        }
+
+        if (dangerHigh <= high) {
+            dangerHigh = high + minimumGap;
+        }
+
+        return [dangerLow, low, high, dangerHigh];
+    }
+
+    function getTargetLowMmol() as Float {
+        return getLowMmol();
+    }
+
+    function setTargetLowMmol(value as Float) as Void {
+        setLowMmol(value);
+    }
+
+    function getTargetHighMmol() as Float {
+        return getHighMmol();
+    }
+
+    function setTargetHighMmol(value as Float) as Void {
+        setHighMmol(value);
     }
 
     function getSetupDone() as Boolean {
@@ -289,10 +346,6 @@ module BloodSugarStore {
 
     function getDefaultContextIndex() as Number {
         var value = Application.Properties.getValue(PROP_DEFAULT_CONTEXT);
-
-        if (value == null) {
-            return 0;
-        }
 
         var index = value.toNumber();
 
@@ -408,19 +461,11 @@ module BloodSugarStore {
     function getAppCreator() as String {
         var value = Application.Properties.getValue(PROP_APP_CREATOR);
 
-        if (value == null) {
-            return "Sebastiaan den Hertog";
-        }
-
         return value.toString();
     }
 
     function getAppName() as String {
         var value = Application.Properties.getValue(PROP_APP_NAME);
-
-        if (value == null) {
-            return "Blood Sugar Monitor";
-        }
 
         return value.toString();
     }
@@ -428,19 +473,11 @@ module BloodSugarStore {
     function getAppDescription() as String {
         var value = Application.Properties.getValue(PROP_APP_DESCRIPTION);
 
-        if (value == null) {
-            return "Blood Sugar Monitor";
-        }
-
         return value.toString();
     }
 
     function getAppVersion() as String {
         var value = Application.Properties.getValue(PROP_APP_VERSION);
-
-        if (value == null) {
-            return "0.0.0";
-        }
 
         return value.toString();
     }
@@ -498,8 +535,8 @@ module BloodSugarStore {
         }
 
         for (var i = 0; i < maxLen; i++) {
-            var versionNum = 0;
-            var minVersionNum = 0;
+            var versionNum = 0 as Number;
+            var minVersionNum = 0 as Number;
 
             if (i < versionParts.size() && versionParts[i].length() > 0) {
                 versionNum = versionParts[i].toNumber();

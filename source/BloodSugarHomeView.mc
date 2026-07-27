@@ -71,7 +71,7 @@ class BloodSugarHomeView extends WatchUi.View {
             );
         }
 
-        SafeText.drawBottom(dc, "SELECT add \n UP history");
+        SafeText.drawBottom(dc, "SELECT add new \n UP history");
     }
 
     private function getReadingSubtitle() as String {

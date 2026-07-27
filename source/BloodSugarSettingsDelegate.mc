@@ -1,8 +1,17 @@
-import Toybox.Lang;
+import Toybox.Application;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
 class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
+    const INDEX_UNIT = 0;
+    const INDEX_DANGER_LOW = 1;
+    const INDEX_LOW = 2;
+    const INDEX_HIGH = 3;
+    const INDEX_DANGER_HIGH = 4;
+    const INDEX_CONTEXT = 5;
+    const INDEX_CONFIRM = 6;
+    const INDEX_BLE = 7;
+
     private var _view as BloodSugarSettingsView;
     private var _selected as Number;
     private var _status as String;
@@ -28,7 +37,7 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     public function onSelect() as Boolean {
         _status = "";
 
-        if (BloodSugarStore.isBleSupported() && _selected == 5) {
+        if (BloodSugarStore.isBleSupported() && _selected == INDEX_BLE) {
             openBleSetup();
             return true;
         }
@@ -76,10 +85,10 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
 
     private function getItemCount() as Number {
         if (BloodSugarStore.isBleSupported()) {
-            return 7;
+            return 9;
         }
 
-        return 6;
+        return 8;
     }
 
     private function getClearIndex() as Number {
@@ -89,17 +98,18 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     private function changeCurrentValue(direction as Number) as Void {
         _status = "";
 
-        if (_selected == 0) {
+        if (_selected == INDEX_UNIT) {
             BloodSugarStore.setUseMgdl(!BloodSugarStore.getUseMgdl());
-        } else if (_selected == 1) {
-            adjustTargetLow(direction);
-        } else if (_selected == 2) {
-            adjustTargetHigh(direction);
-        } else if (_selected == 3) {
+        } else if (
+            _selected >= INDEX_DANGER_LOW &&
+            _selected <= INDEX_DANGER_HIGH
+        ) {
+            adjustThreshold(_selected, direction);
+        } else if (_selected == INDEX_CONTEXT) {
             BloodSugarStore.setDefaultContextIndex(
                 BloodSugarStore.getDefaultContextIndex() + direction
             );
-        } else if (_selected == 4) {
+        } else if (_selected == INDEX_CONFIRM) {
             BloodSugarStore.setConfirmBeforeSave(
                 !BloodSugarStore.getConfirmBeforeSave()
             );
@@ -118,39 +128,59 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         updateView();
     }
 
-    private function adjustTargetLow(direction as Number) as Void {
-        var step = getTargetStepMmol();
-        var value = BloodSugarStore.getTargetLowMmol() + step * direction;
-        var high = BloodSugarStore.getTargetHighMmol();
+    private function adjustThreshold(
+        selectedIndex as Number,
+        direction as Number
+    ) as Void {
+        var zones = BloodSugarStore.getBloodSugarZones();
+        var step = getThresholdStepMmol();
+        var value =
+            zones[selectedIndex - INDEX_DANGER_LOW].toFloat() +
+            step * direction;
 
-        if (value < 0.1f) {
-            value = 0.1f;
+        if (selectedIndex == INDEX_DANGER_LOW) {
+            if (value < step) {
+                value = step;
+            }
+            if (value >= zones[1].toFloat()) {
+                value = zones[1].toFloat() - step;
+            }
+            BloodSugarStore.setDangerLowMmol(value);
+            return;
         }
 
-        if (value >= high) {
-            value = high - step;
+        if (selectedIndex == INDEX_LOW) {
+            if (value <= zones[0].toFloat()) {
+                value = zones[0].toFloat() + step;
+            }
+            if (value >= zones[2].toFloat()) {
+                value = zones[2].toFloat() - step;
+            }
+            BloodSugarStore.setLowMmol(value);
+            return;
         }
 
-        BloodSugarStore.setTargetLowMmol(value);
-    }
-
-    private function adjustTargetHigh(direction as Number) as Void {
-        var step = getTargetStepMmol();
-        var value = BloodSugarStore.getTargetHighMmol() + step * direction;
-        var low = BloodSugarStore.getTargetLowMmol();
-
-        if (value <= low) {
-            value = low + step;
+        if (selectedIndex == INDEX_HIGH) {
+            if (value <= zones[1].toFloat()) {
+                value = zones[1].toFloat() + step;
+            }
+            if (value >= zones[3].toFloat()) {
+                value = zones[3].toFloat() - step;
+            }
+            BloodSugarStore.setHighMmol(value);
+            return;
         }
 
+        if (value <= zones[2].toFloat()) {
+            value = zones[2].toFloat() + step;
+        }
         if (value > 50.0f) {
             value = 50.0f;
         }
-
-        BloodSugarStore.setTargetHighMmol(value);
+        BloodSugarStore.setDangerHighMmol(value);
     }
 
-    private function getTargetStepMmol() as Float {
+    private function getThresholdStepMmol() as Float {
         if (BloodSugarStore.getUseMgdl()) {
             return BloodSugarStore.MgdlToMoll(1.0f);
         }
@@ -180,11 +210,12 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     }
 
     private function updateView() as Void {
+        var zones = BloodSugarStore.getBloodSugarZones();
+
         _view.setState(
             _selected,
             BloodSugarStore.getUseMgdl(),
-            BloodSugarStore.getTargetLowMmol(),
-            BloodSugarStore.getTargetHighMmol(),
+            zones,
             BloodSugarStore.getDefaultContextIndex(),
             BloodSugarStore.getConfirmBeforeSave(),
             BloodSugarStore.isBleSupported(),

@@ -6,8 +6,12 @@
 
     <property id="setupDone" type="boolean">false</property>
     <property id="useMgdl" type="boolean">false</property>
-    <property id="targetLowMmol" type="float">4.0</property>
-    <property id="targetHighMmol" type="float">10.0</property>
+    
+    <property id="dangerLow" type="float">80.0</property>
+    <property id="Low" type="float">90.0</property>
+    <property id="High" type="float">140.0</property>
+    <property id="dangerHigh" type="float">220.0</property>
+
     <property id="defaultContextIndex" type="number">0</property>
     <property id="confirmBeforeSave" type="boolean">true</property>
 </properties>

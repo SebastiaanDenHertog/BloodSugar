@@ -46,7 +46,7 @@ class BloodSugarApp extends Application.AppBase {
                     BluetoothLowEnergy.SCAN_STATE_OFF
                 );
             } catch (error) {
-                System.println("Could not stop BLE scan: " + error);
+                System.println("Could not stop BLE scan: " + error.toString());
             }
         }
 

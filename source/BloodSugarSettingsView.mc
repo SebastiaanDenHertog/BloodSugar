@@ -5,8 +5,10 @@ import Toybox.WatchUi;
 class BloodSugarSettingsView extends WatchUi.View {
     private var _selected as Number;
     private var _useMgdl as Boolean;
-    private var _targetLowMmol as Float;
-    private var _targetHighMmol as Float;
+    private var _dangerLowMmol as Float;
+    private var _lowMmol as Float;
+    private var _highMmol as Float;
+    private var _dangerHighMmol as Float;
     private var _contextIndex as Number;
     private var _confirmBeforeSave as Boolean;
     private var _bleSupported as Boolean;
@@ -16,8 +18,10 @@ class BloodSugarSettingsView extends WatchUi.View {
         View.initialize();
         _selected = 0;
         _useMgdl = false;
-        _targetLowMmol = 4.0f;
-        _targetHighMmol = 10.0f;
+        _dangerLowMmol = BloodSugarStore.MgdlToMoll(80.0f);
+        _lowMmol = BloodSugarStore.MgdlToMoll(90.0f);
+        _highMmol = BloodSugarStore.MgdlToMoll(140.0f);
+        _dangerHighMmol = BloodSugarStore.MgdlToMoll(220.0f);
         _contextIndex = 0;
         _confirmBeforeSave = true;
         _bleSupported = false;
@@ -27,8 +31,7 @@ class BloodSugarSettingsView extends WatchUi.View {
     public function setState(
         selected as Number,
         useMgdl as Boolean,
-        targetLowMmol as Float,
-        targetHighMmol as Float,
+        zones,
         contextIndex as Number,
         confirmBeforeSave as Boolean,
         bleSupported as Boolean,
@@ -36,8 +39,10 @@ class BloodSugarSettingsView extends WatchUi.View {
     ) as Void {
         _selected = selected;
         _useMgdl = useMgdl;
-        _targetLowMmol = targetLowMmol;
-        _targetHighMmol = targetHighMmol;
+        _dangerLowMmol = zones[0].toFloat();
+        _lowMmol = zones[1].toFloat();
+        _highMmol = zones[2].toFloat();
+        _dangerHighMmol = zones[3].toFloat();
         _contextIndex = contextIndex;
         _confirmBeforeSave = confirmBeforeSave;
         _bleSupported = bleSupported;
@@ -89,16 +94,20 @@ class BloodSugarSettingsView extends WatchUi.View {
         SafeText.drawBottom(dc, instruction);
     }
 
+    private function getBleIndex() as Number {
+        return 7;
+    }
+
     private function getClearIndex() as Number {
         if (_bleSupported) {
-            return 6;
+            return 8;
         }
 
-        return 5;
+        return 7;
     }
 
     private function isActionItem() as Boolean {
-        if (_bleSupported && _selected == 5) {
+        if (_bleSupported && _selected == getBleIndex()) {
             return true;
         }
 
@@ -110,18 +119,24 @@ class BloodSugarSettingsView extends WatchUi.View {
             return "Display unit";
         }
         if (_selected == 1) {
-            return "Target low";
+            return "Danger low";
         }
         if (_selected == 2) {
-            return "Target high";
+            return "Low limit";
         }
         if (_selected == 3) {
-            return "Default context";
+            return "High limit";
         }
         if (_selected == 4) {
+            return "Danger high";
+        }
+        if (_selected == 5) {
+            return "Default context";
+        }
+        if (_selected == 6) {
             return "Confirm before save";
         }
-        if (_bleSupported && _selected == 5) {
+        if (_bleSupported && _selected == getBleIndex()) {
             return "Glucose monitor";
         }
         return "Delete history";
@@ -133,32 +148,40 @@ class BloodSugarSettingsView extends WatchUi.View {
         }
 
         if (_selected == 1) {
-            return formatTarget(_targetLowMmol);
+            return formatThreshold(_dangerLowMmol);
         }
 
         if (_selected == 2) {
-            return formatTarget(_targetHighMmol);
+            return formatThreshold(_lowMmol);
         }
 
         if (_selected == 3) {
-            return BloodSugarStore.getContextLabel(_contextIndex);
+            return formatThreshold(_highMmol);
         }
 
         if (_selected == 4) {
+            return formatThreshold(_dangerHighMmol);
+        }
+
+        if (_selected == 5) {
+            return BloodSugarStore.getContextLabel(_contextIndex);
+        }
+
+        if (_selected == 6) {
             if (_confirmBeforeSave) {
                 return "On";
             }
             return "Off";
         }
 
-        if (_bleSupported && _selected == 5) {
+        if (_bleSupported && _selected == getBleIndex()) {
             return "Set up BLE";
         }
 
         return "Delete all";
     }
 
-    private function formatTarget(valueMmol as Float) as String {
+    private function formatThreshold(valueMmol as Float) as String {
         return (
             BloodSugarStore.formatValue(valueMmol, _useMgdl) +
             " " +

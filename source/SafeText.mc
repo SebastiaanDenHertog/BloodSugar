@@ -1,16 +1,17 @@
-using Toybox.Graphics as Graphics;
-using Toybox.System as System;
-using Toybox.Math as Math;
+import Toybox.Graphics;
+import Toybox.System;
+import Toybox.Math;
+import Toybox.Lang;
 
 module SafeText {
-    /*
-     * Calculate the safe horizontal width at a vertical position.
-     *
-     * This prevents text from being clipped by round screens.
-     */
-    function getSafeTextWidth(dc, centerY, font, edgeMargin) {
-        var screenWidth = dc.getWidth();
-        var screenHeight = dc.getHeight();
+    function getSafeTextWidth(
+        dc as Dc,
+        centerY as Number,
+        font as Graphics.FontType,
+        edgeMargin as Number
+    ) {
+        var screenWidth = dc.getWidth() as Number;
+        var screenHeight = dc.getHeight() as Number;
         var settings = System.getDeviceSettings();
 
         /*
@@ -72,7 +73,12 @@ module SafeText {
     /*
      * Shorten text and add "..." when needed.
      */
-    function truncateText(dc, text, font, maxWidth) {
+    function truncateText(
+        dc as Dc,
+        text as String,
+        font as Graphics.FontType,
+        maxWidth as Number
+    ) {
         if (maxWidth <= 0) {
             return "";
         }
@@ -101,7 +107,7 @@ module SafeText {
     /*
      * Draw text safely near the top of the screen.
      */
-    function drawTop(dc, text) {
+    function drawTop(dc as Dc, text as String) {
         drawTopWithPadding(dc, text, 10);
     }
 
@@ -111,9 +117,12 @@ module SafeText {
      * Example:
      * paddingPercent = 10 means 10% from the top.
      */
-    function drawTopWithPadding(dc, text, paddingPercent) {
-        var screenWidth = dc.getWidth();
-        var screenHeight = dc.getHeight();
+    function drawTopWithPadding(
+        dc as Dc,
+        text as String,
+        paddingPercent as Number
+    ) {
+        var screenHeight = dc.getHeight() as Number;
 
         var topPadding = (screenHeight * paddingPercent) / 100;
 
@@ -123,7 +132,7 @@ module SafeText {
     /*
      * Draw text safely near the bottom of the screen.
      */
-    function drawBottom(dc, text) {
+    function drawBottom(dc as Dc, text as String) {
         drawBottomWithPadding(dc, text, 10);
     }
 
@@ -133,9 +142,12 @@ module SafeText {
      * Example:
      * paddingPercent = 10 means 10% above the bottom.
      */
-    function drawBottomWithPadding(dc, text, paddingPercent) {
-        var screenWidth = dc.getWidth();
-        var screenHeight = dc.getHeight();
+    function drawBottomWithPadding(
+        dc as Dc,
+        text as String,
+        paddingPercent as Number
+    ) {
+        var screenHeight = dc.getHeight() as Number;
 
         var bottomPadding = (screenHeight * paddingPercent) / 100;
 
@@ -145,10 +157,15 @@ module SafeText {
     /*
      * Shared implementation for top and bottom text.
      */
-    function drawFittedText(dc, text, padding, isTop) {
-        var screenWidth = dc.getWidth();
-        var screenHeight = dc.getHeight();
-        var edgeMargin = (screenWidth * 3) / 100;
+    function drawFittedText(
+        dc as Dc,
+        text as String,
+        padding as Number,
+        isTop
+    ) {
+        var screenWidth = dc.getWidth() as Number;
+        var screenHeight = dc.getHeight() as Number;
+        var edgeMargin = (screenWidth * 3) / (100 as Number);
 
         var fonts = [
             Graphics.FONT_LARGE,
@@ -164,7 +181,7 @@ module SafeText {
 
         for (var i = 0; i < fonts.size(); i++) {
             var font = fonts[i];
-            var fontHeight = dc.getFontHeight(font);
+            var fontHeight = dc.getFontHeight(font) as Number;
             var centerY;
 
             if (isTop) {
@@ -173,7 +190,8 @@ module SafeText {
                 centerY = screenHeight - padding - fontHeight / 2;
             }
 
-            var safeWidth = getSafeTextWidth(dc, centerY, font, edgeMargin);
+            var safeWidth =
+                getSafeTextWidth(dc, centerY, font, edgeMargin) as Number;
 
             if (
                 safeWidth > 0 &&

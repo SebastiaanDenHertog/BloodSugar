@@ -57,7 +57,10 @@ class DeviceManager {
 
     public function procCharWrite(characteristic, status) as Void {
         System.println(
-            "Proc Write: (" + characteristic.getUuid() + ") - " + status
+            "Proc Write: (" +
+                characteristic.getUuid().toString() +
+                ") - " +
+                status.toString()
         );
     }
 }

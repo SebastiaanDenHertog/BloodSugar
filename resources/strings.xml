@@ -2,9 +2,11 @@
     <string id="AppName">BloodSugar</string>
 
     <string id="settingUseMgdl">Use mg/dL instead of mmol/L</string>
-    <string id="settingTargetLow">Target low (mmol/L)</string>
-    <string id="settingTargetHigh">Target high (mmol/L)</string>
-    <string id="settingTargetError">Enter a valid target value</string>
+    <string id="settingDangerLow">Danger low threshold (mg/dL)</string>
+    <string id="settingLow">Low threshold (mg/dL)</string>
+    <string id="settingHigh">High threshold (mg/dL)</string>
+    <string id="settingDangerHigh">Danger high threshold (mg/dL)</string>
+    <string id="settingRangeError">Enter a valid threshold in mg/dL</string>
     <string id="settingDefaultContext">Default measurement context</string>
     <string id="settingConfirmSave">Confirm before saving</string>
 

@@ -7,33 +7,54 @@ import Toybox.Math;
 class BloodSugarHistoryView extends WatchUi.View {
     const MAX_VISIBLE_POINTS = 24;
 
+    const ZONE_DANGER_LOW = 0;
+    const ZONE_LOW = 1;
+    const ZONE_HIGH = 2;
+    const ZONE_DANGER_HIGH = 3;
+
     private var _bloodSugar;
     private var _time;
-    private var _targetLow as Float;
-    private var _targetHigh as Float;
+    private var _zones;
     private var _unit as String;
+    private var _selected as Number;
+
+    private var _graphLeft as Number;
+    private var _graphRight as Number;
+    private var _graphTop as Number;
+    private var _graphBottom as Number;
+    private var _graphMinimum as Float;
+    private var _graphMaximum as Float;
 
     public function initialize() {
         View.initialize();
         _bloodSugar = [];
         _time = [];
-        _targetLow = 4.0f;
-        _targetHigh = 10.0f;
+        _zones = [4.4f, 5.0f, 7.8f, 12.2f];
         _unit = "mmol/L";
+        _graphLeft = 0;
+        _graphRight = 0;
+        _graphTop = 0;
+        _graphBottom = 0;
+        _graphMinimum = 0.0f;
+        _graphMaximum = 1.0f;
+        _selected = 0;
     }
 
     public function setBloodSugarHistory(
         bloodSugar,
         time,
-        targetLow as Float,
-        targetHigh as Float,
+        zones,
         unit as String
     ) as Void {
         _bloodSugar = bloodSugar;
         _time = time;
-        _targetLow = targetLow;
-        _targetHigh = targetHigh;
+        _zones = zones;
         _unit = unit;
+        WatchUi.requestUpdate();
+    }
+
+    public function setBloodSugarSelect(select as Number) as Void {
+        _selected = select;
         WatchUi.requestUpdate();
     }
 
@@ -53,8 +74,10 @@ class BloodSugarHistoryView extends WatchUi.View {
         return (
             _bloodSugar != null &&
             _time != null &&
+            _zones != null &&
             _bloodSugar.size() > 0 &&
-            _bloodSugar.size() == _time.size()
+            _bloodSugar.size() == _time.size() &&
+            _zones.size() >= 4
         );
     }
 
@@ -73,10 +96,10 @@ class BloodSugarHistoryView extends WatchUi.View {
     private function drawGraph(dc as Graphics.Dc) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var left = 34;
-        var right = width - 18;
-        var top = 48;
-        var bottom = height - 48;
+        var left = (width * 0.2).toNumber();
+        var right = (width - width * 0.2).toNumber();
+        var top = (height * 0.2).toNumber();
+        var bottom = (height - height * 0.2).toNumber();
         var startIndex = 0;
 
         if (_bloodSugar.size() > MAX_VISIBLE_POINTS) {
@@ -84,8 +107,9 @@ class BloodSugarHistoryView extends WatchUi.View {
         }
 
         var count = _bloodSugar.size() - startIndex;
-        var minimum = _targetLow;
-        var maximum = _targetHigh;
+
+        var minimum = _zones[ZONE_DANGER_LOW].toFloat() as Float;
+        var maximum = _zones[ZONE_DANGER_HIGH].toFloat() as Float;
 
         for (var i = startIndex; i < _bloodSugar.size(); i++) {
             var value = _bloodSugar[i].toFloat();
@@ -98,7 +122,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             }
         }
 
-        var range = maximum - minimum;
+        var range = (maximum as Float) - (minimum as Float);
 
         if (range < 1.0f) {
             range = 1.0f;
@@ -123,34 +147,44 @@ class BloodSugarHistoryView extends WatchUi.View {
         dc.drawLine(left, top, left, bottom);
         dc.drawLine(left, bottom, right, bottom);
 
-        drawTargetLine(
-            dc,
-            left,
-            right,
-            top,
-            bottom,
-            minimum,
-            maximum,
-            _targetLow
-        );
-        drawTargetLine(
-            dc,
-            left,
-            right,
-            top,
-            bottom,
-            minimum,
-            maximum,
-            _targetHigh
-        );
+        _graphLeft = left;
+        _graphRight = right;
+        _graphTop = top;
+        _graphBottom = bottom;
+        _graphMinimum = minimum;
+        _graphMaximum = maximum;
 
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+        drawRangeLine(
+            dc,
+            _zones[ZONE_DANGER_LOW].toFloat(),
+            _zones[ZONE_DANGER_LOW].format("%.2f"),
+            true
+        );
+        drawRangeLine(
+            dc,
+            _zones[ZONE_LOW].toFloat(),
+            _zones[ZONE_LOW].format("%.2f"),
+            false
+        );
+        drawRangeLine(
+            dc,
+            _zones[ZONE_HIGH].toFloat(),
+            _zones[ZONE_HIGH].format("%.2f"),
+            false
+        );
+        drawRangeLine(
+            dc,
+            _zones[ZONE_DANGER_HIGH].toFloat(),
+            _zones[ZONE_DANGER_HIGH].format("%.2f"),
+            true
+        );
 
         var previousX = -1;
         var previousY = -1;
 
         for (var pointIndex = 0; pointIndex < count; pointIndex++) {
             var historyIndex = startIndex + pointIndex;
+            var pointValue = _bloodSugar[historyIndex].toFloat();
             var x;
 
             if (count == 1) {
@@ -159,62 +193,103 @@ class BloodSugarHistoryView extends WatchUi.View {
                 x = left + ((right - left) * pointIndex) / (count - 1);
             }
 
-            var y = valueToY(
-                _bloodSugar[historyIndex].toFloat(),
-                top,
-                bottom,
-                minimum,
-                maximum
-            );
+            var y = valueToY(pointValue, top, bottom, minimum, maximum);
 
             if (previousX >= 0) {
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
                 dc.drawLine(previousX, previousY, x, y);
             }
 
-            dc.fillCircle(x, y, 2);
+            dc.setColor(getPointColor(pointValue), Graphics.COLOR_BLACK);
+            dc.fillCircle(x, y, 3);
             previousX = x;
             previousY = y;
         }
 
-        dc.drawText(
-            2,
-            top - 5,
-            Graphics.FONT_XTINY,
-            formatAxisValue(maximum),
-            Graphics.TEXT_JUSTIFY_LEFT
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+
+        var lastIndex = _bloodSugar.size() - 1;
+
+        // Keep _selected within the available history range.
+        var safeSelected = _selected;
+
+        if (safeSelected < 0) {
+            safeSelected = 0;
+        } else if (safeSelected > lastIndex) {
+            safeSelected = lastIndex;
+        }
+
+        var latestValue = _bloodSugar[lastIndex].toFloat();
+        var latestValueSelected =
+            _bloodSugar[lastIndex - safeSelected].toFloat();
+
+        if (latestValue == latestValueSelected) {
+            dc.drawText(
+                width / 2,
+                height - 35,
+                Graphics.FONT_XTINY,
+                "Latest " + formatAxisValue(latestValue) + " " + _unit,
+                Graphics.TEXT_JUSTIFY_CENTER
+            );
+        } else {
+            dc.drawText(
+                width / 2,
+                height - 35,
+                Graphics.FONT_XTINY,
+                formatAxisValue(latestValueSelected) + " " + _unit,
+                Graphics.TEXT_JUSTIFY_CENTER
+            );
+        }
+    }
+
+    private function drawRangeLine(
+        dc as Graphics.Dc,
+        target as Float,
+        label as String,
+        isDanger as Boolean
+    ) as Void {
+        var y = valueToY(
+            target,
+            _graphTop,
+            _graphBottom,
+            _graphMinimum,
+            _graphMaximum
         );
 
-        dc.drawText(
-            2,
-            bottom - 8,
-            Graphics.FONT_XTINY,
-            formatAxisValue(minimum),
-            Graphics.TEXT_JUSTIFY_LEFT
-        );
+        var lineColor = Graphics.COLOR_ORANGE;
 
-        var latestValue = _bloodSugar[_bloodSugar.size() - 1].toFloat();
+        if (isDanger) {
+            lineColor = Graphics.COLOR_RED;
+        }
+
+        dc.setColor(lineColor, Graphics.COLOR_BLACK);
+        dc.drawLine(_graphLeft, y, _graphRight, y);
+
         dc.drawText(
-            width / 2,
-            height - 35,
+            _graphRight - 2,
+            y - dc.getFontHeight(Graphics.FONT_XTINY),
             Graphics.FONT_XTINY,
-            "Latest " + formatAxisValue(latestValue) + " " + _unit,
-            Graphics.TEXT_JUSTIFY_CENTER
+            label,
+            Graphics.TEXT_JUSTIFY_RIGHT
         );
     }
 
-    private function drawTargetLine(
-        dc as Graphics.Dc,
-        left as Number,
-        right as Number,
-        top as Number,
-        bottom as Number,
-        minimum as Float,
-        maximum as Float,
-        target as Float
-    ) as Void {
-        var y = valueToY(target, top, bottom, minimum, maximum);
-        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-        dc.drawLine(left, y, right, y);
+    private function getPointColor(value as Float) as Number {
+        if (
+            value < _zones[ZONE_DANGER_LOW].toFloat() ||
+            value > _zones[ZONE_DANGER_HIGH].toFloat()
+        ) {
+            return Graphics.COLOR_RED;
+        }
+
+        if (
+            value < _zones[ZONE_LOW].toFloat() ||
+            value > _zones[ZONE_HIGH].toFloat()
+        ) {
+            return Graphics.COLOR_ORANGE;
+        }
+
+        return Graphics.COLOR_GREEN;
     }
 
     private function valueToY(

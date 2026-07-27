@@ -6,23 +6,43 @@
     </setting>
 
     <setting
-        propertyKey="@Properties.targetLowMmol"
-        title="@Strings.settingTargetLow">
+        propertyKey="@Properties.dangerLow"
+        title="@Strings.settingDangerLow">
         <settingConfig
             type="numeric"
             min="1"
-            max="30"
-            errorMessage="@Strings.settingTargetError" />
+            max="100"
+            errorMessage="@Strings.settingRangeError" />
     </setting>
 
     <setting
-        propertyKey="@Properties.targetHighMmol"
-        title="@Strings.settingTargetHigh">
+        propertyKey="@Properties.Low"
+        title="@Strings.settingLow">
         <settingConfig
             type="numeric"
             min="1"
-            max="50"
-            errorMessage="@Strings.settingTargetError" />
+            max="100"
+            errorMessage="@Strings.settingRangeError" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.High"
+        title="@Strings.settingHigh">
+        <settingConfig
+            type="numeric"
+            min="1"
+            max="100"
+            errorMessage="@Strings.settingRangeError" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.dangerHigh"
+        title="@Strings.settingDangerHigh">
+        <settingConfig
+            type="numeric"
+            min="1"
+            max="100"
+            errorMessage="@Strings.settingRangeError" />
     </setting>
 
     <setting

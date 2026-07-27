@@ -27,7 +27,7 @@ class BloodSugarInfoView extends WatchUi.View {
             centerY,
             Graphics.FONT_XTINY,
             _message,
-            Graphics.TEXT_JUSTIFY_CENTER
+            Graphics.TEXT_JUSTIFY_VCENTER
         );
     }
 }

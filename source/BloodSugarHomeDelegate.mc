@@ -26,11 +26,6 @@ class BloodSugarHomeDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    public function onNextPage() as Boolean {
-        openSettings();
-        return true;
-    }
-
     public function onMenu() as Boolean {
         WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
         return true;
@@ -40,6 +35,4 @@ class BloodSugarHomeDelegate extends WatchUi.BehaviorDelegate {
         System.exit();
         return true;
     }
-
-    private function openSettings() as Void {}
 }
