@@ -20,6 +20,7 @@
 
     <string id="prompt">Click the menu button</string>
     <string id="settings">Settings</string>
-    <string id="history">History</string>
+    <string id="historyGraph">History Graph</string>
+    <string id="historyList">History List</string>
     <string id="appInfo">App info</string>
 </strings>

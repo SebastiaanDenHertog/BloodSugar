@@ -32,11 +32,11 @@ module BloodSugarStore {
     var _history = null;
 
     function load() {
-        var saved = Storage.getValue(STORAGE_KEY);
+        var saved = Application.Storage.getValue(STORAGE_KEY);
         var migrated = false;
 
         if (!(saved instanceof Array)) {
-            saved = Storage.getValue(STORAGE_KEY);
+            saved = Application.Storage.getValue(STORAGE_KEY);
             migrated = saved instanceof Array;
         }
 
@@ -49,7 +49,7 @@ module BloodSugarStore {
         normalizeHistory();
 
         if (migrated && save()) {
-            Storage.deleteValue(STORAGE_KEY);
+            Application.Storage.deleteValue(STORAGE_KEY);
         }
 
         return _history;
@@ -182,12 +182,111 @@ module BloodSugarStore {
         }
 
         try {
-            Storage.setValue(STORAGE_KEY, _history);
+            Application.Storage.setValue(STORAGE_KEY, _history);
             return true;
         } catch (error) {
             System.println("Could not save glucose history: " + error);
             return false;
         }
+    }
+
+    function getReadingByTime(bloodSugarValueTime) {
+        if (bloodSugarValueTime == null) {
+            return null;
+        }
+
+        var data = getHistory();
+
+        for (var i = 0; i < data.size(); i++) {
+            var reading = data[i];
+
+            if (
+                reading != null &&
+                reading.size() > READING_TIME &&
+                reading[READING_TIME].toNumber() ==
+                    bloodSugarValueTime.toNumber()
+            ) {
+                return reading;
+            }
+        }
+
+        return null;
+    }
+
+    function updateReadingByTime(
+        originalTime,
+        valueMmol as Float,
+        context as String
+    ) as Boolean {
+        if (originalTime == null || valueMmol <= 0.0f) {
+            return false;
+        }
+
+        var history = getHistory();
+        var readingIndex = -1;
+
+        for (var i = 0; i < history.size(); i++) {
+            var reading = history[i];
+
+            if (
+                reading != null &&
+                reading.size() > READING_TIME &&
+                reading[READING_TIME].toNumber() == originalTime.toNumber()
+            ) {
+                readingIndex = i;
+                break;
+            }
+        }
+
+        if (readingIndex < 0) {
+            return false;
+        }
+
+        var oldReading = history[readingIndex];
+
+        /*
+         * Preserve the existing source.
+         *
+         * This is important because an edited BLE reading should
+         * not suddenly become a manual reading.
+         */
+        var source = "manual";
+
+        if (
+            oldReading.size() > READING_SOURCE &&
+            oldReading[READING_SOURCE] != null
+        ) {
+            source = oldReading[READING_SOURCE].toString();
+        }
+
+        /*
+         * Preserve the original measurement time.
+         */
+        var updatedReading = [
+            oldReading[READING_TIME],
+            valueMmol,
+            source,
+            normalizeContext(context),
+            CURRENT_READING_SCHEMA,
+        ];
+
+        /*
+         * Work on a copied history array so the original can be
+         * restored when saving fails.
+         */
+        var previousHistory = _history;
+        var candidateHistory = history.slice(0, null);
+
+        candidateHistory[readingIndex] = updatedReading;
+
+        _history = candidateHistory;
+
+        if (save()) {
+            return true;
+        }
+
+        _history = previousHistory;
+        return false;
     }
 
     function clear() as Boolean {
@@ -329,6 +428,7 @@ module BloodSugarStore {
     }
 
     function getSetupDone() as Boolean {
+        System.println(Application.Properties.getValue(PROP_SETUP_DONE));
         return Application.Properties.getValue(PROP_SETUP_DONE) == true;
     }
 

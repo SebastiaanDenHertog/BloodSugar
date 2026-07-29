@@ -8,18 +8,21 @@ class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
     }
 
     function onMenuItem(item as Symbol) as Void {
+        var view;
+        var delegate;
         if (item == :settings) {
-            var view = new BloodSugarSettingsView();
-            var delegate = new BloodSugarSettingsDelegate(view);
-            WatchUi.pushView(view, delegate, WatchUi.SLIDE_LEFT);
-        } else if (item == :history) {
-            var historyView = new BloodSugarHistoryView();
-            var historyDelegate = new BloodSugarHistoryDelegate(historyView);
-            WatchUi.pushView(historyView, historyDelegate, WatchUi.SLIDE_RIGHT);
+            view = new BloodSugarSettingsView();
+            delegate = new BloodSugarSettingsDelegate(view);
+        } else if (item == :historyGraph) {
+            view = new BloodSugarHistoryView();
+            delegate = new BloodSugarHistoryDelegate(view);
+        } else if (item == :historyList) {
+            view = new BloodSugarHistoryListView();
+            delegate = new BloodSugarHistoryListDelegate(view);
         } else if (item == :appInfo) {
-            var infoView = new BloodSugarInfoView();
-            var infoDelegate = new BloodSugarInfoDelegate(infoView);
-            WatchUi.pushView(infoView, infoDelegate, WatchUi.SLIDE_RIGHT);
+            view = new BloodSugarInfoView();
+            delegate = new BloodSugarInfoDelegate(view);
         }
+        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
     }
 }

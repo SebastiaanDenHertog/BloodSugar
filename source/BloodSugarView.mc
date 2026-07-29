@@ -8,6 +8,7 @@ class BloodSugarView extends WatchUi.View {
     private var _useMgdl as Boolean;
     private var _context as String;
     private var _message as String;
+    private var _isEditing as Boolean;
 
     public function initialize() {
         View.initialize();
@@ -16,6 +17,7 @@ class BloodSugarView extends WatchUi.View {
         _useMgdl = false;
         _context = "No context";
         _message = "";
+        _isEditing = false;
     }
 
     public function setEntry(
@@ -23,13 +25,15 @@ class BloodSugarView extends WatchUi.View {
         stage as Number,
         useMgdl as Boolean,
         context as String,
-        message as String
+        message as String,
+        isEditing as Boolean
     ) as Void {
         _bloodSugar = bloodSugar;
         _stage = stage;
         _useMgdl = useMgdl;
         _context = context;
         _message = message;
+        _isEditing = isEditing;
         WatchUi.requestUpdate();
     }
 
@@ -39,7 +43,6 @@ class BloodSugarView extends WatchUi.View {
 
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
-
         dc.drawText(
             centerX,
             centerY - 90,
@@ -64,7 +67,7 @@ class BloodSugarView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        if (_stage >= 2) {
+        if (_stage >= 1) {
             dc.drawText(
                 centerX,
                 centerY + 42,
@@ -93,27 +96,34 @@ class BloodSugarView extends WatchUi.View {
 
     private function getStageText() as String {
         if (_stage == 0) {
-            return "New measurement";
-        }
-        if (_stage == 1) {
+            if (_isEditing) {
+                return "Edit measured value";
+            }
             return "Set measured value";
         }
-        if (_stage == 2) {
+        if (_stage == 1) {
+            if (_isEditing) {
+                return "Edit context";
+            }
             return "Measurement context";
+        }
+        if (_isEditing) {
+            return "Confirm changes";
         }
         return "Confirm measurement";
     }
 
     private function getInstructionText() as String {
         if (_stage == 0) {
-            return "SELECT to start";
+            return "UP/DOWN adjust\nSELECT next";
         }
         if (_stage == 1) {
-            return "UP/DOWN adjust \n SELECT next";
+            return "UP/DOWN context\nSELECT next";
         }
-        if (_stage == 2) {
-            return "UP/DOWN context \n SELECT next";
+
+        if (_isEditing) {
+            return "SELECT update\nBACK edit";
         }
-        return "SELECT save \n BACK edit";
+        return "SELECT save\nBACK edit";
     }
 }

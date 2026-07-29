@@ -5,14 +5,16 @@ import Toybox.Lang;
 class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarView;
 
-    // 0 = ready, 1 = value, 2 = context, 3 = confirm
+    // 0 = value, 1 = context, 2 = confirm
     private var _stage as Number;
     private var _bloodSugarMmol as Float;
     private var _useMgdl as Boolean;
     private var _contextIndex as Number;
     private var _message as String;
 
-    public function initialize(view as BloodSugarView) {
+    private var _editingTime;
+    private var _isEditing as Boolean;
+    public function initialize(view as BloodSugarView, bloodSugarValueTime) {
         BehaviorDelegate.initialize();
 
         _parentView = view;
@@ -20,9 +22,40 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         _useMgdl = BloodSugarStore.getUseMgdl();
         _contextIndex = BloodSugarStore.getDefaultContextIndex();
         _message = "";
+        _editingTime = bloodSugarValueTime;
+        _isEditing = false;
+
+        loadStartingValue();
+        updateView();
+    }
+
+    private function loadStartingValue() as Void {
+        if (_editingTime != null) {
+            var reading = BloodSugarStore.getReadingByTime(_editingTime);
+
+            if (reading != null) {
+                _isEditing = true;
+
+                _bloodSugarMmol =
+                    reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+
+                if (
+                    reading.size() > BloodSugarStore.READING_CONTEXT &&
+                    reading[BloodSugarStore.READING_CONTEXT] != null
+                ) {
+                    _contextIndex = BloodSugarStore.getContextIndex(
+                        reading[BloodSugarStore.READING_CONTEXT].toString()
+                    );
+                }
+
+                return;
+            }
+
+            _editingTime = null;
+            _message = "Reading not found";
+        }
 
         var latest = BloodSugarStore.getLatestReading();
-
         if (
             latest != null &&
             latest.size() > BloodSugarStore.READING_VALUE_MMOL
@@ -32,8 +65,6 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         } else {
             _bloodSugarMmol = 5.5f;
         }
-
-        updateView();
     }
 
     public function onSelect() as Boolean {
@@ -42,10 +73,8 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         if (_stage == 0) {
             _stage = 1;
         } else if (_stage == 1) {
-            _stage = 2;
-        } else if (_stage == 2) {
             if (BloodSugarStore.getConfirmBeforeSave()) {
-                _stage = 3;
+                _stage = 2;
             } else {
                 saveReading();
                 return true;
@@ -60,26 +89,22 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onPreviousPage() as Boolean {
-        if (_stage == 1) {
+        if (_stage == 0) {
             adjustDisplayedValue(getStepSize());
-        } else if (_stage == 2) {
+        } else if (_stage == 1) {
             _contextIndex = BloodSugarStore.normalizeContextIndex(
                 _contextIndex - 1
             );
             updateView();
-        } else if (_stage == 0) {
-            var view = new BloodSugarHistoryView();
-            var delegate = new BloodSugarHistoryDelegate(view);
-            WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
         }
 
         return true;
     }
 
     public function onNextPage() as Boolean {
-        if (_stage == 1) {
+        if (_stage == 0) {
             adjustDisplayedValue(-getStepSize());
-        } else if (_stage == 2) {
+        } else if (_stage == 1) {
             _contextIndex = BloodSugarStore.normalizeContextIndex(
                 _contextIndex + 1
             );
@@ -133,20 +158,34 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
 
     private function saveReading() as Void {
         var context = BloodSugarStore.getContextKey(_contextIndex);
-        var saved = BloodSugarStore.addReading(
-            _bloodSugarMmol,
-            "manual",
-            context
-        );
+        var saved = false;
+        if (_isEditing) {
+            saved = BloodSugarStore.updateReadingByTime(
+                _editingTime,
+                _bloodSugarMmol,
+                context
+            );
+        } else {
+            saved = BloodSugarStore.addReading(
+                _bloodSugarMmol,
+                "manual",
+                context
+            );
+        }
 
         if (!saved) {
-            _message = "Could not save reading";
-            _stage = 3;
+            if (_isEditing) {
+                _message = "Could not update reading";
+            } else {
+                _message = "Could not save reading";
+            }
+            _stage = 2;
             updateView();
             return;
         }
-
-        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        var view = new BloodSugarHistoryListView();
+        var delegate = new BloodSugarHistoryListDelegate(view);
+        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
     }
 
     private function updateView() as Void {
@@ -155,7 +194,8 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
             _stage,
             _useMgdl,
             BloodSugarStore.getContextLabel(_contextIndex),
-            _message
+            _message,
+            _isEditing
         );
     }
 }

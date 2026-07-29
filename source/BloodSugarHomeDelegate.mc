@@ -14,7 +14,7 @@ class BloodSugarHomeDelegate extends WatchUi.BehaviorDelegate {
 
     public function onSelect() as Boolean {
         var view = new BloodSugarView();
-        var delegate = new BloodSugarDelegate(view);
+        var delegate = new BloodSugarDelegate(view, null);
         WatchUi.pushView(view, delegate, WatchUi.SLIDE_UP);
         return true;
     }

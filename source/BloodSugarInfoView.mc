@@ -20,14 +20,14 @@ class BloodSugarInfoView extends WatchUi.View {
         dc.clear();
 
         var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
+        var centerY = dc.getHeight() / 4;
 
         dc.drawText(
             centerX,
             centerY,
             Graphics.FONT_XTINY,
             _message,
-            Graphics.TEXT_JUSTIFY_VCENTER
+            Graphics.TEXT_JUSTIFY_CENTER
         );
     }
 }

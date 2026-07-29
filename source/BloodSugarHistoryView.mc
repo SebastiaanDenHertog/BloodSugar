@@ -210,7 +210,6 @@ class BloodSugarHistoryView extends WatchUi.View {
 
         var lastIndex = _bloodSugar.size() - 1;
 
-        // Keep _selected within the available history range.
         var safeSelected = _selected;
 
         if (safeSelected < 0) {
@@ -264,14 +263,23 @@ class BloodSugarHistoryView extends WatchUi.View {
 
         dc.setColor(lineColor, Graphics.COLOR_BLACK);
         dc.drawLine(_graphLeft, y, _graphRight, y);
-
-        dc.drawText(
-            _graphRight - 2,
-            y - dc.getFontHeight(Graphics.FONT_XTINY),
-            Graphics.FONT_XTINY,
-            label,
-            Graphics.TEXT_JUSTIFY_RIGHT
-        );
+        if (label.equals(_zones[ZONE_DANGER_LOW].format("%.2f").toString())) {
+            dc.drawText(
+                _graphRight - 2,
+                y - dc.getFontHeight(Graphics.FONT_XTINY) / 2,
+                Graphics.FONT_XTINY,
+                label,
+                Graphics.TEXT_JUSTIFY_RIGHT
+            );
+        } else {
+            dc.drawText(
+                _graphRight - 2,
+                y - dc.getFontHeight(Graphics.FONT_XTINY),
+                Graphics.FONT_XTINY,
+                label,
+                Graphics.TEXT_JUSTIFY_RIGHT
+            );
+        }
     }
 
     private function getPointColor(value as Float) as Number {

@@ -1,0 +1,107 @@
+import Toybox.Lang;
+import Toybox.WatchUi;
+import Toybox.System;
+
+class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
+    private var _parentView as BloodSugarHistoryListView;
+    private var _menuView = new Rez.Menus.MainMenu();
+    private var _menuDelegate = new BloodSugarMenuDelegate();
+    private var _select as Number;
+    private var times;
+
+    public function initialize(view as BloodSugarHistoryListView) {
+        BehaviorDelegate.initialize();
+        _select = 1;
+        _parentView = view;
+        updateView();
+    }
+
+    private function updateView() as Void {
+        var history = BloodSugarStore.getHistory();
+        times = [];
+        var values = [];
+        var useMgdl = BloodSugarStore.getUseMgdl();
+
+        for (var i = 0; i < history.size(); i++) {
+            var reading = history[i];
+
+            if (!(reading instanceof Array) || reading.size() < 2) {
+                continue;
+            }
+
+            var valueMmol =
+                reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+
+            if (useMgdl) {
+                values.add(BloodSugarStore.MollToMgdl(valueMmol));
+            } else {
+                values.add(valueMmol);
+            }
+
+            times.add(reading[BloodSugarStore.READING_TIME]);
+        }
+
+        var zones = BloodSugarStore.getBloodSugarZones();
+        var displayZones = [];
+
+        for (var zoneIndex = 0; zoneIndex < zones.size(); zoneIndex++) {
+            var zoneValue = zones[zoneIndex].toFloat();
+
+            if (useMgdl) {
+                displayZones.add(BloodSugarStore.MollToMgdl(zoneValue));
+            } else {
+                displayZones.add(zoneValue);
+            }
+        }
+
+        _parentView.setBloodSugarHistory(
+            values,
+            times,
+            displayZones,
+            BloodSugarStore.getUnitText(useMgdl)
+        );
+    }
+
+    public function updateSelect() as Void {
+        _parentView.setBloodSugarSelect(_select);
+    }
+
+    public function editSelect(selectedTime) {
+        var view = new BloodSugarView();
+        var delegate = new BloodSugarDelegate(view, selectedTime);
+        WatchUi.pushView(view, delegate, WatchUi.SLIDE_UP);
+    }
+
+    public function onBack() as Boolean {
+        WatchUi.popView(WatchUi.SLIDE_LEFT);
+        return true;
+    }
+
+    public function onSelect() as Boolean {
+        editSelect(times[_select - 1]);
+        return true;
+    }
+
+    public function onMenu() as Boolean {
+        WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
+        return true;
+    }
+
+    public function onNextPage() as Boolean {
+        _select++;
+        if (_select > times.size()) {
+            _select = times.size();
+        }
+        updateSelect();
+        return true;
+    }
+
+    public function onPreviousPage() as Boolean {
+        _select--;
+        if (_select < 1) {
+            _select = 1;
+        }
+        updateSelect();
+        return true;
+    }
+}
