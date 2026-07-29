@@ -1,7 +1,7 @@
 <properties>
     <!-- Keep this below 1.0.0 while the app is manual-entry only. -->
     <property id="appName" type="string">Blood Sugar logger</property>
-    <property id="appVersion" type="string">0.2.0</property>
+    <property id="appVersion" type="string">0.9.1</property>
     <property id="appCreator" type="string">Sebastiaan den Hertog</property>
 
     <property id="setupDone" type="boolean">false</property>
