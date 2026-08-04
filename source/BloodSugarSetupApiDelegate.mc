@@ -34,16 +34,12 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         if (_busy) {
             return true;
         }
-
         _selected -= 1;
-
         if (_selected < 0) {
             _selected = FIELD_COUNT - 1;
         }
-
         _status = "";
         updateView();
-
         return true;
     }
 
@@ -51,16 +47,12 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         if (_busy) {
             return true;
         }
-
         _selected += 1;
-
         if (_selected >= FIELD_COUNT) {
             _selected = 0;
         }
-
         _status = "";
         updateView();
-
         return true;
     }
 
@@ -68,81 +60,65 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         if (_busy) {
             return true;
         }
-
         if (_selected == FIELD_USERNAME) {
-            openTextPicker(FIELD_USERNAME);
-
+            openKeyboard(FIELD_USERNAME);
             return true;
         }
-
         if (_selected == FIELD_PASSWORD) {
-            openTextPicker(FIELD_PASSWORD);
-
+            openKeyboard(FIELD_PASSWORD);
             return true;
         }
-
         if (_selected == FIELD_CONNECT) {
             connect();
             return true;
         }
-
         return false;
     }
 
     public function onBack() as Boolean {
         if (_busy) {
             _status = "Wait for the current request";
-
             updateView();
             return true;
         }
-
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
-
         return true;
     }
 
-    private function openTextPicker(field as Number) as Void {
-        if (!(WatchUi has :TextPicker)) {
-            _status = "Text entry is not supported";
-
-            updateView();
-            return;
-        }
-
-        var initialValue = "";
-
-        if (field == FIELD_USERNAME) {
-            initialValue = _username;
-        }
-
-        WatchUi.pushView(
-            new WatchUi.TextPicker(initialValue),
-            new BloodSugarSetupApiTextPickerDelegate(self, field),
-            WatchUi.SLIDE_UP
+    private function openKeyboard(field as Number) as Void {
+        var passwordMode = field == FIELD_PASSWORD;
+        var title = passwordMode ? "Password" : "Username";
+        var initialText = passwordMode ? _password : _username;
+        var allowSpace = passwordMode;
+        var keyboardView = new BloodSugarKeyboardView(
+            initialText,
+            passwordMode,
+            title,
+            96,
+            allowSpace
         );
+        var keyboardDelegate = new BloodSugarKeyboardDelegate(
+            keyboardView,
+            self,
+            field
+        );
+        WatchUi.pushView(keyboardView, keyboardDelegate, WatchUi.SLIDE_UP);
     }
 
-    public function handleTextEntered(
+    public function handleKeyboardCompleted(
         field as Number,
-        text as String,
-        changed as Boolean
+        text as String
     ) as Void {
         if (field == FIELD_USERNAME) {
-            if (changed || _username.length() == 0) {
-                _username = text;
-            }
+            _username = text;
         } else if (field == FIELD_PASSWORD) {
-            if (changed || _password.length() == 0) {
-                _password = text;
-            }
+            _password = text;
         }
-
         _status = "";
         updateView();
     }
 
-    public function handleTextCancelled() as Void {
+    public function handleKeyboardCancelled() as Void {
         _status = "Entry cancelled";
         updateView();
     }
@@ -150,29 +126,22 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
     private function connect() as Void {
         if (_username.length() == 0) {
             _selected = FIELD_USERNAME;
-            _status = "Enter your username first";
-
+            _status = "Enter your username";
             updateView();
             return;
         }
 
         if (_password.length() == 0) {
             _selected = FIELD_PASSWORD;
-            _status = "Enter your password first";
-
+            _status = "Enter your password";
             updateView();
             return;
         }
-
         _busy = true;
         _status = "Connecting...";
-
         updateView();
-
         var client = new AbbottFreeStyleApi(_username, _password);
-
         _apiClient = client;
-
         client.read(method(:onApiReadComplete));
     }
 
@@ -186,32 +155,25 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
 
         if (!success) {
             _status = getShortError(errorMessage);
-
             _apiClient = null;
-
             updateView();
             return;
         }
-
         var saved = BloodSugarStore.saveUsernamePassword(_username, _password);
-
         if (!saved) {
             _status = "Connected, but login was not saved";
-
+            _apiClient = null;
             updateView();
             return;
         }
 
         BloodSugarStore.setSetupDone(true);
-
         if (addedCount > 0) {
             _status = "Connected: " + addedCount + " readings added";
         } else {
             _status = "Connected successfully";
         }
-
         _apiClient = null;
-
         updateView();
     }
 
@@ -243,36 +205,5 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
             _status,
             _busy
         );
-    }
-}
-
-class BloodSugarSetupApiTextPickerDelegate extends WatchUi.TextPickerDelegate {
-    private var _parent as BloodSugarSetupApiDelegate;
-
-    private var _field as Number;
-
-    public function initialize(
-        parent as BloodSugarSetupApiDelegate,
-        field as Number
-    ) {
-        TextPickerDelegate.initialize();
-
-        _parent = parent;
-        _field = field;
-    }
-
-    public function onTextEntered(
-        text as String,
-        changed as Boolean
-    ) as Boolean {
-        _parent.handleTextEntered(_field, text, changed);
-
-        return true;
-    }
-
-    public function onCancel() as Boolean {
-        _parent.handleTextCancelled();
-
-        return true;
     }
 }

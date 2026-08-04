@@ -10,12 +10,10 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
         BehaviorDelegate.initialize();
         _parentView = view;
         var appName = BloodSugarStore.getAppName() as String;
-
         var Creator =
             "Created by \n" + (BloodSugarStore.getAppCreator() as String);
         var versiontext =
             "App version  " + (BloodSugarStore.getAppVersion() as String);
-
         _message = appName + "\n" + Creator + "\n\n" + versiontext;
 
         updateView();

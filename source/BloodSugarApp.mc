@@ -35,6 +35,10 @@ class BloodSugarApp extends Application.AppBase {
         );
 
         (_profileManager as ProfileManager).registerProfiles();
+
+        if (BloodSugarStore.getBloodMonitor() == 0) {
+            AbbottFreeStylePollingManager.start();
+        }
     }
 
     function onInactive(state as Dictionary?) as Void {}
@@ -73,5 +77,12 @@ class BloodSugarApp extends Application.AppBase {
 
     public function getDeviceManager() as DeviceManager? {
         return _deviceManager;
+    }
+    public function onHide() as Void {
+        AbbottFreeStylePollingManager.stop();
+    }
+
+    public function getServiceDelegate() as [System.ServiceDelegate] {
+        return [new BloodSugarBackgroundDelegate()];
     }
 }

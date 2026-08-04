@@ -45,22 +45,14 @@ class BloodSugarSetupApiView extends WatchUi.View {
 
         dc.drawText(
             centerX,
-            (height * 8) / 100,
-            Graphics.FONT_MEDIUM,
-            "LibreLinkUp",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.drawText(
-            centerX,
-            (height * 19) / 100,
+            (height * 10) / 100,
             Graphics.FONT_XTINY,
-            "Enter account credentials",
+            "Account credentials",
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        var fieldWidth = (width * 76) / 100;
-        var fieldHeight = (height * 10) / 100;
+        var fieldWidth = (width * 70) / 100;
+        var fieldHeight = (height * 11) / 100;
 
         if (fieldHeight < 30) {
             fieldHeight = 30;
@@ -69,10 +61,10 @@ class BloodSugarSetupApiView extends WatchUi.View {
         drawField(
             dc,
             centerX,
-            (height * 31) / 100,
+            (height * 20) / 100,
             fieldWidth,
             fieldHeight,
-            "USERNAME",
+            "",
             getUsernameDisplay(),
             _selected == 0
         );
@@ -80,10 +72,10 @@ class BloodSugarSetupApiView extends WatchUi.View {
         drawField(
             dc,
             centerX,
-            (height * 51) / 100,
+            (height * 40) / 100,
             fieldWidth,
             fieldHeight,
-            "PASSWORD",
+            "",
             getPasswordDisplay(),
             _selected == 1
         );
@@ -91,13 +83,13 @@ class BloodSugarSetupApiView extends WatchUi.View {
         drawConnectButton(
             dc,
             centerX,
-            (height * 70) / 100,
+            (height * 60) / 100,
             fieldWidth,
             fieldHeight,
             _selected == 2
         );
 
-        SafeText.drawBottom(dc, "UP/DOWN choose\nSELECT open");
+        SafeText.drawBottom(dc, "UP/DOWN choose");
     }
 
     private function drawField(
@@ -116,8 +108,8 @@ class BloodSugarSetupApiView extends WatchUi.View {
 
         dc.drawText(
             centerX,
-            y - 22,
-            Graphics.FONT_XTINY,
+            y,
+            Graphics.FONT_TINY,
             label,
             Graphics.TEXT_JUSTIFY_CENTER
         );
@@ -133,8 +125,8 @@ class BloodSugarSetupApiView extends WatchUi.View {
 
         dc.drawText(
             centerX,
-            y + 5,
-            Graphics.FONT_SMALL,
+            y,
+            Graphics.FONT_TINY,
             shorten(value, 24),
             Graphics.TEXT_JUSTIFY_CENTER
         );
@@ -155,20 +147,17 @@ class BloodSugarSetupApiView extends WatchUi.View {
 
         if (selected) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
-
             dc.fillRectangle(x, y, width, height);
-
             dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
         } else {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
             dc.drawRectangle(x, y, width, height);
         }
 
         dc.drawText(
             centerX,
-            y + 5,
-            Graphics.FONT_SMALL,
+            y,
+            Graphics.FONT_TINY,
             text,
             Graphics.TEXT_JUSTIFY_CENTER
         );

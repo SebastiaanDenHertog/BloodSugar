@@ -43,17 +43,11 @@ class BloodSugarView extends WatchUi.View {
 
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
-        dc.drawText(
-            centerX,
-            centerY - 90,
-            Graphics.FONT_XTINY,
-            getStageText(),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawTop(dc, getStageText());
 
         dc.drawText(
             centerX,
-            centerY - 35,
+            centerY - 50,
             Graphics.FONT_LARGE,
             formatValue(),
             Graphics.TEXT_JUSTIFY_CENTER
@@ -61,7 +55,7 @@ class BloodSugarView extends WatchUi.View {
 
         dc.drawText(
             centerX,
-            centerY + 12,
+            centerY + 20,
             Graphics.FONT_XTINY,
             BloodSugarStore.getUnitText(_useMgdl),
             Graphics.TEXT_JUSTIFY_CENTER
@@ -70,7 +64,7 @@ class BloodSugarView extends WatchUi.View {
         if (_stage >= 1) {
             dc.drawText(
                 centerX,
-                centerY + 42,
+                centerY + 70,
                 Graphics.FONT_XTINY,
                 _context,
                 Graphics.TEXT_JUSTIFY_CENTER

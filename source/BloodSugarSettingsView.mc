@@ -68,15 +68,10 @@ class BloodSugarSettingsView extends WatchUi.View {
         _dangerHighMmol = zones[3].toFloat();
 
         _notificationsEnabled = notificationsEnabled;
-
         _notificationLowMmol = notificationLowMmol;
-
         _notificationHighMmol = notificationHighMmol;
-
         _contextIndex = contextIndex;
-
         _confirmBeforeSave = confirmBeforeSave;
-
         _status = status;
 
         WatchUi.requestUpdate();
@@ -167,13 +162,9 @@ class BloodSugarSettingsView extends WatchUi.View {
         selected as Boolean
     ) as Void {
         var x = centerX - width / 2;
-
         var font = Graphics.FONT_XTINY;
-
         var textY = y + (height - dc.getFontHeight(font)) / 2;
-
         var padding = 10;
-
         if (selected) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
             dc.fillRectangle(x, y, width, height);

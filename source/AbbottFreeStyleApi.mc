@@ -465,14 +465,26 @@ class AbbottFreeStyleApi {
         }
 
         var newReadings = buildStorageReadings(graphResponse);
+
         var addedCount = BloodSugarStore.addReadingsBatch(newReadings);
 
         if (addedCount < 0) {
-            fail("Glucose data was received but could not be stored");
+            fail("Glucose data was received " + "but could not be stored");
+
             return;
         }
 
-        complete(graphResponse.data.connection.glucoseMeasurement, addedCount);
+        var currentReading = graphResponse.data.connection.glucoseMeasurement;
+
+        if (addedCount > 0 && currentReading.ValueInMgPerDl > 0) {
+            var currentValueMmol = BloodSugarStore.MgdlToMoll(
+                currentReading.ValueInMgPerDl.toFloat()
+            );
+
+            BloodSugarNotificationManager.processReading(currentValueMmol);
+        }
+
+        complete(currentReading, addedCount);
     }
 
     private function buildStorageReadings(

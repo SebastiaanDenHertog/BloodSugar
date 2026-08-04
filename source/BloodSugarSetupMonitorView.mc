@@ -25,13 +25,7 @@ class BloodSugarSetupMonitorView extends WatchUi.View {
         dc.clear();
         var centerX = dc.getWidth() / 2;
         var centerY = dc.getHeight() / 2;
-        dc.drawText(
-            centerX,
-            centerY - 120,
-            Graphics.FONT_MEDIUM,
-            "Monitor",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawTop(dc, "Monitor");
         dc.drawText(
             centerX,
             centerY - 50,
@@ -52,11 +46,15 @@ class BloodSugarSetupMonitorView extends WatchUi.View {
         dc.drawText(
             centerX,
             centerY + 5,
-            Graphics.FONT_LARGE,
+            Graphics.FONT_MEDIUM,
             monitorName,
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        SafeText.drawBottom(dc, "SELECT to continue\nUP/DOWN change");
+        SafeText.drawBottomWithPadding(
+            dc,
+            "SELECT to continue\nUP/DOWN change",
+            12
+        );
     }
 }

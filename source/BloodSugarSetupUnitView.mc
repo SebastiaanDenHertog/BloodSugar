@@ -45,18 +45,22 @@ class BloodSugarSetupUnitView extends WatchUi.View {
 
             dc.drawText(
                 centerX,
-                centerY + 5,
-                Graphics.FONT_LARGE,
+                centerY + 10,
+                Graphics.FONT_MEDIUM,
                 BloodSugarStore.getUnitText(_useMgdl),
                 Graphics.TEXT_JUSTIFY_CENTER
             );
 
-            SafeText.drawBottom(dc, "UP/DOWN change\nSELECT save");
+            SafeText.drawBottomWithPadding(
+                dc,
+                "UP/DOWN change\nSELECT save",
+                14
+            );
         }
         if (_stage == 1) {
             dc.drawText(
                 centerX,
-                centerY - 35,
+                centerY - 70,
                 Graphics.FONT_XTINY,
                 "Do you want to connect\na blood monitor?",
                 Graphics.TEXT_JUSTIFY_CENTER
@@ -64,13 +68,17 @@ class BloodSugarSetupUnitView extends WatchUi.View {
 
             dc.drawText(
                 centerX,
-                centerY + 5,
-                Graphics.FONT_LARGE,
+                centerY + 10,
+                Graphics.FONT_MEDIUM,
                 BloodSugarStore.getBloodMonitorText(_useBloodMonitor),
                 Graphics.TEXT_JUSTIFY_CENTER
             );
 
-            SafeText.drawBottom(dc, "UP/DOWN change\nSELECT save");
+            SafeText.drawBottomWithPadding(
+                dc,
+                "UP/DOWN change\nSELECT save",
+                14
+            );
         }
     }
 }

@@ -15,13 +15,7 @@ class BloodSugarSetupBleView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
         var totalWidth = dc.getWidth();
-        dc.drawText(
-            totalWidth / 2,
-            50,
-            Graphics.FONT_SMALL,
-            "Setup",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        SafeText.drawTop(dc, "Setup");
 
         var y = 100;
         if (_isScanning) {

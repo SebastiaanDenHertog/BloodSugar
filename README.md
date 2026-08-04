@@ -15,7 +15,10 @@ A Connect IQ app for logging your blood sugars.
     * With added notifications about low or high levels
         
 * v0.9.3
-    * added a new settings interface
+    * Added a new settings interface
+
+* v0.9.4
+    * Added a keyboard on the watch to have a alternative input way
 
 ## References 
     [DiaKEM libre api ](https://github.com/DiaKEM/libre-link-up-api-client) for the connection of your monitor to the watch
