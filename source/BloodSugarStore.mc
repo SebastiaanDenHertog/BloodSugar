@@ -19,15 +19,29 @@ module BloodSugarStore {
     const PROP_APP_VERSION = "appVersion";
     const PROP_APP_CREATOR = "appCreator";
     const PROP_APP_NAME = "appName";
-    const PROP_APP_DESCRIPTION = "appDescription";
     const PROP_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
+    const PROP_USE_BLOOD_MONITOR = "useBloodMonitor";
+    const PROP_USERNAME = "username";
+    const PROP_PASSWORD = "password";
+    const PROP_BLOOD_MONITOR_INDEX = "bloodMonitorIndex";
+    const PROP_CUSTOM_CONTEXTS = "customContexts";
+
+    const PROP_NOTIFICATIONS_ENABLED = "notificationsEnabled";
+    const PROP_NOTIFICATION_LOW = "notificationLow";
+    const PROP_NOTIFICATION_HIGH = "notificationHigh";
+
     const PROP_DANGER_LOW = "dangerLow";
     const PROP_LOW = "Low";
     const PROP_HIGH = "High";
     const PROP_DANGER_HIGH = "dangerHigh";
+
     const PROP_DEFAULT_CONTEXT = "defaultContextIndex";
     const PROP_CONFIRM_SAVE = "confirmBeforeSave";
+
+    const NOTIFICATION_NONE = 0;
+    const NOTIFICATION_LOW = 1;
+    const NOTIFICATION_HIGH = 2;
 
     var _history = null;
 
@@ -244,12 +258,6 @@ module BloodSugarStore {
 
         var oldReading = history[readingIndex];
 
-        /*
-         * Preserve the existing source.
-         *
-         * This is important because an edited BLE reading should
-         * not suddenly become a manual reading.
-         */
         var source = "manual";
 
         if (
@@ -259,9 +267,6 @@ module BloodSugarStore {
             source = oldReading[READING_SOURCE].toString();
         }
 
-        /*
-         * Preserve the original measurement time.
-         */
         var updatedReading = [
             oldReading[READING_TIME],
             valueMmol,
@@ -270,10 +275,6 @@ module BloodSugarStore {
             CURRENT_READING_SCHEMA,
         ];
 
-        /*
-         * Work on a copied history array so the original can be
-         * restored when saving fails.
-         */
         var previousHistory = _history;
         var candidateHistory = history.slice(0, null);
 
@@ -325,12 +326,30 @@ module BloodSugarStore {
         return "mmol/L";
     }
 
+    function getBloodMonitorText(useBloodMonitor) as String {
+        if (useBloodMonitor) {
+            return "Yes";
+        }
+        return "No";
+    }
+
     function getUseMgdl() as Boolean {
         return Application.Properties.getValue(PROP_USE_MGDL) == true;
     }
 
     function setUseMgdl(useMgdl as Boolean) as Void {
         Application.Properties.setValue(PROP_USE_MGDL, useMgdl);
+    }
+
+    function getUseBloodMonitor() as Boolean {
+        return Application.Properties.getValue(PROP_USE_BLOOD_MONITOR) == true;
+    }
+
+    function setUseBloodMonitor(useBloodMonitor as Boolean) as Void {
+        Application.Properties.setValue(
+            PROP_USE_BLOOD_MONITOR,
+            useBloodMonitor
+        );
     }
 
     function getRangePropertyMmol(
@@ -428,7 +447,6 @@ module BloodSugarStore {
     }
 
     function getSetupDone() as Boolean {
-        System.println(Application.Properties.getValue(PROP_SETUP_DONE));
         return Application.Properties.getValue(PROP_SETUP_DONE) == true;
     }
 
@@ -570,12 +588,6 @@ module BloodSugarStore {
         return value.toString();
     }
 
-    function getAppDescription() as String {
-        var value = Application.Properties.getValue(PROP_APP_DESCRIPTION);
-
-        return value.toString();
-    }
-
     function getAppVersion() as String {
         var value = Application.Properties.getValue(PROP_APP_VERSION);
 
@@ -660,5 +672,263 @@ module BloodSugarStore {
 
     function isBleSupported() as Boolean {
         return isSupportedVersion(getAppVersion(), "1.0.0");
+    }
+
+    function addReadingsBatch(readings) as Number {
+        if (!(readings instanceof Array)) {
+            return -1;
+        }
+
+        if (_history == null) {
+            load();
+        }
+
+        var previousHistory = _history;
+        var candidateHistory = _history.slice(0, null);
+        var addedCount = 0;
+
+        for (var i = 0; i < readings.size(); i++) {
+            var incoming = readings[i];
+
+            if (!(incoming instanceof Array) || incoming.size() < 4) {
+                continue;
+            }
+
+            if (
+                incoming[0] == null ||
+                incoming[1] == null ||
+                incoming[2] == null ||
+                incoming[3] == null
+            ) {
+                continue;
+            }
+
+            var timestamp = incoming[0].toNumber();
+            var valueMmol = incoming[1].toFloat();
+            var source = incoming[2].toString();
+            var context = incoming[3].toString();
+
+            if (timestamp <= 0 || valueMmol <= 0.0f) {
+                continue;
+            }
+
+            if (historyContainsTime(candidateHistory, timestamp)) {
+                continue;
+            }
+
+            var point = [
+                timestamp,
+                valueMmol,
+                source,
+                normalizeContext(context),
+                CURRENT_READING_SCHEMA,
+            ];
+
+            insertReadingSorted(candidateHistory, point);
+            addedCount += 1;
+        }
+
+        if (addedCount == 0) {
+            return 0;
+        }
+
+        if (candidateHistory.size() > MAX_POINTS) {
+            candidateHistory = candidateHistory.slice(
+                candidateHistory.size() - MAX_POINTS,
+                null
+            );
+        }
+
+        _history = candidateHistory;
+
+        if (save()) {
+            return addedCount;
+        }
+
+        _history = previousHistory;
+        return -1;
+    }
+
+    function hasReadingByTime(timestamp as Number) as Boolean {
+        return historyContainsTime(getHistory(), timestamp);
+    }
+
+    function historyContainsTime(history, timestamp as Number) as Boolean {
+        for (var i = 0; i < history.size(); i++) {
+            var reading = history[i];
+
+            if (
+                reading instanceof Array &&
+                reading.size() > READING_TIME &&
+                reading[READING_TIME] != null &&
+                reading[READING_TIME].toNumber() == timestamp
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function insertReadingSorted(history, point) as Void {
+        var pointTime = point[READING_TIME].toNumber();
+        var insertionIndex = history.size();
+
+        for (var i = 0; i < history.size(); i++) {
+            var reading = history[i];
+
+            if (
+                reading instanceof Array &&
+                reading.size() > READING_TIME &&
+                reading[READING_TIME] != null &&
+                reading[READING_TIME].toNumber() > pointTime
+            ) {
+                insertionIndex = i;
+                break;
+            }
+        }
+
+        history.add(point);
+
+        for (var j = history.size() - 1; j > insertionIndex; j--) {
+            history[j] = history[j - 1];
+        }
+
+        history[insertionIndex] = point;
+    }
+
+    function getCustomContextNames() as Array<String> {
+        var names = [] as Array<String>;
+
+        var value = Application.Properties.getValue(PROP_CUSTOM_CONTEXTS);
+
+        if (!(value instanceof Array)) {
+            return names;
+        }
+
+        var contexts = value as Array;
+
+        for (var index = 0; index < contexts.size(); index++) {
+            var context = contexts[index];
+
+            if (!(context instanceof Dictionary)) {
+                continue;
+            }
+
+            var name = (context as Dictionary)["name"];
+
+            if (name instanceof String && (name as String).length() > 0) {
+                names.add(name as String);
+            }
+        }
+
+        return names;
+    }
+
+    public function getBloodMonitors() as Array<String> {
+        return ["Abbott FreeStyle"] as Array<String>;
+    }
+
+    public function setBloodMonitor(selected as Number) {
+        Application.Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
+    }
+
+    public function getBloodMonitor() as Number? {
+        return Application.Properties.getValue(
+            PROP_BLOOD_MONITOR_INDEX
+        ).toNumber();
+    }
+
+    public function getUsername() as String {
+        var value = Storage.getValue(PROP_USERNAME);
+
+        if (value instanceof String) {
+            return value as String;
+        }
+
+        return "";
+    }
+
+    function getPassword() as String {
+        var value = Storage.getValue(PROP_PASSWORD);
+
+        if (value instanceof String) {
+            return value as String;
+        }
+
+        return "";
+    }
+
+    function saveUsernamePassword(
+        username as String,
+        password as String
+    ) as Boolean {
+        try {
+            Storage.setValue(PROP_USERNAME, username);
+
+            Storage.setValue(PROP_PASSWORD, password);
+
+            return true;
+        } catch (error) {
+            System.println(
+                "Could not save LibreLinkUp credentials: " + error.toString()
+            );
+
+            return false;
+        }
+    }
+
+    function clearUsernamePassword() as Void {
+        try {
+            Storage.deleteValue(PROP_USERNAME);
+
+            Storage.deleteValue(PROP_PASSWORD);
+        } catch (error) {
+            System.println(
+                "Could not clear LibreLinkUp credentials: " + error.toString()
+            );
+        }
+    }
+
+    function getNotificationsEnabled() as Boolean {
+        return (
+            Application.Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false
+        );
+    }
+
+    function setNotificationsEnabled(enabled as Boolean) as Void {
+        Application.Properties.setValue(PROP_NOTIFICATIONS_ENABLED, enabled);
+    }
+
+    function getNotificationLowMmol() as Float {
+        return getRangePropertyMmol(PROP_NOTIFICATION_LOW, 70.0f);
+    }
+
+    function setNotificationLowMmol(valueMmol as Float) as Void {
+        setRangePropertyMmol(PROP_NOTIFICATION_LOW, valueMmol);
+    }
+
+    function getNotificationHighMmol() as Float {
+        return getRangePropertyMmol(PROP_NOTIFICATION_HIGH, 180.0f);
+    }
+
+    function setNotificationHighMmol(valueMmol as Float) as Void {
+        setRangePropertyMmol(PROP_NOTIFICATION_HIGH, valueMmol);
+    }
+
+    function getNotificationType(valueMmol as Float) as Number {
+        if (!getNotificationsEnabled()) {
+            return NOTIFICATION_NONE;
+        }
+
+        if (valueMmol <= getNotificationLowMmol()) {
+            return NOTIFICATION_LOW;
+        }
+
+        if (valueMmol >= getNotificationHighMmol()) {
+            return NOTIFICATION_HIGH;
+        }
+
+        return NOTIFICATION_NONE;
     }
 }

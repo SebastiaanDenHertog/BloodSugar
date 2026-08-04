@@ -17,7 +17,6 @@ class BloodSugarApp extends Application.AppBase {
         BloodSugarStore.load();
 
         if (!BloodSugarStore.isBleSupported()) {
-            System.println("Manual-only blood sugar app mode");
             return;
         }
 
@@ -25,6 +24,7 @@ class BloodSugarApp extends Application.AppBase {
         _bleDelegate = new BloodSugarServiceBleDelegate(
             _profileManager as ProfileManager
         );
+
         _deviceManager = new DeviceManager(
             _bleDelegate as BloodSugarServiceBleDelegate,
             _profileManager as ProfileManager
@@ -57,8 +57,8 @@ class BloodSugarApp extends Application.AppBase {
 
     public function getInitialView() as [Views] or [Views, InputDelegates] {
         if (!BloodSugarStore.getSetupDone()) {
-            var setupView = new BloodSugarSetupView();
-            var setupDelegate = new BloodSugarSetupDelegate(setupView);
+            var setupView = new BloodSugarSetupUnitView();
+            var setupDelegate = new BloodSugarSetupUnitDelegate(setupView);
             return [setupView, setupDelegate];
         }
 

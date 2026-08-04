@@ -37,7 +37,7 @@ class BloodSugarServiceBleDelegate extends BluetoothLowEnergy.BleDelegate {
             result = scanResults.next()
         ) {
             if (result instanceof ScanResult) {
-                System.println(result);
+                System.println("onBLEScan" + result);
                 if (
                     contains(
                         result.getServiceUuids(),

@@ -4,8 +4,9 @@ import Toybox.System;
 
 class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarHistoryView;
-    private var _menuView = new Rez.Menus.MainMenu();
-    private var _menuDelegate = new BloodSugarMenuDelegate();
+    private var _menuView = new Rez.Menus.MainMenu() as Rez.Menus.MainMenu;
+    private var _menuDelegate =
+        new BloodSugarMenuDelegate() as BloodSugarMenuDelegate;
     private var _select as Number;
 
     public function initialize(view as BloodSugarHistoryView) {

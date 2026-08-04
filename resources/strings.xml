@@ -10,6 +10,10 @@
     <string id="settingDefaultContext">Default measurement context</string>
     <string id="settingConfirmSave">Confirm before saving</string>
 
+    <string id="settingBloodMonitors">Blood monitors and api's</string>
+    <string id="settingCustomContexts">Custom contexts</string>
+    <string id="settingContextName">Context name</string>
+
     <string id="contextNone">No context</string>
     <string id="contextFasting">Fasting</string>
     <string id="contextBeforeMeal">Before meal</string>

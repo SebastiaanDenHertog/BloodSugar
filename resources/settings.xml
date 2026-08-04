@@ -58,10 +58,36 @@
             <listEntry value="6">@Strings.contextAfterExercise</listEntry>
         </settingConfig>
     </setting>
+    <setting
+            propertyKey="@Properties.customContexts"
+            title="@Strings.settingCustomContexts"
+            maxLength="10">
+
+            <setting
+                type="string"
+                title="@Strings.settingContextName">
+
+                <settingConfig
+                    id="name"
+                    type="alphaNumeric"
+                    maxLength="30"/>
+            </setting>
+        </setting>
 
     <setting
         propertyKey="@Properties.confirmBeforeSave"
         title="@Strings.settingConfirmSave">
         <settingConfig type="boolean" />
+    </setting>
+
+    <setting 
+        propertyKey="@Properties.username" title="Enter Username">
+        <settingConfig type="alphaNumeric" required="false" maxLength="256" />
+    </setting>
+
+    <setting
+        propertyKey="@Properties.password" 
+        title="Enter Password">
+        <settingConfig type="password" />
     </setting>
 </settings>

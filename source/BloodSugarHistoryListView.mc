@@ -33,7 +33,6 @@ class BloodSugarHistoryListView extends WatchUi.View {
     }
 
     public function onShow() as Void {
-        System.println("onshow");
         WatchUi.requestUpdate();
     }
 
@@ -170,10 +169,8 @@ class BloodSugarHistoryListView extends WatchUi.View {
         var rowFont = Graphics.FONT_XTINY;
         var rowHeight = dc.getFontHeight(rowFont) + 14;
 
-        // The selected row always stays in the middle.
         var centerY = height / 2;
 
-        // Draw enough rows to cover the screen above and below the centre.
         var visibleDistance = (height / 2 / rowHeight).toNumber() + 1;
 
         var firstListIndex = _selected - visibleDistance;
