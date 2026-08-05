@@ -5,6 +5,7 @@ import Toybox.WatchUi;
 class BloodSugarKeyboardView extends WatchUi.View {
     const ROW_COUNT = 4;
     private var _text as String;
+    private var _passwordMode as Boolean;
     private var _title as String;
     private var _maximumLength as Number;
     private var _uppercase as Boolean;
@@ -14,12 +15,14 @@ class BloodSugarKeyboardView extends WatchUi.View {
 
     public function initialize(
         initialText as String,
+        passwordMode as Boolean,
         title as String,
         maximumLength as Number,
         allowSpace as Boolean
     ) {
         View.initialize();
         _text = initialText;
+        _passwordMode = passwordMode;
         _title = title;
         _maximumLength = maximumLength;
         _uppercase = false;
@@ -202,8 +205,17 @@ class BloodSugarKeyboardView extends WatchUi.View {
 
     private function getDisplayText() as String {
         if (_text.length() == 0) {
-            return "Enter username";
+            return _passwordMode ? "Enter password" : "Enter username";
         }
+
+        if (_text.length() <= 24) {
+            return _text;
+        }
+        var tail = _text.substring(_text.length() - 21, _text.length());
+        if (tail == null) {
+            return _text;
+        }
+        return "..." + tail;
     }
 
     private function getKeyLabel(key as String) as String {
