@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2026 Sebastiaan den Hertog
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 import Toybox.System;
 import Toybox.WatchUi;
 import Toybox.Lang;
@@ -10,11 +34,14 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
         BehaviorDelegate.initialize();
         _parentView = view;
         var appName = BloodSugarStore.getAppName() as String;
-        var Creator =
-            "Created by \n" + (BloodSugarStore.getAppCreator() as String);
         var versiontext =
             "App version  " + (BloodSugarStore.getAppVersion() as String);
-        _message = appName + "\n" + Creator + "\n\n" + versiontext;
+        _message =
+            appName +
+            "\n" +
+            "MIT License.\nCopyright (c) 2026\nSebastiaan den Hertog" +
+            "\n\n" +
+            versiontext;
 
         updateView();
     }
