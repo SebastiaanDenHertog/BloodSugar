@@ -40,7 +40,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
         updateView();
     }
 
-    private function updateView() as Void {
+    public function updateView() as Void {
         var history = BloodSugarStore.getHistory();
         times = [];
         var values = [];
@@ -53,8 +53,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
                 continue;
             }
 
-            var valueMmol =
-                reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+            var valueMmol = reading[BloodSugarReading.VALUE_MMOL].toFloat();
 
             if (useMgdl) {
                 values.add(BloodSugarStore.MollToMgdl(valueMmol));
@@ -62,7 +61,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
                 values.add(valueMmol);
             }
 
-            times.add(reading[BloodSugarStore.READING_TIME]);
+            times.add(reading[BloodSugarReading.TIME]);
         }
 
         var zones = BloodSugarStore.getBloodSugarZones();
@@ -97,7 +96,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onBack() as Boolean {
-        WatchUi.popView(WatchUi.SLIDE_LEFT);
+        System.exit();
         return true;
     }
 
@@ -127,5 +126,9 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
         }
         updateSelect();
         return true;
+    }
+
+    public function refresh() as Void {
+        updateView();
     }
 }

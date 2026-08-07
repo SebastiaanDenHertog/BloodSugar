@@ -38,6 +38,8 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
 
     private var _editingTime;
     private var _isEditing as Boolean;
+    private var _canDeleteReading as Boolean;
+
     public function initialize(view as BloodSugarView, bloodSugarValueTime) {
         BehaviorDelegate.initialize();
 
@@ -48,6 +50,7 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         _message = "";
         _editingTime = bloodSugarValueTime;
         _isEditing = false;
+        _canDeleteReading = false;
 
         loadStartingValue();
         updateView();
@@ -60,15 +63,16 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
             if (reading != null) {
                 _isEditing = true;
 
-                _bloodSugarMmol =
-                    reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+                _canDeleteReading = isManualReading(reading);
 
+                _bloodSugarMmol =
+                    reading[BloodSugarReading.VALUE_MMOL].toFloat();
                 if (
-                    reading.size() > BloodSugarStore.READING_CONTEXT &&
-                    reading[BloodSugarStore.READING_CONTEXT] != null
+                    reading.size() > BloodSugarReading.CONTEXT &&
+                    reading[BloodSugarReading.CONTEXT] != null
                 ) {
                     _contextIndex = BloodSugarStore.getContextIndex(
-                        reading[BloodSugarStore.READING_CONTEXT].toString()
+                        reading[BloodSugarReading.CONTEXT].toString()
                     );
                 }
 
@@ -80,12 +84,8 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         }
 
         var latest = BloodSugarStore.getLatestReading();
-        if (
-            latest != null &&
-            latest.size() > BloodSugarStore.READING_VALUE_MMOL
-        ) {
-            _bloodSugarMmol =
-                latest[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+        if (latest != null && latest.size() > BloodSugarReading.VALUE_MMOL) {
+            _bloodSugarMmol = latest[BloodSugarReading.VALUE_MMOL].toFloat();
         } else {
             _bloodSugarMmol = 5.5f;
         }
@@ -192,7 +192,7 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         } else {
             saved = BloodSugarStore.addReading(
                 _bloodSugarMmol,
-                "manual",
+                BloodSugarReading.SOURCE_MANUAL,
                 context
             );
         }
@@ -212,6 +212,23 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
     }
 
+    public function onMenu() as Boolean {
+        _message = "";
+        if (!_isEditing || _editingTime == null) {
+            _message = "Nothing to delete";
+            updateView();
+            return true;
+        }
+
+        if (!_canDeleteReading) {
+            _message = "Imported reading";
+            updateView();
+            return true;
+        }
+        showDeleteConfirmation();
+        return true;
+    }
+
     private function updateView() as Void {
         _parentView.setEntry(
             getDisplayedValue(),
@@ -219,7 +236,63 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
             _useMgdl,
             BloodSugarStore.getContextLabel(_contextIndex),
             _message,
-            _isEditing
+            _isEditing,
+            _canDeleteReading
         );
+    }
+
+    private function isManualReading(reading) as Boolean {
+        if (!(reading instanceof Array)) {
+            return false;
+        }
+
+        if (reading.size() <= BloodSugarReading.SOURCE) {
+            return false;
+        }
+
+        if (reading[BloodSugarReading.SOURCE] == null) {
+            return false;
+        }
+
+        return reading[BloodSugarReading.SOURCE]
+            .toString()
+            .equals(BloodSugarReading.SOURCE_MANUAL);
+    }
+
+    private function showDeleteConfirmation() as Void {
+        var confirmation = new WatchUi.Confirmation("Delete reading?");
+        var delegate = new BloodSugarDeleteReadingConfirmationDelegate(
+            self,
+            _editingTime
+        );
+
+        WatchUi.pushView(confirmation, delegate, WatchUi.SLIDE_IMMEDIATE);
+    }
+
+    public function handleDeleteReading(timestamp) as Void {
+        if (!_isEditing || _editingTime == null || timestamp == null) {
+            _message = "Reading changed";
+            updateView();
+            return;
+        }
+
+        if (timestamp.toNumber() != _editingTime.toNumber()) {
+            _message = "Reading changed";
+            updateView();
+            return;
+        }
+
+        if (!_canDeleteReading) {
+            _message = "Imported reading";
+            updateView();
+            return;
+        }
+
+        if (!BloodSugarStore.deleteReadingByTime(_editingTime)) {
+            _message = "Could not delete reading";
+            updateView();
+            return;
+        }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }

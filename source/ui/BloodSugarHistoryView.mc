@@ -342,4 +342,17 @@ class BloodSugarHistoryView extends WatchUi.View {
 
         return value.format("%.1f");
     }
+
+    public function onShow() as Void {
+        var current = WatchUi.getCurrentView();
+
+        if (
+            current.size() > 1 &&
+            current[1] instanceof BloodSugarHistoryDelegate
+        ) {
+            (current[1] as BloodSugarHistoryDelegate).refresh();
+        }
+
+        WatchUi.requestUpdate();
+    }
 }

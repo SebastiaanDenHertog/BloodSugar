@@ -57,6 +57,15 @@ class BloodSugarHistoryListView extends WatchUi.View {
     }
 
     public function onShow() as Void {
+        var current = WatchUi.getCurrentView();
+
+        if (
+            current.size() > 1 &&
+            current[1] instanceof BloodSugarHistoryListDelegate
+        ) {
+            (current[1] as BloodSugarHistoryListDelegate).refresh();
+        }
+
         WatchUi.requestUpdate();
     }
 
