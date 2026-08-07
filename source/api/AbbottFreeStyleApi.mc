@@ -52,12 +52,13 @@ import Toybox.Lang;
 import Toybox.StringUtil;
 import Toybox.System;
 import Toybox.Timer;
+import Toybox.PersistedContent;
+
 import AbbottFreeStyleApiLogin;
 import AbbottFreeStyleApiCountries;
 import AbbottFreeStyleApiConnections;
 import AbbottFreeStyleApiGraph;
 import BloodSugarStore;
-import Toybox.PersistedContent;
 
 class AbbottFreeStyleApi {
     const DEFAULT_SERVER = "https://api-us.libreview.io";
@@ -143,11 +144,7 @@ class AbbottFreeStyleApi {
 
         read(_pollCompletion);
 
-        _pollTimer.start(
-            method(:onPollTimer),
-            intervalMinutes * 60 * 1000,
-            true
-        );
+        _pollTimer.start(self.onPollTimer, intervalMinutes * 60 * 1000, true);
     }
 
     public function stopPolling() as Void {
