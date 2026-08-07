@@ -24,20 +24,25 @@ SOFTWARE.
 
 import Toybox.Lang;
 
-class SettingsState {
-    public var mode as Number = 0;
-    public var selected as Number = 0;
-    public var zoneSelected as Number = 0;
-    public var editing as Boolean = false;
-    public var useMgdl as Boolean = false;
+(:background)
+class BloodSugarSyncResult {
+    var success as Boolean;
+    var monitorId as Number;
+    var addedCount as Number;
 
-    public var zones as Array<Float> = [0.0, 0.0, 0.0, 0.0];
+    var latestReadingTime as Number?;
+    var latestValueMmol as Float?;
 
-    public var notificationsEnabled as Boolean = false;
-    public var notificationLowMmol as Float = 0.0;
-    public var notificationHighMmol as Float = 0.0;
+    var errorMessage as String;
 
-    public var contextIndex as Number = 0;
-    public var confirmBeforeSave as Boolean = false;
-    public var status as String = "";
+    public function initialize(id as Number) {
+        success = false;
+        monitorId = id;
+        addedCount = 0;
+
+        latestReadingTime = null;
+        latestValueMmol = null;
+
+        errorMessage = "";
+    }
 }

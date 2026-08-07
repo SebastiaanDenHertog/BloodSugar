@@ -36,6 +36,9 @@ class BloodSugarApp extends Application.AppBase {
     private var _profileManager as ProfileManager?;
     private var _bleDelegate as BloodSugarServiceBleDelegate?;
     private var _deviceManager as DeviceManager?;
+
+    private var _syncManager as BloodSugarSyncManager?;
+
     private var _abbottStarted = false;
     private var _bleStarted = false;
 
@@ -44,6 +47,8 @@ class BloodSugarApp extends Application.AppBase {
         _profileManager = null;
         _bleDelegate = null;
         _deviceManager = null;
+
+        _syncManager = new BloodSugarSyncManager();
     }
 
     public function onStart(state as Dictionary?) as Void {}
@@ -51,12 +56,13 @@ class BloodSugarApp extends Application.AppBase {
     public function onInactive(state as Dictionary?) as Void {}
 
     public function onStop(state as Dictionary?) as Void {
-        if (_abbottStarted) {
-            AbbottFreeStylePollingManager.stop();
+        if (_syncManager != null) {
+            (_syncManager as BloodSugarSyncManager).stop();
         }
-        if (_bleStarted) {
+
+        try {
             stopBle();
-        }
+        } catch (error) {}
     }
 
     (:glance)
@@ -77,26 +83,30 @@ class BloodSugarApp extends Application.AppBase {
         [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates]
     {
         if (!BloodSugarStore.getSetupDone()) {
-            updateBackgroundPolling();
             var setupView = new BloodSugarSetupUnitView();
+
             var setupDelegate = new BloodSugarSetupUnitDelegate(setupView);
+
             return [setupView, setupDelegate];
         }
 
-        updateBackgroundPolling();
-        if (BloodSugarStore.getBloodMonitor() == BloodSugarStore.MONITOR_BLE) {
-            initializeBle();
-        }
-        var view;
-        var delegate;
-        var bloodMonitorData = BloodSugarStore.load();
-        if (bloodMonitorData.size() == 0) {
-            view = new BloodSugarHomeView();
-            delegate = new BloodSugarHomeDelegate(view);
-        } else {
-            view = new BloodSugarHistoryView();
-            delegate = new BloodSugarHistoryDelegate(view);
-        }
+        /*
+         * Foreground application start:
+         * make sure background registration
+         * matches the current configuration.
+         */
+        updateBackgroundSync();
+
+        /*
+         * Only initialize BLE for monitors
+         * that actually require it.
+         *
+         * We can move this into the registry
+         * when the first BLE monitor is added.
+         */
+
+        var view = new BloodSugarHomeView();
+        var delegate = new BloodSugarHomeDelegate(view);
         return [view, delegate];
     }
 
@@ -104,35 +114,45 @@ class BloodSugarApp extends Application.AppBase {
         return [new BloodSugarBackgroundDelegate()];
     }
 
-    public function updateBackgroundPolling() as Void {
+    public function updateBackgroundSync() as Void {
         if (!(System has :ServiceDelegate)) {
             return;
         }
-        var shouldPoll = shouldUseBackgroundPolling();
+
+        var shouldSync = BloodSugarMonitorRegistry.shouldUseBackgroundSync();
+
         var isRegistered = Background.getTemporalEventRegisteredTime() != null;
-        if (shouldPoll && !isRegistered) {
+
+        /*
+         * Automatic monitor is configured.
+         */
+        if (shouldSync && !isRegistered) {
             try {
                 Background.registerForTemporalEvent(
-                    new Time.Duration(BACKGROUND_INTERVAL_SECONDS)
+                    new Time.Duration(
+                        BloodSugarMonitor.BACKGROUND_INTERVAL_SECONDS
+                    )
                 );
-                System.println("Background glucose polling registered");
+
+                System.println("Background glucose sync registered");
             } catch (error) {
-                System.println(
-                    "Could not register background polling: " + error.toString()
-                );
+                System.println("Could not register background sync");
             }
 
             return;
         }
 
-        if (!shouldPoll && isRegistered) {
+        /*
+         * Monitor disabled, removed, or
+         * credentials no longer valid.
+         */
+        if (!shouldSync && isRegistered) {
             try {
                 Background.deleteTemporalEvent();
-                System.println("Background glucose polling removed");
+
+                System.println("Background glucose sync removed");
             } catch (error) {
-                System.println(
-                    "Could not remove background polling: " + error.toString()
-                );
+                System.println("Could not remove background sync");
             }
         }
     }
@@ -202,5 +222,17 @@ class BloodSugarApp extends Application.AppBase {
 
     public function getDeviceManager() as DeviceManager? {
         return _deviceManager;
+    }
+
+    public function getSyncManager() as BloodSugarSyncManager {
+        if (_syncManager == null) {
+            _syncManager = new BloodSugarSyncManager();
+        }
+
+        return _syncManager as BloodSugarSyncManager;
+    }
+
+    public function syncNow(completion) as Boolean {
+        return getSyncManager().sync(completion);
     }
 }

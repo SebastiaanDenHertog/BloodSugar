@@ -878,12 +878,18 @@ module BloodSugarStore {
         return ["Abbott FreeStyle"] as Array<String>;
     }
 
-    public function setBloodMonitor(selected as Number) {
+    public function setBloodMonitor(selected as Number) as Void {
         Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
     }
 
-    public function getBloodMonitor() as Number? {
-        return Properties.getValue(PROP_BLOOD_MONITOR_INDEX).toNumber();
+    public function getBloodMonitor() as Number {
+        var value = Properties.getValue(PROP_BLOOD_MONITOR_INDEX);
+
+        if (value instanceof Number) {
+            return value as Number;
+        }
+
+        return BloodSugarMonitor.NONE;
     }
 
     public function getUsername() as String {

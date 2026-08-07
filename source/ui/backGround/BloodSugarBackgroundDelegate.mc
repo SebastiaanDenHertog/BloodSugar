@@ -28,49 +28,40 @@ import Toybox.Lang;
 
 (:background)
 class BloodSugarBackgroundDelegate extends System.ServiceDelegate {
-    private var _client as AbbottFreeStyleApi?;
+    private var _syncManager as BloodSugarSyncManager?;
 
     public function initialize() {
         ServiceDelegate.initialize();
 
-        _client = null;
+        _syncManager = null;
     }
 
     public function onTemporalEvent() as Void {
-        var username = BloodSugarStore.getUsername();
-
-        var password = BloodSugarStore.getPassword();
-
-        if (username.length() == 0 || password.length() == 0) {
+        if (!BloodSugarMonitorRegistry.shouldUseBackgroundSync()) {
             Background.exit(null);
             return;
         }
 
-        var client = new AbbottFreeStyleApi(username, password);
+        _syncManager = new BloodSugarSyncManager();
 
-        _client = client;
+        var started = (_syncManager as BloodSugarSyncManager).sync(
+            self.onSyncComplete
+        );
 
-        client.read(method(:onReadComplete));
+        if (!started) {
+            Background.exit(null);
+        }
     }
 
-    private function onReadComplete(
-        success as Boolean,
-        currentReading,
-        addedCount as Number,
-        errorMessage as String
+    private function onSyncComplete(
+        result as BloodSugarSyncResult,
+        notificationShown as Boolean
     ) as Void {
-        _client = null;
-
-        var result = {
-            "success" => success,
-            "addedCount" => addedCount,
-            "errorMessage" => errorMessage,
-        };
-
-        Background.exit(result);
-    }
-
-    public function registerBloodSugarBackgroundPolling() as Void {
-        Background.registerForTemporalEvent(new Time.Duration(5 * 60));
+        Background.exit({
+            "success" => result.success,
+            "added" => result.addedCount,
+            "monitor" => result.monitorId,
+            "notification" => notificationShown,
+        });
     }
 }

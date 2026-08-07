@@ -22,22 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.Lang;
+(:background)
+module BloodSugarMonitor {
+    const NONE = 0;
+    const ABBOTT_FREE_STYLE = 1;
 
-class SettingsState {
-    public var mode as Number = 0;
-    public var selected as Number = 0;
-    public var zoneSelected as Number = 0;
-    public var editing as Boolean = false;
-    public var useMgdl as Boolean = false;
-
-    public var zones as Array<Float> = [0.0, 0.0, 0.0, 0.0];
-
-    public var notificationsEnabled as Boolean = false;
-    public var notificationLowMmol as Float = 0.0;
-    public var notificationHighMmol as Float = 0.0;
-
-    public var contextIndex as Number = 0;
-    public var confirmBeforeSave as Boolean = false;
-    public var status as String = "";
+    const BACKGROUND_INTERVAL_SECONDS = 5 * 60;
 }
