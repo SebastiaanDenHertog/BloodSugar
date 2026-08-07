@@ -34,7 +34,10 @@ class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
     function onMenuItem(item as Symbol) as Void {
         var view;
         var delegate;
-        if (item == :settings) {
+        if (item == :newItem) {
+            view = new BloodSugarView();
+            delegate = new BloodSugarDelegate(view, null);
+        } else if (item == :settings) {
             view = new BloodSugarSettingsView();
             delegate = new BloodSugarSettingsDelegate(view);
         } else if (item == :historyGraph) {

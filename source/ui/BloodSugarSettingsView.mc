@@ -42,37 +42,26 @@ class BloodSugarSettingsView extends WatchUi.View {
         _status = "";
     }
 
-    public function setState(
-        mode as Number,
-        selected as Number,
-        zoneSelected as Number,
-        editing as Boolean,
-        useMgdl as Boolean,
-        zones as Array<Float>,
-        notificationsEnabled as Boolean,
-        notificationLowMmol as Float,
-        notificationHighMmol as Float,
-        contextIndex as Number,
-        confirmBeforeSave as Boolean,
-        status as String
-    ) as Void {
-        _mode = mode;
-        _selected = selected;
-        _zoneSelected = zoneSelected;
-        _editing = editing;
-        _useMgdl = useMgdl;
+    public function setState(state as SettingsState) as Void {
+        _mode = state.mode;
+        _selected = state.selected;
+        _zoneSelected = state.zoneSelected;
+        _editing = state.editing;
+        _useMgdl = state.useMgdl;
 
-        _dangerLowMmol = zones[0].toFloat();
-        _lowMmol = zones[1].toFloat();
-        _highMmol = zones[2].toFloat();
-        _dangerHighMmol = zones[3].toFloat();
+        if (state.zones.size() >= 4) {
+            _dangerLowMmol = state.zones[0].toFloat();
+            _lowMmol = state.zones[1].toFloat();
+            _highMmol = state.zones[2].toFloat();
+            _dangerHighMmol = state.zones[3].toFloat();
+        }
 
-        _notificationsEnabled = notificationsEnabled;
-        _notificationLowMmol = notificationLowMmol;
-        _notificationHighMmol = notificationHighMmol;
-        _contextIndex = contextIndex;
-        _confirmBeforeSave = confirmBeforeSave;
-        _status = status;
+        _notificationsEnabled = state.notificationsEnabled;
+        _notificationLowMmol = state.notificationLowMmol;
+        _notificationHighMmol = state.notificationHighMmol;
+        _contextIndex = state.contextIndex;
+        _confirmBeforeSave = state.confirmBeforeSave;
+        _status = state.status;
 
         WatchUi.requestUpdate();
     }

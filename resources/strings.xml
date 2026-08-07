@@ -1,5 +1,6 @@
 <strings>
-    <string id="AppName">BloodSugar</string>
+    <string id="AppName">Blood Sugar logger</string>
+    <string id="appCreator">Sebastiaan den Hertog</string>
 
     <string id="settingUseMgdl">Use mg/dL instead of mmol/L</string>
     <string id="settingDangerLow">Danger low threshold (mg/dL)</string>
@@ -22,7 +23,12 @@
     <string id="contextBeforeExercise">Before exercise</string>
     <string id="contextAfterExercise">After exercise</string>
 
+    <string id="settingNotificationsEnabled">Notifications Enabled</string>
+    <string id="settingNotificationLow">Notifications for low sugar level</string>
+    <string id="settingNotificationHigh">Notifications for high sugar level</string>
+
     <string id="prompt">Click the menu button</string>
+    <string id="newItem">New Item</string>
     <string id="settings">Settings</string>
     <string id="historyGraph">History Graph</string>
     <string id="historyList">History List</string>
