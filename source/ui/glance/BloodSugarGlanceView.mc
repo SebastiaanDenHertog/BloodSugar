@@ -36,17 +36,6 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
     public function onUpdate(dc as Graphics.Dc) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var leftWidth = width / 3;
-        var leftCenterX = leftWidth / 2;
-        var rightStartX = leftWidth;
-        var rightWidth = width - rightStartX;
-        var rightCenterX = rightStartX + rightWidth / 2;
-
-        var titleY = 3;
-        var valueY = height / 2 - 12;
-        var statusY = valueY + dc.getFontHeight(Graphics.FONT_SMALL) + 2;
-
-        var unitY = valueY + 3;
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
@@ -58,31 +47,45 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         }
 
         var reading = storedReading as Array;
-        if (reading.size() < 1) {
+        if (reading.size() <= BloodSugarReading.VALUE_MMOL) {
             drawNoData(dc);
             return;
         }
 
         if (
-            !(reading[0] instanceof Number) &&
-            (!(reading[1] instanceof Number) || !(reading[1] instanceof Float))
+            reading[BloodSugarReading.TIME] == null ||
+            reading[BloodSugarReading.VALUE_MMOL] == null
         ) {
             drawNoData(dc);
             return;
         }
 
-        var timestamp = reading[0] as Number;
-        var valueMmol = reading[1].toFloat();
+        var timestamp = reading[BloodSugarReading.TIME].toNumber();
+        var valueMmol = reading[BloodSugarReading.VALUE_MMOL].toFloat();
         var useMgdl = BloodSugarStore.getUseMgdl();
         var displayValue = BloodSugarStore.formatValue(valueMmol, useMgdl);
         var unit = BloodSugarStore.getUnitText(useMgdl);
         var status = getStatus(valueMmol);
         var ageText = getReadingAge(timestamp);
+        var leftWidth = (width * 45) / 100;
+        var leftCenterX = leftWidth / 2;
+        var rightStartX = leftWidth;
+        var rightWidth = width - rightStartX;
+        var rightCenterX = rightStartX + rightWidth / 2;
+        var titleFont = Graphics.FONT_XTINY;
+        var valueFont = Graphics.FONT_TINY;
+        var smallFont = Graphics.FONT_XTINY;
+        var titleHeight = dc.getFontHeight(titleFont);
+        var valueHeight = dc.getFontHeight(valueFont);
+        var smallHeight = dc.getFontHeight(smallFont);
+        var titleY = 1;
+        var valueY = height / 2 - valueHeight / 2 - 2;
+        var bottomY = height - smallHeight - 1;
 
         dc.drawText(
-            leftCenterX,
+            3,
             titleY,
-            Graphics.FONT_XTINY,
+            titleFont,
             "Blood Sugar",
             Graphics.TEXT_JUSTIFY_LEFT
         );
@@ -90,40 +93,31 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         dc.drawText(
             leftCenterX,
             valueY,
-            Graphics.FONT_SMALL,
+            valueFont,
             displayValue,
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
         dc.drawText(
             leftCenterX,
-            statusY,
-            Graphics.FONT_XTINY,
+            bottomY,
+            smallFont,
             status,
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
-        var unitX = rightCenterX - 8;
+        var unitY = valueY + (valueHeight - smallHeight) / 2;
 
-        dc.drawText(
-            unitX,
-            unitY,
-            Graphics.FONT_XTINY,
-            unit,
-            Graphics.TEXT_JUSTIFY_RIGHT
-        );
+        var unitX = rightCenterX + 2;
 
-        drawTrendArrow(
-            dc,
-            unitX + 10,
-            unitY + dc.getFontHeight(Graphics.FONT_XTINY) / 2,
-            getTrend()
-        );
+        dc.drawText(unitX, unitY, smallFont, unit, Graphics.TEXT_JUSTIFY_RIGHT);
+
+        drawTrendArrow(dc, unitX + 7, unitY + smallHeight / 2, getTrend());
 
         dc.drawText(
             rightCenterX,
-            statusY,
-            Graphics.FONT_XTINY,
+            bottomY,
+            smallFont,
             ageText,
             Graphics.TEXT_JUSTIFY_CENTER
         );
@@ -166,12 +160,11 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
             return ageMinutes + "m ago";
         }
         var ageHours = ageMinutes / 60;
-
         if (ageHours < 24) {
             return ageHours + "h age";
         }
 
-        return "Old data";
+        return "Old";
     }
 
     private function drawTrendArrow(
@@ -180,37 +173,43 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         y as Number,
         trend as Number
     ) as Void {
-        var size = 8;
+        var size = 5;
+        var head = 3;
 
         switch (trend) {
-            case -2: // strong down
+            case -2:
+                // ↓
                 dc.drawLine(x, y - size, x, y + size);
-                dc.drawLine(x, y + size, x - 4, y + size - 5);
-                dc.drawLine(x, y + size, x + 4, y + size - 5);
+                dc.drawLine(x, y + size, x - head, y + size - head);
+                dc.drawLine(x, y + size, x + head, y + size - head);
                 break;
 
-            case -1: // down-right
+            case -1:
+                // ↘
                 dc.drawLine(x - size, y - size, x + size, y + size);
-                dc.drawLine(x + size, y + size, x + size - 6, y + size);
-                dc.drawLine(x + size, y + size, x + size, y + size - 6);
+                dc.drawLine(x + size, y + size, x + size - head, y + size);
+                dc.drawLine(x + size, y + size, x + size, y + size - head);
                 break;
 
-            case 0: // flat
+            case 0:
+                // →
                 dc.drawLine(x - size, y, x + size, y);
-                dc.drawLine(x + size, y, x + size - 5, y - 4);
-                dc.drawLine(x + size, y, x + size - 5, y + 4);
+                dc.drawLine(x + size, y, x + size - head, y - head);
+                dc.drawLine(x + size, y, x + size - head, y + head);
                 break;
 
-            case 1: // up-right
+            case 1:
+                // ↗
                 dc.drawLine(x - size, y + size, x + size, y - size);
-                dc.drawLine(x + size, y - size, x + size - 6, y - size);
-                dc.drawLine(x + size, y - size, x + size, y - size + 6);
+                dc.drawLine(x + size, y - size, x + size - head, y - size);
+                dc.drawLine(x + size, y - size, x + size, y - size + head);
                 break;
 
-            case 2: // strong up
+            case 2:
+                // ↑
                 dc.drawLine(x, y + size, x, y - size);
-                dc.drawLine(x, y - size, x - 4, y - size + 5);
-                dc.drawLine(x, y - size, x + 4, y - size + 5);
+                dc.drawLine(x, y - size, x - head, y - size + head);
+                dc.drawLine(x, y - size, x + head, y - size + head);
                 break;
         }
     }
@@ -250,8 +249,6 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         }
 
         var average = total / count;
-
-        // Temporary comparison until we make this a real trend calculation.
         var normalAverage = 5.6f;
 
         if (average < normalAverage * 0.85f) {
