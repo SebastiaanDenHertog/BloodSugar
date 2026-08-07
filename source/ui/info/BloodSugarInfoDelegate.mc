@@ -36,8 +36,8 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
         var versiontext =
             "App version  " + (BloodSugarStore.getAppVersion() as String);
         _message =
-            Rez.Strings.AppName +
-            "\n" +
+            "Blood Sugar logger" +
+            "\n\n" +
             "MIT License.\nCopyright (c) 2026\nSebastiaan den Hertog" +
             "\n\n" +
             versiontext;
