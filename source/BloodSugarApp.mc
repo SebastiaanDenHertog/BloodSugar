@@ -36,6 +36,8 @@ class BloodSugarApp extends Application.AppBase {
     private var _profileManager as ProfileManager?;
     private var _bleDelegate as BloodSugarServiceBleDelegate?;
     private var _deviceManager as DeviceManager?;
+    private var _abbottStarted = false;
+    private var _bleStarted = false;
 
     public function initialize() {
         AppBase.initialize();
@@ -44,27 +46,15 @@ class BloodSugarApp extends Application.AppBase {
         _deviceManager = null;
     }
 
-    public function onStart(state as Dictionary?) as Void {
-        System.println("BloodSugarApp.onStart: loading history");
-
-        try {
-            BloodSugarStore.load();
-        } catch (error) {
-            System.println("BloodSugarApp.onStart: history load failed");
-        }
-
-        System.println("BloodSugarApp.onStart: load finished");
-    }
+    public function onStart(state as Dictionary?) as Void {}
 
     public function onInactive(state as Dictionary?) as Void {}
 
     public function onStop(state as Dictionary?) as Void {
-        if (
-            BloodSugarStore.getBloodMonitor() == BloodSugarStore.MONITOR_ABBOTT
-        ) {
+        if (_abbottStarted) {
             AbbottFreeStylePollingManager.stop();
         }
-        if (BloodSugarStore.getBloodMonitor() == BloodSugarStore.MONITOR_BLE) {
+        if (_bleStarted) {
             stopBle();
         }
     }
@@ -79,7 +69,8 @@ class BloodSugarApp extends Application.AppBase {
             return null;
         }
 
-        return [new BloodSugarGlanceView()];
+        var view = new BloodSugarGlanceView();
+        return [view];
     }
 
     public function getInitialView() as

@@ -2,6 +2,7 @@ import Toybox.Application.Storage;
 import Toybox.Lang;
 import Toybox.System;
 
+(:glance)
 module BloodSugarReading {
     /*
      * Stored reading layout:

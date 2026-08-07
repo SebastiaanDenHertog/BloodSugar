@@ -28,6 +28,7 @@ import Toybox.Lang;
 import Toybox.System;
 import Toybox.Time;
 
+(:glance)
 module BloodSugarStore {
     const MAX_POINTS = 240;
 
@@ -64,70 +65,47 @@ module BloodSugarStore {
     const MONITOR_BLE = 2;
 
     function load() {
-        System.println("BloodSugarStore.load: before getValue");
-
         var saved = null;
 
         try {
             saved = Storage.getValue(STORAGE_KEY);
         } catch (error) {
-            System.println("BloodSugarStore.load: getValue failed");
             _history = [] as Array;
             _historyNeedsRepair = false;
             return _history;
         }
-
-        System.println(
-            "BloodSugarStore.load: after getValue; type=" +
-                BloodSugarReading.describeType(saved)
-        );
+        if (!(saved instanceof Array)) {
+            _history = [] as Array;
+            _historyNeedsRepair = false;
+            return _history;
+        }
         var loadedHistory = [] as Array<Storage.ValueType>;
         _historyNeedsRepair = false;
-
         if (!(saved instanceof Array)) {
-            System.println("BloodSugarStore.load: history is not an array");
             _history = loadedHistory;
             return _history;
         }
-
         var storedHistory = saved as Array;
-        System.println(
-            "BloodSugarStore.load: stored count=" + storedHistory.size()
-        );
-
         for (var index = 0; index < storedHistory.size(); index += 1) {
             var rawReading = storedHistory[index];
-
             var normalizedReading = BloodSugarReading.normalize(
                 rawReading,
                 index
             );
-
             if (normalizedReading == null) {
                 _historyNeedsRepair = true;
                 continue;
             }
-
             if (!BloodSugarReading.isCurrent(rawReading)) {
                 _historyNeedsRepair = true;
-
-                System.println("History[" + index + "] requires migration");
             }
-
             loadedHistory.add(normalizedReading);
         }
-
         _history = loadedHistory;
 
         if (_history.size() != storedHistory.size()) {
             _historyNeedsRepair = true;
         }
-
-        System.println("BloodSugarStore.load: valid count=" + _history.size());
-
-        System.println(
-            "BloodSugarStore.load: repair needed=" + _historyNeedsRepair
-        );
 
         return _history;
     }
@@ -148,13 +126,7 @@ module BloodSugarStore {
         if (!save()) {
             return false;
         }
-
         _historyNeedsRepair = false;
-
-        System.println(
-            "BloodSugarStore: repaired history saved under " + STORAGE_KEY
-        );
-
         return true;
     }
 
@@ -224,14 +196,18 @@ module BloodSugarStore {
         return history;
     }
 
-    function getLatestReading() {
+    function getLatestReading() as Array or Dictionary or Null {
         var history = getHistory();
-
-        if (history.size() == 0) {
+        if (history == null) {
             return null;
         }
-
-        return history[history.size() - 1];
+        var count = history.size();
+        if (count == 0) {
+            return null;
+        }
+        var index = count - 1;
+        var reading = history[index];
+        return reading;
     }
 
     function addReading(
