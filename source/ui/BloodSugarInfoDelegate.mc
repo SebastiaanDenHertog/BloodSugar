@@ -33,11 +33,10 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
     public function initialize(view as BloodSugarInfoView) {
         BehaviorDelegate.initialize();
         _parentView = view;
-        var appName = BloodSugarStore.getAppName() as String;
         var versiontext =
             "App version  " + (BloodSugarStore.getAppVersion() as String);
         _message =
-            appName +
+            Rez.Strings.AppName +
             "\n" +
             "MIT License.\nCopyright (c) 2026\nSebastiaan den Hertog" +
             "\n\n" +

@@ -30,7 +30,7 @@ import Toybox.Lang;
 class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
     private var _view as BloodSugarSetupUnitView;
     private var _useMgdl as Boolean;
-    private var _useBloodMonitor as Boolean;
+    private var _useBloodMonitor as Number;
     private var _stage as Number;
     private var View as BloodSugarHomeView or BloodSugarSetupMonitorView;
     private var Delegate as
@@ -40,7 +40,7 @@ class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
         BehaviorDelegate.initialize();
         _view = view;
         _useMgdl = BloodSugarStore.getUseMgdl();
-        _useBloodMonitor = BloodSugarStore.getUseBloodMonitor();
+        _useBloodMonitor = BloodSugarStore.getBloodMonitor();
         _stage = 0;
         updateView();
     }
@@ -52,7 +52,7 @@ class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         if (_stage == 1) {
-            _useBloodMonitor = false;
+            _useBloodMonitor = 0;
             updateView();
             return true;
         }
@@ -65,10 +65,11 @@ class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         if (_stage == 1) {
-            _useBloodMonitor = true;
+            _useBloodMonitor = 1;
             updateView();
             return true;
         }
+        // if _stage == 2 usebloodmonitor = 2 = ble
     }
 
     public function onSelect() as Boolean {
@@ -80,8 +81,8 @@ class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         if (_stage == 1) {
-            BloodSugarStore.setUseBloodMonitor(_useBloodMonitor);
-            if (_useBloodMonitor) {
+            BloodSugarStore.setBloodMonitor(_useBloodMonitor);
+            if (_useBloodMonitor > 0) {
                 View = new BloodSugarSetupMonitorView();
                 Delegate = new BloodSugarSetupMonitorDelegate(View);
             } else {

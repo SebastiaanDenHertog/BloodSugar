@@ -28,21 +28,21 @@ import Toybox.WatchUi;
 
 class BloodSugarSetupUnitView extends WatchUi.View {
     private var _useMgdl as Boolean;
-    private var _useBloodMonitor as Boolean;
+    private var _useBloodMonitor as Number;
 
     private var _stage as Number;
 
     public function initialize() {
         View.initialize();
         _useMgdl = BloodSugarStore.getUseMgdl();
-        _useBloodMonitor = BloodSugarStore.getUseBloodMonitor();
+        _useBloodMonitor = 0;
         _stage = 0;
     }
 
     public function setEntry(
         useMgdl as Boolean,
         stage as Number,
-        useBloodMonitor as Boolean
+        useBloodMonitor as Number
     ) as Void {
         _useMgdl = useMgdl;
         _stage = stage;

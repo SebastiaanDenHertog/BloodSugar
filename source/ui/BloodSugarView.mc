@@ -33,6 +33,7 @@ class BloodSugarView extends WatchUi.View {
     private var _context as String;
     private var _message as String;
     private var _isEditing as Boolean;
+    private var _canDeleteReading as Boolean;
 
     public function initialize() {
         View.initialize();
@@ -42,6 +43,7 @@ class BloodSugarView extends WatchUi.View {
         _context = "No context";
         _message = "";
         _isEditing = false;
+        _canDeleteReading = false;
     }
 
     public function setEntry(
@@ -50,7 +52,8 @@ class BloodSugarView extends WatchUi.View {
         useMgdl as Boolean,
         context as String,
         message as String,
-        isEditing as Boolean
+        isEditing as Boolean,
+        canDeleteReading as Boolean
     ) as Void {
         _bloodSugar = bloodSugar;
         _stage = stage;
@@ -58,6 +61,8 @@ class BloodSugarView extends WatchUi.View {
         _context = context;
         _message = message;
         _isEditing = isEditing;
+        _canDeleteReading = canDeleteReading;
+
         WatchUi.requestUpdate();
     }
 
@@ -133,15 +138,25 @@ class BloodSugarView extends WatchUi.View {
 
     private function getInstructionText() as String {
         if (_stage == 0) {
-            return "UP/DOWN adjust\nSELECT next";
+            if (_isEditing && _canDeleteReading) {
+                return "UP/DOWN adjust\n" + "SELECT next / MENU delete";
+            }
+            return "UP/DOWN adjust\n" + "SELECT next";
         }
+
         if (_stage == 1) {
-            return "UP/DOWN context\nSELECT next";
+            if (_isEditing && _canDeleteReading) {
+                return "UP/DOWN context\n" + "SELECT next / MENU delete";
+            }
+            return "UP/DOWN context\n" + "SELECT next";
         }
 
         if (_isEditing) {
-            return "SELECT update\nBACK edit";
+            if (_canDeleteReading) {
+                return "SELECT update\n" + "MENU delete / BACK edit";
+            }
+            return "SELECT update\n" + "BACK edit";
         }
-        return "SELECT save\nBACK edit";
+        return "SELECT save\n" + "BACK edit";
     }
 }

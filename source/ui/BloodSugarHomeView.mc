@@ -65,8 +65,7 @@ class BloodSugarHomeView extends WatchUi.View {
                 Graphics.TEXT_JUSTIFY_CENTER
             );
         } else {
-            var valueMmol =
-                _reading[BloodSugarStore.READING_VALUE_MMOL].toFloat();
+            var valueMmol = _reading[BloodSugarReading.VALUE_MMOL].toFloat();
             var valueText = BloodSugarStore.formatValue(valueMmol, _useMgdl);
             var unitText = BloodSugarStore.getUnitText(_useMgdl);
 
@@ -103,7 +102,7 @@ class BloodSugarHomeView extends WatchUi.View {
             return "";
         }
 
-        var timestamp = _reading[BloodSugarStore.READING_TIME].toNumber();
+        var timestamp = _reading[BloodSugarReading.TIME].toNumber();
         var elapsed = Time.now().value() - timestamp;
         var timeText;
 
@@ -119,9 +118,9 @@ class BloodSugarHomeView extends WatchUi.View {
 
         var contextIndex = 0;
 
-        if (_reading.size() > BloodSugarStore.READING_CONTEXT) {
+        if (_reading.size() > BloodSugarReading.CONTEXT) {
             contextIndex = BloodSugarStore.getContextIndex(
-                _reading[BloodSugarStore.READING_CONTEXT].toString()
+                _reading[BloodSugarReading.CONTEXT].toString()
             );
         }
 

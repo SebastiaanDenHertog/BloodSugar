@@ -335,28 +335,18 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
 
     private function updateView() as Void {
         var state = new SettingsState();
-
-        // Navigation and editing state owned by this delegate
         state.mode = _mode;
         state.selected = _selected;
         state.zoneSelected = _zoneSelected;
         state.editing = _editing;
         state.status = _status;
-
-        // Persisted settings owned by BloodSugarStore
         state.useMgdl = BloodSugarStore.getUseMgdl();
         state.zones = BloodSugarStore.getBloodSugarZones();
-
         state.notificationsEnabled = BloodSugarStore.getNotificationsEnabled();
-
         state.notificationLowMmol = BloodSugarStore.getNotificationLowMmol();
-
         state.notificationHighMmol = BloodSugarStore.getNotificationHighMmol();
-
         state.contextIndex = BloodSugarStore.getDefaultContextIndex();
-
         state.confirmBeforeSave = BloodSugarStore.getConfirmBeforeSave();
-
         _view.setState(state);
     }
 }

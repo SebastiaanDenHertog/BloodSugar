@@ -32,20 +32,9 @@ module BloodSugarStore {
     const MAX_POINTS = 240;
 
     const STORAGE_KEY = "BloodSugarHistory";
-
-    const READING_TIME = 0;
-    const READING_VALUE_MMOL = 1;
-    const READING_SOURCE = 2;
-    const READING_CONTEXT = 3;
-    const READING_SCHEMA = 4;
-    const CURRENT_READING_SCHEMA = 1;
-
     const PROP_APP_VERSION = "appVersion";
-    const PROP_APP_CREATOR = "appCreator";
-    const PROP_APP_NAME = "appName";
-    const PROP_SETUP_DONE = "setupDone";
+    const STORAGE_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
-    const PROP_USE_BLOOD_MONITOR = "useBloodMonitor";
     const PROP_USERNAME = "username";
     const PROP_PASSWORD = "password";
     const PROP_BLOOD_MONITOR_INDEX = "bloodMonitorIndex";
@@ -68,90 +57,147 @@ module BloodSugarStore {
     const NOTIFICATION_HIGH = 2;
 
     var _history = null;
+    var _historyNeedsRepair = false;
+
+    const MONITOR_NONE = 0;
+    const MONITOR_ABBOTT = 1;
+    const MONITOR_BLE = 2;
 
     function load() {
-        var saved = Application.Storage.getValue(STORAGE_KEY);
-        var migrated = false;
+        System.println("BloodSugarStore.load: before getValue");
+
+        var saved = null;
+
+        try {
+            saved = Storage.getValue(STORAGE_KEY);
+        } catch (error) {
+            System.println("BloodSugarStore.load: getValue failed");
+            _history = [] as Array;
+            _historyNeedsRepair = false;
+            return _history;
+        }
+
+        System.println(
+            "BloodSugarStore.load: after getValue; type=" +
+                BloodSugarReading.describeType(saved)
+        );
+        var loadedHistory = [] as Array<Storage.ValueType>;
+        _historyNeedsRepair = false;
 
         if (!(saved instanceof Array)) {
-            saved = Application.Storage.getValue(STORAGE_KEY);
-            migrated = saved instanceof Array;
+            System.println("BloodSugarStore.load: history is not an array");
+            _history = loadedHistory;
+            return _history;
         }
 
-        if (saved instanceof Array) {
-            _history = saved;
-        } else {
-            _history = [];
+        var storedHistory = saved as Array;
+        System.println(
+            "BloodSugarStore.load: stored count=" + storedHistory.size()
+        );
+
+        for (var index = 0; index < storedHistory.size(); index += 1) {
+            var rawReading = storedHistory[index];
+
+            var normalizedReading = BloodSugarReading.normalize(
+                rawReading,
+                index
+            );
+
+            if (normalizedReading == null) {
+                _historyNeedsRepair = true;
+                continue;
+            }
+
+            if (!BloodSugarReading.isCurrent(rawReading)) {
+                _historyNeedsRepair = true;
+
+                System.println("History[" + index + "] requires migration");
+            }
+
+            loadedHistory.add(normalizedReading);
         }
 
-        normalizeHistory();
+        _history = loadedHistory;
 
-        if (migrated && save()) {
-            Application.Storage.deleteValue(STORAGE_KEY);
+        if (_history.size() != storedHistory.size()) {
+            _historyNeedsRepair = true;
         }
+
+        System.println("BloodSugarStore.load: valid count=" + _history.size());
+
+        System.println(
+            "BloodSugarStore.load: repair needed=" + _historyNeedsRepair
+        );
 
         return _history;
     }
 
-    function normalizeHistory() as Void {
-        if (_history == null) {
-            _history = [];
-            return;
+    function historyNeedsRepair() as Boolean {
+        return _historyNeedsRepair;
+    }
+
+    function persistHistoryRepair() as Boolean {
+        if (!_historyNeedsRepair) {
+            return true;
         }
 
-        var normalized = [];
+        if (_history == null) {
+            return false;
+        }
 
-        for (var i = 0; i < _history.size(); i++) {
-            var reading = _history[i];
+        if (!save()) {
+            return false;
+        }
 
-            if (!(reading instanceof Array) || reading.size() < 2) {
+        _historyNeedsRepair = false;
+
+        System.println(
+            "BloodSugarStore: repaired history saved under " + STORAGE_KEY
+        );
+
+        return true;
+    }
+
+    function normalizeHistory() as Void {
+        var normalized = [] as Array;
+
+        for (var index = 0; index < _history.size(); index += 1) {
+            var item = _history[index];
+
+            if (!(item instanceof Array)) {
                 continue;
             }
 
-            var timestamp = reading[READING_TIME];
-            var value = reading[READING_VALUE_MMOL];
+            var reading = item as Array;
 
-            if (!(timestamp instanceof Number) || value == null) {
+            if (reading.size() < 4) {
                 continue;
             }
 
-            var valueMmol = value.toFloat() as Float;
-
-            if (valueMmol <= 0.0f) {
-                continue;
-            }
-
-            var source = "manual";
-            var context = "none";
-
-            if (
-                reading.size() > READING_SOURCE &&
-                reading[READING_SOURCE] != null
-            ) {
-                source = reading[READING_SOURCE].toString();
-            }
-
-            if (
-                reading.size() > READING_CONTEXT &&
-                reading[READING_CONTEXT] != null
-            ) {
-                context = reading[READING_CONTEXT].toString();
-            }
-
-            normalized.add([
-                timestamp,
-                valueMmol,
-                source,
-                context,
-                CURRENT_READING_SCHEMA,
-            ]);
+            normalized.add(reading);
         }
 
         _history = normalized;
+    }
 
-        if (_history.size() > MAX_POINTS) {
-            _history = _history.slice(_history.size() - MAX_POINTS, null);
+    function toStoredFloat(value) as Float? {
+        if (value instanceof Float) {
+            return value as Float;
         }
+
+        if (value instanceof Number) {
+            return (value as Number).toFloat();
+        }
+
+        if (value instanceof Long) {
+            return (value as Long).toFloat();
+        }
+
+        if (value instanceof Double) {
+            return (value as Double).toFloat();
+        }
+
+        return null;
     }
 
     function getHistory() {
@@ -160,6 +206,22 @@ module BloodSugarStore {
         }
 
         return _history;
+    }
+
+    function getPartOfHistory(items as Number) as Array<Object?> {
+        var history = getHistory();
+
+        if (history.size() == 0) {
+            return null;
+        }
+
+        if (items > history.size()) {
+            items = history.size();
+        }
+
+        history = history.slice(history.size() - items, history.size());
+
+        return history;
     }
 
     function getLatestReading() {
@@ -185,13 +247,12 @@ module BloodSugarStore {
             load();
         }
 
-        var point = [
+        var point = BloodSugarReading.create(
             Time.now().value(),
             valueMmol,
             inputSource,
-            normalizeContext(context),
-            CURRENT_READING_SCHEMA,
-        ];
+            normalizeContext(context)
+        );
 
         var previousHistory = _history;
         var candidateHistory = _history.slice(0, null);
@@ -220,7 +281,7 @@ module BloodSugarStore {
         }
 
         try {
-            Application.Storage.setValue(STORAGE_KEY, _history);
+            Storage.setValue(STORAGE_KEY, _history);
             return true;
         } catch (error) {
             System.println("Could not save glucose history: " + error);
@@ -232,16 +293,14 @@ module BloodSugarStore {
         if (bloodSugarValueTime == null) {
             return null;
         }
-
         var data = getHistory();
-
         for (var i = 0; i < data.size(); i++) {
             var reading = data[i];
 
             if (
                 reading != null &&
-                reading.size() > READING_TIME &&
-                reading[READING_TIME].toNumber() ==
+                reading.size() > BloodSugarReading.TIME &&
+                reading[BloodSugarReading.TIME].toNumber() ==
                     bloodSugarValueTime.toNumber()
             ) {
                 return reading;
@@ -268,8 +327,9 @@ module BloodSugarStore {
 
             if (
                 reading != null &&
-                reading.size() > READING_TIME &&
-                reading[READING_TIME].toNumber() == originalTime.toNumber()
+                reading.size() > BloodSugarReading.TIME &&
+                reading[BloodSugarReading.TIME].toNumber() ==
+                    originalTime.toNumber()
             ) {
                 readingIndex = i;
                 break;
@@ -281,23 +341,20 @@ module BloodSugarStore {
         }
 
         var oldReading = history[readingIndex];
-
         var source = "manual";
-
         if (
-            oldReading.size() > READING_SOURCE &&
-            oldReading[READING_SOURCE] != null
+            oldReading.size() > BloodSugarReading.SOURCE &&
+            oldReading[BloodSugarReading.SOURCE] != null
         ) {
-            source = oldReading[READING_SOURCE].toString();
+            source = oldReading[BloodSugarReading.SOURCE].toString();
         }
 
-        var updatedReading = [
-            oldReading[READING_TIME],
+        var updatedReading = BloodSugarReading.create(
+            oldReading[BloodSugarReading.TIME].toNumber(),
             valueMmol,
             source,
-            normalizeContext(context),
-            CURRENT_READING_SCHEMA,
-        ];
+            normalizeContext(context)
+        );
 
         var previousHistory = _history;
         var candidateHistory = history.slice(0, null);
@@ -350,37 +407,33 @@ module BloodSugarStore {
         return "mmol/L";
     }
 
-    function getBloodMonitorText(useBloodMonitor) as String {
-        if (useBloodMonitor) {
-            return "Yes";
+    function getBloodMonitorText(BloodMonitor as Number) as String {
+        switch (BloodMonitor) {
+            case MONITOR_NONE:
+                return "no monitor";
+                break;
+            case MONITOR_ABBOTT:
+                return "Abbott FreeStyle";
+                break;
+            //case MONITOR_BLE:
+            //return "Ble Monitor";
+            //    break;
         }
-        return "No";
     }
 
     function getUseMgdl() as Boolean {
-        return Application.Properties.getValue(PROP_USE_MGDL) == true;
+        return Properties.getValue(PROP_USE_MGDL) == true;
     }
 
     function setUseMgdl(useMgdl as Boolean) as Void {
-        Application.Properties.setValue(PROP_USE_MGDL, useMgdl);
-    }
-
-    function getUseBloodMonitor() as Boolean {
-        return Application.Properties.getValue(PROP_USE_BLOOD_MONITOR) == true;
-    }
-
-    function setUseBloodMonitor(useBloodMonitor as Boolean) as Void {
-        Application.Properties.setValue(
-            PROP_USE_BLOOD_MONITOR,
-            useBloodMonitor
-        );
+        Properties.setValue(PROP_USE_MGDL, useMgdl);
     }
 
     function getRangePropertyMmol(
         propertyKey as String,
         defaultMgdl as Float
     ) as Float {
-        var value = Application.Properties.getValue(propertyKey);
+        var value = Properties.getValue(propertyKey);
 
         if (value == null) {
             return MgdlToMoll(defaultMgdl);
@@ -393,7 +446,7 @@ module BloodSugarStore {
         propertyKey as String,
         valueMmol as Float
     ) as Void {
-        Application.Properties.setValue(propertyKey, MollToMgdl(valueMmol));
+        Properties.setValue(propertyKey, MollToMgdl(valueMmol));
     }
 
     function getDangerLowMmol() as Float {
@@ -471,23 +524,35 @@ module BloodSugarStore {
     }
 
     function getSetupDone() as Boolean {
-        return Application.Properties.getValue(PROP_SETUP_DONE) == true;
+        var value = Storage.getValue(STORAGE_SETUP_DONE);
+
+        if (value instanceof Boolean) {
+            return value as Boolean;
+        }
+
+        return false;
     }
 
     function setSetupDone(done as Boolean) as Void {
-        Application.Properties.setValue(PROP_SETUP_DONE, done);
+        try {
+            Storage.setValue(STORAGE_SETUP_DONE, done);
+
+            System.println("Setup done saved: " + done);
+        } catch (error) {
+            System.println("Could not save setup state");
+        }
     }
 
     function getConfirmBeforeSave() as Boolean {
-        return Application.Properties.getValue(PROP_CONFIRM_SAVE) != false;
+        return Properties.getValue(PROP_CONFIRM_SAVE) != false;
     }
 
     function setConfirmBeforeSave(confirm as Boolean) as Void {
-        Application.Properties.setValue(PROP_CONFIRM_SAVE, confirm);
+        Properties.setValue(PROP_CONFIRM_SAVE, confirm);
     }
 
     function getDefaultContextIndex() as Number {
-        var value = Application.Properties.getValue(PROP_DEFAULT_CONTEXT);
+        var value = Properties.getValue(PROP_DEFAULT_CONTEXT);
 
         var index = value.toNumber();
 
@@ -499,10 +564,7 @@ module BloodSugarStore {
     }
 
     function setDefaultContextIndex(index as Number) as Void {
-        Application.Properties.setValue(
-            PROP_DEFAULT_CONTEXT,
-            normalizeContextIndex(index)
-        );
+        Properties.setValue(PROP_DEFAULT_CONTEXT, normalizeContextIndex(index));
     }
 
     function getContextCount() as Number {
@@ -600,20 +662,8 @@ module BloodSugarStore {
         return getContextKey(getContextIndex(context));
     }
 
-    function getAppCreator() as String {
-        var value = Application.Properties.getValue(PROP_APP_CREATOR);
-
-        return value.toString();
-    }
-
-    function getAppName() as String {
-        var value = Application.Properties.getValue(PROP_APP_NAME);
-
-        return value.toString();
-    }
-
     function getAppVersion() as String {
-        var value = Application.Properties.getValue(PROP_APP_VERSION);
+        var value = Properties.getValue(PROP_APP_VERSION);
 
         return value.toString();
     }
@@ -740,13 +790,12 @@ module BloodSugarStore {
                 continue;
             }
 
-            var point = [
+            var point = BloodSugarReading.create(
                 timestamp,
                 valueMmol,
                 source,
-                normalizeContext(context),
-                CURRENT_READING_SCHEMA,
-            ];
+                normalizeContext(context)
+            );
 
             insertReadingSorted(candidateHistory, point);
             addedCount += 1;
@@ -783,9 +832,9 @@ module BloodSugarStore {
 
             if (
                 reading instanceof Array &&
-                reading.size() > READING_TIME &&
-                reading[READING_TIME] != null &&
-                reading[READING_TIME].toNumber() == timestamp
+                reading.size() > BloodSugarReading.TIME &&
+                reading[BloodSugarReading.TIME] != null &&
+                reading[BloodSugarReading.TIME].toNumber() == timestamp
             ) {
                 return true;
             }
@@ -795,7 +844,7 @@ module BloodSugarStore {
     }
 
     function insertReadingSorted(history, point) as Void {
-        var pointTime = point[READING_TIME].toNumber();
+        var pointTime = point[BloodSugarReading.TIME].toNumber();
         var insertionIndex = history.size();
 
         for (var i = 0; i < history.size(); i++) {
@@ -803,9 +852,9 @@ module BloodSugarStore {
 
             if (
                 reading instanceof Array &&
-                reading.size() > READING_TIME &&
-                reading[READING_TIME] != null &&
-                reading[READING_TIME].toNumber() > pointTime
+                reading.size() > BloodSugarReading.TIME &&
+                reading[BloodSugarReading.TIME] != null &&
+                reading[BloodSugarReading.TIME].toNumber() > pointTime
             ) {
                 insertionIndex = i;
                 break;
@@ -824,7 +873,7 @@ module BloodSugarStore {
     function getCustomContextNames() as Array<String> {
         var names = [] as Array<String>;
 
-        var value = Application.Properties.getValue(PROP_CUSTOM_CONTEXTS);
+        var value = Properties.getValue(PROP_CUSTOM_CONTEXTS);
 
         if (!(value instanceof Array)) {
             return names;
@@ -854,13 +903,11 @@ module BloodSugarStore {
     }
 
     public function setBloodMonitor(selected as Number) {
-        Application.Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
+        Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
     }
 
     public function getBloodMonitor() as Number? {
-        return Application.Properties.getValue(
-            PROP_BLOOD_MONITOR_INDEX
-        ).toNumber();
+        return Properties.getValue(PROP_BLOOD_MONITOR_INDEX).toNumber();
     }
 
     public function getUsername() as String {
@@ -915,13 +962,11 @@ module BloodSugarStore {
     }
 
     function getNotificationsEnabled() as Boolean {
-        return (
-            Application.Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false
-        );
+        return Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false;
     }
 
     function setNotificationsEnabled(enabled as Boolean) as Void {
-        Application.Properties.setValue(PROP_NOTIFICATIONS_ENABLED, enabled);
+        Properties.setValue(PROP_NOTIFICATIONS_ENABLED, enabled);
     }
 
     function getNotificationLowMmol() as Float {
@@ -954,5 +999,55 @@ module BloodSugarStore {
         }
 
         return NOTIFICATION_NONE;
+    }
+    function deleteReadingByTime(originalTime) as Boolean {
+        if (originalTime == null) {
+            return false;
+        }
+
+        var history = getHistory();
+        var readingIndex = -1;
+
+        for (var i = 0; i < history.size(); i += 1) {
+            var reading = history[i];
+
+            if (
+                reading instanceof Array &&
+                reading.size() > BloodSugarReading.TIME &&
+                reading[BloodSugarReading.TIME] != null &&
+                reading[BloodSugarReading.TIME].toNumber() ==
+                    originalTime.toNumber()
+            ) {
+                readingIndex = i;
+                break;
+            }
+        }
+
+        if (readingIndex < 0) {
+            return false;
+        }
+
+        var previousHistory = _history;
+        var candidateHistory = [] as Array;
+
+        for (var index = 0; index < history.size(); index += 1) {
+            if (index != readingIndex) {
+                candidateHistory.add(history[index]);
+            }
+        }
+
+        _history = candidateHistory;
+
+        if (save()) {
+            return true;
+        }
+
+        /*
+         * Saving failed, so restore the
+         * history we had before deletion.
+         */
+        _history = previousHistory;
+
+        return false;
     }
 }
