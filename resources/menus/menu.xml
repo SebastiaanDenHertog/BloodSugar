@@ -1,6 +1,7 @@
 <menu id="MainMenu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
-    <menu-item id="settings" label="@Strings.settings" />
+    <menu-item id="newItem" label="@Strings.newItem" />
     <menu-item id="historyGraph" label="@Strings.historyGraph" />
     <menu-item id="historyList" label="@Strings.historyList" />
+    <menu-item id="settings" label="@Strings.settings" />
     <menu-item id="appInfo" label="@Strings.appInfo" />
 </menu>
