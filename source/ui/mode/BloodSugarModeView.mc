@@ -31,35 +31,32 @@ class BloodSugarModeView extends WatchUi.View {
         View.initialize();
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarModeLayout(dc));
+    }
+
     public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
+        var title = findDrawableById("modeTitle");
+        var question = findDrawableById("modeQuestion");
+        var instruction = findDrawableById("modeInstruction");
 
-        dc.drawText(
-            centerX,
-            centerY - 70,
-            Graphics.FONT_MEDIUM,
-            "Glucose monitor",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        if (title instanceof WatchUi.Text) {
+            (title as WatchUi.Text).setText("Glucose monitor");
+        }
 
-        dc.drawText(
-            centerX,
-            centerY - 10,
-            Graphics.FONT_XTINY,
-            "Connect a supported BLE monitor?",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        if (question instanceof WatchUi.Text) {
+            (question as WatchUi.Text).setText(
+                "Connect a supported BLE monitor?"
+            );
+        }
 
-        dc.drawText(
-            centerX,
-            centerY + 55,
-            Graphics.FONT_XTINY,
-            "SELECT yes | BACK no",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        if (instruction instanceof WatchUi.Text) {
+            (instruction as WatchUi.Text).setText("SELECT yes | BACK no");
+        }
+
+        View.onUpdate(dc);
     }
 }

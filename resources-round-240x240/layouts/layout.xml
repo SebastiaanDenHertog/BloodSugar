@@ -143,7 +143,7 @@
             id="inputUnit"
             x="center"
             y="40%"
-            font="Graphics.FONT_LARGE"
+            font="Graphics.FONT_TINY"
             justification="Graphics.TEXT_JUSTIFY_CENTER"
             color="Graphics.COLOR_WHITE"
         />

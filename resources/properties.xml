@@ -1,6 +1,6 @@
 <properties>
     <!-- Keep this below 1.0.0 while the app is manual-entry only. -->
-    <property id="appVersion" type="string">0.9.3</property>
+    <property id="appVersion" type="string">0.9.5</property>
 
     <property id="useMgdl" type="boolean">false</property>
     <property id="dangerLow" type="float">80.0</property>

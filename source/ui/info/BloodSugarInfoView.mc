@@ -34,6 +34,10 @@ class BloodSugarInfoView extends WatchUi.View {
         _message = "";
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarInfoLayout(dc));
+    }
+
     public function setEntry(message as String) as Void {
         _message = message;
         WatchUi.requestUpdate();
@@ -43,15 +47,12 @@ class BloodSugarInfoView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 4;
+        var messageLabel = findDrawableById("infoMessage");
 
-        dc.drawText(
-            centerX,
-            centerY,
-            Graphics.FONT_XTINY,
-            _message,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        if (messageLabel instanceof WatchUi.Text) {
+            (messageLabel as WatchUi.Text).setText(_message);
+        }
+
+        View.onUpdate(dc);
     }
 }

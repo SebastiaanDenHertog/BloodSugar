@@ -90,20 +90,7 @@ class BloodSugarApp extends Application.AppBase {
             return [setupView, setupDelegate];
         }
 
-        /*
-         * Foreground application start:
-         * make sure background registration
-         * matches the current configuration.
-         */
         updateBackgroundSync();
-
-        /*
-         * Only initialize BLE for monitors
-         * that actually require it.
-         *
-         * We can move this into the registry
-         * when the first BLE monitor is added.
-         */
 
         var view = new BloodSugarHomeView();
         var delegate = new BloodSugarHomeDelegate(view);
@@ -120,12 +107,8 @@ class BloodSugarApp extends Application.AppBase {
         }
 
         var shouldSync = BloodSugarMonitorRegistry.shouldUseBackgroundSync();
-
         var isRegistered = Background.getTemporalEventRegisteredTime() != null;
 
-        /*
-         * Automatic monitor is configured.
-         */
         if (shouldSync && !isRegistered) {
             try {
                 Background.registerForTemporalEvent(
@@ -141,11 +124,6 @@ class BloodSugarApp extends Application.AppBase {
 
             return;
         }
-
-        /*
-         * Monitor disabled, removed, or
-         * credentials no longer valid.
-         */
         if (!shouldSync && isRegistered) {
             try {
                 Background.deleteTemporalEvent();

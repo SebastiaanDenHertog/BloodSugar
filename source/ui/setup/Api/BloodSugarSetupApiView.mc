@@ -43,6 +43,10 @@ class BloodSugarSetupApiView extends WatchUi.View {
         _busy = false;
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarSetupApiLayout(dc));
+    }
+
     public function setState(
         selected as Number,
         username as String,
@@ -67,14 +71,6 @@ class BloodSugarSetupApiView extends WatchUi.View {
         var height = dc.getHeight();
         var centerX = width / 2;
 
-        dc.drawText(
-            centerX,
-            (height * 10) / 100,
-            Graphics.FONT_XTINY,
-            "Account credentials",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
         var fieldWidth = (width * 70) / 100;
         var fieldHeight = (height * 11) / 100;
 
@@ -82,29 +78,25 @@ class BloodSugarSetupApiView extends WatchUi.View {
             fieldHeight = 30;
         }
 
-        drawField(
+        drawFieldBackground(
             dc,
             centerX,
             (height * 20) / 100,
             fieldWidth,
             fieldHeight,
-            "",
-            getUsernameDisplay(),
             _selected == 0
         );
 
-        drawField(
+        drawFieldBackground(
             dc,
             centerX,
             (height * 40) / 100,
             fieldWidth,
             fieldHeight,
-            "",
-            getPasswordDisplay(),
             _selected == 1
         );
 
-        drawConnectButton(
+        drawFieldBackground(
             dc,
             centerX,
             (height * 60) / 100,
@@ -113,80 +105,59 @@ class BloodSugarSetupApiView extends WatchUi.View {
             _selected == 2
         );
 
+        setLabel("apiTitle", "Account credentials", Graphics.COLOR_WHITE);
+        setLabel(
+            "apiUsername",
+            shorten(getUsernameDisplay(), 24),
+            _selected == 0 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
+        );
+        setLabel(
+            "apiPassword",
+            getPasswordDisplay(),
+            _selected == 1 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
+        );
+        setLabel(
+            "apiConnect",
+            _busy ? "CONNECTING..." : "CONNECT",
+            _selected == 2 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
+        );
+        setLabel("apiStatus", _status, Graphics.COLOR_WHITE);
+        View.onUpdate(dc);
         SafeText.drawBottom(dc, "UP/DOWN choose");
     }
 
-    private function drawField(
+    private function drawFieldBackground(
         dc as Graphics.Dc,
         centerX as Number,
         y as Number,
         width as Number,
         height as Number,
-        label as String,
-        value as String,
         selected as Boolean
     ) as Void {
         var x = centerX - width / 2;
 
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            y,
-            Graphics.FONT_TINY,
-            label,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
         if (selected) {
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
             dc.fillRectangle(x, y, width, height);
-            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
         } else {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
             dc.drawRectangle(x, y, width, height);
         }
-
-        dc.drawText(
-            centerX,
-            y,
-            Graphics.FONT_TINY,
-            shorten(value, 24),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
     }
 
-    private function drawConnectButton(
-        dc as Graphics.Dc,
-        centerX as Number,
-        y as Number,
-        width as Number,
-        height as Number,
-        selected as Boolean
+    private function setLabel(
+        id as String,
+        value as String,
+        color as Number
     ) as Void {
-        var x = centerX - width / 2;
-        var text = _busy ? "CONNECTING..." : "CONNECT";
+        var drawable = findDrawableById(id);
 
-        if (selected) {
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
-            dc.fillRectangle(x, y, width, height);
-            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
-        } else {
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-            dc.drawRectangle(x, y, width, height);
+        if (drawable instanceof WatchUi.Text) {
+            var text = drawable as WatchUi.Text;
+
+            text.setText(value);
+            text.setColor(color);
         }
-
-        dc.drawText(
-            centerX,
-            y,
-            Graphics.FONT_TINY,
-            text,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
     }
 
     private function getUsernameDisplay() as String {

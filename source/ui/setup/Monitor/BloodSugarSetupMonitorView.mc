@@ -35,6 +35,10 @@ class BloodSugarSetupMonitorView extends WatchUi.View {
         _bloodMonitors = [];
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarSetupMonitorLayout(dc));
+    }
+
     public function setEntry(
         select as Number,
         bloodMonitors as Array<String>
@@ -47,16 +51,7 @@ class BloodSugarSetupMonitorView extends WatchUi.View {
     public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
-        SafeText.drawTop(dc, "Monitor");
-        dc.drawText(
-            centerX,
-            centerY - 50,
-            Graphics.FONT_XTINY,
-            "Choose your monitor",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+
         var monitorName = "No monitors available";
 
         if (
@@ -67,18 +62,24 @@ class BloodSugarSetupMonitorView extends WatchUi.View {
             monitorName = _bloodMonitors[_select];
         }
 
-        dc.drawText(
-            centerX,
-            centerY + 5,
-            Graphics.FONT_MEDIUM,
-            monitorName,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        setLabel("monitorTitle", "Monitor");
+        setLabel("monitorPrompt", "Choose your monitor");
+        setLabel("monitorName", monitorName);
+
+        View.onUpdate(dc);
 
         SafeText.drawBottomWithPadding(
             dc,
             "SELECT to continue\nUP/DOWN change",
             12
         );
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
     }
 }

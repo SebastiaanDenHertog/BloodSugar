@@ -64,6 +64,18 @@ class BloodSugarHistoryView extends WatchUi.View {
         _selected = 0;
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarHistoryLayout(dc));
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
+    }
+
     public function setBloodSugarHistory(
         bloodSugar,
         time,
@@ -87,10 +99,15 @@ class BloodSugarHistoryView extends WatchUi.View {
         dc.clear();
 
         if (!hasValidData()) {
-            drawNoData(dc);
+            View.onUpdate(dc);
+            setLabel("historyTitle", "");
+            setLabel("historyValue", "");
+            setLabel("historyNoData", "No history yet");
+            SafeText.drawBottom(dc, "SELECT \n BACK to return");
             return;
         }
-
+        View.onUpdate(dc);
+        setLabel("historyNoData", "");
         drawGraph(dc);
     }
 
@@ -105,18 +122,6 @@ class BloodSugarHistoryView extends WatchUi.View {
         );
     }
 
-    private function drawNoData(dc as Graphics.Dc) as Void {
-        dc.drawText(
-            dc.getWidth() / 2,
-            dc.getHeight() / 2 - 20,
-            Graphics.FONT_SMALL,
-            "No history yet",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        SafeText.drawBottom(dc, "SELECT \n BACK to return");
-    }
-
     private function drawGraph(dc as Graphics.Dc) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
@@ -125,18 +130,16 @@ class BloodSugarHistoryView extends WatchUi.View {
         var top = (height * 0.15).toNumber();
         var bottom = (height - height * 0.15).toNumber();
         var startIndex = 0;
-
         if (_bloodSugar.size() > MAX_VISIBLE_POINTS) {
             startIndex = _bloodSugar.size() - MAX_VISIBLE_POINTS;
         }
 
         var count = _bloodSugar.size() - startIndex;
-
         var minimum = _zones[ZONE_DANGER_LOW].toFloat() as Float;
         var maximum = _zones[ZONE_DANGER_HIGH].toFloat() as Float;
 
         for (var i = startIndex; i < _bloodSugar.size(); i++) {
-            var value = _bloodSugar[i].toFloat();
+            var value = _bloodSugar[i].toFloat() as Float;
 
             if (value < minimum) {
                 minimum = value;
@@ -158,19 +161,8 @@ class BloodSugarHistoryView extends WatchUi.View {
         if (minimum < 0.0f) {
             minimum = 0.0f;
         }
-
-        dc.drawText(
-            width / 2,
-            10,
-            Graphics.FONT_XTINY,
-            "History (last " + count + ")",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
+        setLabel("historyTitle", "History (last " + count + ")");
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-        //dc.drawLine(left, top, left, bottom);
-        //dc.drawLine(left, bottom, right, bottom);
-
         _graphLeft = left;
         _graphRight = right;
         _graphTop = top;
@@ -180,25 +172,25 @@ class BloodSugarHistoryView extends WatchUi.View {
 
         drawRangeLine(
             dc,
-            _zones[ZONE_DANGER_LOW].toFloat(),
+            _zones[ZONE_DANGER_LOW].toFloat() as Float,
             _zones[ZONE_DANGER_LOW].format("%.2f"),
             true
         );
         drawRangeLine(
             dc,
-            _zones[ZONE_LOW].toFloat(),
+            _zones[ZONE_LOW].toFloat() as Float,
             _zones[ZONE_LOW].format("%.2f"),
             false
         );
         drawRangeLine(
             dc,
-            _zones[ZONE_HIGH].toFloat(),
+            _zones[ZONE_HIGH].toFloat() as Float,
             _zones[ZONE_HIGH].format("%.2f"),
             false
         );
         drawRangeLine(
             dc,
-            _zones[ZONE_DANGER_HIGH].toFloat(),
+            _zones[ZONE_DANGER_HIGH].toFloat() as Float,
             _zones[ZONE_DANGER_HIGH].format("%.2f"),
             true
         );
@@ -231,11 +223,8 @@ class BloodSugarHistoryView extends WatchUi.View {
         }
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
         var lastIndex = _bloodSugar.size() - 1;
-
         var safeSelected = _selected;
-
         if (safeSelected < 0) {
             safeSelected = 0;
         } else if (safeSelected > lastIndex) {
@@ -247,20 +236,14 @@ class BloodSugarHistoryView extends WatchUi.View {
             _bloodSugar[lastIndex - safeSelected].toFloat();
 
         if (latestValue == latestValueSelected) {
-            dc.drawText(
-                width / 2,
-                height - 35,
-                Graphics.FONT_XTINY,
-                "Latest " + formatAxisValue(latestValue) + " " + _unit,
-                Graphics.TEXT_JUSTIFY_CENTER
+            setLabel(
+                "historyValue",
+                "Latest " + formatAxisValue(latestValue) + " " + _unit
             );
         } else {
-            dc.drawText(
-                width / 2,
-                height - 35,
-                Graphics.FONT_XTINY,
-                formatAxisValue(latestValueSelected) + " " + _unit,
-                Graphics.TEXT_JUSTIFY_CENTER
+            setLabel(
+                "historyValue",
+                formatAxisValue(latestValueSelected) + " " + _unit
             );
         }
     }
@@ -345,7 +328,6 @@ class BloodSugarHistoryView extends WatchUi.View {
 
     public function onShow() as Void {
         var current = WatchUi.getCurrentView();
-
         if (
             current.size() > 1 &&
             current[1] instanceof BloodSugarHistoryDelegate

@@ -20,6 +20,10 @@ A Connect IQ app for logging your blood sugars.
 * v0.9.4
     * Added a keyboard on the watch to have a alternative input way
 
+* v0.9.5
+    * Settings is devided in categories and and gets green when the settings is saved.
+    * The layout update all pages are moved to layouts to make use of the size family.
+
 ## References 
     [DiaKEM libre api](https://github.com/DiaKEM/libre-link-up-api-client) for the connection of your monitor to the watch
 

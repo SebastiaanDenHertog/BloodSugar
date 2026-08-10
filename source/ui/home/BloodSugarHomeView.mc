@@ -41,6 +41,10 @@ class BloodSugarHomeView extends WatchUi.View {
         refresh();
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarHomeLayout(dc));
+    }
+
     public function refresh() as Void {
         _reading = BloodSugarStore.getLatestReading();
         _useMgdl = BloodSugarStore.getUseMgdl();
@@ -51,49 +55,25 @@ class BloodSugarHomeView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
-
-        SafeText.drawTop(dc, "Blood sugar");
+        setLabel("homeTitle", "Blood sugar");
 
         if (_reading == null || _reading.size() < 2) {
-            dc.drawText(
-                centerX,
-                centerY - 15,
-                Graphics.FONT_MEDIUM,
-                "No readings",
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+            setLabel("homeValue", "");
+            setLabel("homeUnit", "");
+            setLabel("homeSubtitle", "");
+            setLabel("homeNoReadings", "No readings");
         } else {
             var valueMmol = _reading[BloodSugarReading.VALUE_MMOL].toFloat();
             var valueText = BloodSugarStore.formatValue(valueMmol, _useMgdl);
             var unitText = BloodSugarStore.getUnitText(_useMgdl);
 
-            dc.drawText(
-                centerX,
-                centerY - 35,
-                Graphics.FONT_LARGE,
-                valueText,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
-
-            dc.drawText(
-                centerX,
-                centerY + 15,
-                Graphics.FONT_XTINY,
-                unitText,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
-
-            dc.drawText(
-                centerX,
-                centerY + 42,
-                Graphics.FONT_XTINY,
-                getReadingSubtitle(),
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+            setLabel("homeValue", valueText);
+            setLabel("homeUnit", unitText);
+            setLabel("homeSubtitle", getReadingSubtitle());
+            setLabel("homeNoReadings", "");
         }
 
+        View.onUpdate(dc);
         SafeText.drawBottom(dc, "SELECT add new \n UP history");
     }
 
@@ -129,5 +109,13 @@ class BloodSugarHomeView extends WatchUi.View {
         }
 
         return timeText + " | " + BloodSugarStore.getContextLabel(contextIndex);
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
     }
 }

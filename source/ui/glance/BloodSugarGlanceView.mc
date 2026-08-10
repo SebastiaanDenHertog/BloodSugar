@@ -33,22 +33,25 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         GlanceView.initialize();
     }
 
-    public function onUpdate(dc as Graphics.Dc) as Void {
-        var width = dc.getWidth();
-        var height = dc.getHeight();
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarGlanceLayout(dc));
+    }
 
+    public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
         var storedReading = BloodSugarStore.getLatestReading();
         if (!(storedReading instanceof Array)) {
-            drawNoData(dc);
+            setNoData();
+            GlanceView.onUpdate(dc);
             return;
         }
 
         var reading = storedReading as Array;
         if (reading.size() <= BloodSugarReading.VALUE_MMOL) {
-            drawNoData(dc);
+            setNoData();
+            GlanceView.onUpdate(dc);
             return;
         }
 
@@ -56,84 +59,49 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
             reading[BloodSugarReading.TIME] == null ||
             reading[BloodSugarReading.VALUE_MMOL] == null
         ) {
-            drawNoData(dc);
+            setNoData();
+            GlanceView.onUpdate(dc);
             return;
         }
 
-        var timestamp = reading[BloodSugarReading.TIME].toNumber();
-        var valueMmol = reading[BloodSugarReading.VALUE_MMOL].toFloat();
+        var timestamp = reading[BloodSugarReading.TIME].toNumber() as Number;
+        var valueMmol =
+            reading[BloodSugarReading.VALUE_MMOL].toFloat() as Float;
         var useMgdl = BloodSugarStore.getUseMgdl();
         var displayValue = BloodSugarStore.formatValue(valueMmol, useMgdl);
         var unit = BloodSugarStore.getUnitText(useMgdl);
         var status = getStatus(valueMmol);
         var ageText = getReadingAge(timestamp);
-        var leftWidth = (width * 45) / 100;
-        var leftCenterX = leftWidth / 2;
-        var rightStartX = leftWidth;
-        var rightWidth = width - rightStartX;
-        var rightCenterX = rightStartX + rightWidth / 2;
-        var titleFont = Graphics.FONT_XTINY;
-        var valueFont = Graphics.FONT_TINY;
-        var smallFont = Graphics.FONT_XTINY;
-        var titleHeight = dc.getFontHeight(titleFont);
-        var valueHeight = dc.getFontHeight(valueFont);
-        var smallHeight = dc.getFontHeight(smallFont);
-        var titleY = 1;
-        var valueY = height / 2 - valueHeight / 2 - 2;
-        var bottomY = height - smallHeight - 1;
 
-        dc.drawText(
-            3,
-            titleY,
-            titleFont,
-            "Blood Sugar",
-            Graphics.TEXT_JUSTIFY_LEFT
-        );
+        setLabelText("GlanceValue", displayValue);
+        setLabelText("GlanceUnit", unit);
+        setLabelText("GlanceStatus", status);
+        setLabelText("GlanceAge", ageText);
+        GlanceView.onUpdate(dc);
 
-        dc.drawText(
-            leftCenterX,
-            valueY,
-            valueFont,
-            displayValue,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.drawText(
-            leftCenterX,
-            bottomY,
-            smallFont,
-            status,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        var unitY = valueY + (valueHeight - smallHeight) / 2;
-
-        var unitX = rightCenterX + 2;
-
-        dc.drawText(unitX, unitY, smallFont, unit, Graphics.TEXT_JUSTIFY_RIGHT);
-
-        drawTrendArrow(dc, unitX + 7, unitY + smallHeight / 2, getTrend());
-
-        dc.drawText(
-            rightCenterX,
-            bottomY,
-            smallFont,
-            ageText,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        /*
+         * Trend arrow is still custom drawn.
+         *
+         * 74% puts it just behind the unit.
+         */
+        var arrowX = (dc.getWidth() * 76) / 100;
+        var arrowY = (dc.getHeight() * 48) / 100;
+        drawTrendArrow(dc, arrowX, arrowY, getTrend());
     }
 
-    private function drawNoData(dc as Graphics.Dc) as Void {
-        var width = dc.getWidth();
-        var height = dc.getHeight();
+    private function setNoData() as Void {
+        setLabelText("GlanceValue", "--");
+        setLabelText("GlanceUnit", "");
+        setLabelText("GlanceStatus", "No data");
+        setLabelText("GlanceAge", "");
+    }
 
-        dc.drawText(
-            width / 2,
-            height / 2 - dc.getFontHeight(Graphics.FONT_TINY) / 2,
-            Graphics.FONT_TINY,
-            "No data",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+    private function setLabelText(id as String, text as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(text);
+        }
     }
 
     private function getStatus(valueMmol as Float) as String {

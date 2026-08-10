@@ -27,20 +27,6 @@ import Toybox.Application;
 import Toybox.Lang;
 
 class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
-    const MODE_MAIN = 0;
-    const MODE_ZONES = 1;
-
-    const INDEX_UNIT = 0;
-    const INDEX_ZONES = 1;
-    const INDEX_MONITOR = 2;
-    const INDEX_NOTIFICATIONS = 3;
-    const INDEX_NOTIFICATION_LOW = 4;
-    const INDEX_NOTIFICATION_HIGH = 5;
-    const INDEX_CONTEXT = 6;
-    const INDEX_CONFIRM = 7;
-    const INDEX_CLEAR = 8;
-
-    const MAIN_ITEM_COUNT = 9;
     const ZONE_ITEM_COUNT = 4;
 
     const ZONE_DANGER_LOW = 0;
@@ -48,24 +34,54 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     const ZONE_HIGH = 2;
     const ZONE_DANGER_HIGH = 3;
 
-    private var _view as BloodSugarSettingsView;
+    const MODE_MAIN = 0;
+    const MODE_ZONES = 1;
 
+    /*
+     * GENERAL
+     */
+    const INDEX_UNIT = 0;
+    const INDEX_ZONES = 1;
+    const INDEX_CONTEXT = 2;
+    const INDEX_CONFIRM = 3;
+
+    /*
+     * MONITOR
+     */
+    const INDEX_MONITOR = 4;
+
+    /*
+     * NOTIFICATIONS
+     */
+    const INDEX_NOTIFICATIONS = 5;
+    const INDEX_NOTIFICATION_LOW = 6;
+    const INDEX_NOTIFICATION_HIGH = 7;
+
+    /*
+     * DANGER
+     */
+    const INDEX_CLEAR = 8;
+    const MAIN_ITEM_COUNT = 9;
+
+    private var _view as BloodSugarSettingsView;
     private var _mode as Number;
     private var _selected as Number;
     private var _zoneSelected as Number;
     private var _editing as Boolean;
     private var _status as String;
+    private var _savedMode as Number;
+    private var _savedIndex as Number;
 
     public function initialize(view as BloodSugarSettingsView) {
         BehaviorDelegate.initialize();
-
         _view = view;
         _mode = MODE_MAIN;
         _selected = INDEX_UNIT;
         _zoneSelected = ZONE_DANGER_LOW;
         _editing = false;
         _status = "";
-
+        _savedMode = -1;
+        _savedIndex = -1;
         updateView();
     }
 
@@ -73,41 +89,64 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         _status = "";
 
         if (_editing) {
+            clearSavedState();
             changeEditedValue(1);
+            markSaved(_mode, _mode == MODE_ZONES ? _zoneSelected : _selected);
             updateView();
-
             return true;
         }
-
+        clearSavedState();
         if (_mode == MODE_ZONES) {
-            _zoneSelected = wrapIndex(_zoneSelected - 1, ZONE_ITEM_COUNT);
+            if (_zoneSelected > 0) {
+                _zoneSelected -= 1;
+            }
         } else {
-            _selected = wrapIndex(_selected - 1, MAIN_ITEM_COUNT);
+            if (_selected > 0) {
+                _selected -= 1;
+            }
         }
-
         updateView();
-
         return true;
+    }
+
+    private function markSaved(mode as Number, index as Number) as Void {
+        _savedMode = mode;
+        _savedIndex = index;
+        _status = "Saved";
+    }
+
+    private function clearSavedState() as Void {
+        _savedMode = -1;
+        _savedIndex = -1;
+
+        if (_status.equals("Saved")) {
+            _status = "";
+        }
     }
 
     public function onNextPage() as Boolean {
         _status = "";
 
         if (_editing) {
+            clearSavedState();
             changeEditedValue(-1);
+            markSaved(_mode, _mode == MODE_ZONES ? _zoneSelected : _selected);
             updateView();
-
             return true;
         }
 
+        clearSavedState();
         if (_mode == MODE_ZONES) {
-            _zoneSelected = wrapIndex(_zoneSelected + 1, ZONE_ITEM_COUNT);
+            if (_zoneSelected < ZONE_ITEM_COUNT - 1) {
+                _zoneSelected += 1;
+            }
         } else {
-            _selected = wrapIndex(_selected + 1, MAIN_ITEM_COUNT);
+            if (_selected < MAIN_ITEM_COUNT - 1) {
+                _selected += 1;
+            }
         }
 
         updateView();
-
         return true;
     }
 
@@ -128,6 +167,7 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
 
         if (_selected == INDEX_UNIT) {
             BloodSugarStore.setUseMgdl(!BloodSugarStore.getUseMgdl());
+            markSaved(MODE_MAIN, INDEX_UNIT);
             updateView();
             return true;
         }
@@ -135,11 +175,13 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         if (_selected == INDEX_ZONES) {
             _mode = MODE_ZONES;
             _zoneSelected = ZONE_DANGER_LOW;
+            clearSavedState();
             updateView();
             return true;
         }
 
         if (_selected == INDEX_MONITOR) {
+            clearSavedState();
             openMonitorSetup();
             return true;
         }
@@ -148,6 +190,7 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
             BloodSugarStore.setNotificationsEnabled(
                 !BloodSugarStore.getNotificationsEnabled()
             );
+            markSaved(MODE_MAIN, INDEX_NOTIFICATIONS);
             updateView();
             return true;
         }
@@ -166,12 +209,14 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
             BloodSugarStore.setConfirmBeforeSave(
                 !BloodSugarStore.getConfirmBeforeSave()
             );
+            markSaved(MODE_MAIN, INDEX_CONFIRM);
             updateView();
             return true;
         }
 
         if (_selected == INDEX_CLEAR) {
             var confirmation = new WatchUi.Confirmation("Delete all history?");
+            clearSavedState();
             WatchUi.pushView(
                 confirmation,
                 new BloodSugarClearConfirmationDelegate(self),
@@ -339,7 +384,6 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         state.selected = _selected;
         state.zoneSelected = _zoneSelected;
         state.editing = _editing;
-        state.status = _status;
         state.useMgdl = BloodSugarStore.getUseMgdl();
         state.zones = BloodSugarStore.getBloodSugarZones();
         state.notificationsEnabled = BloodSugarStore.getNotificationsEnabled();
@@ -347,6 +391,9 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         state.notificationHighMmol = BloodSugarStore.getNotificationHighMmol();
         state.contextIndex = BloodSugarStore.getDefaultContextIndex();
         state.confirmBeforeSave = BloodSugarStore.getConfirmBeforeSave();
+        state.status = _status;
+        state.savedMode = _savedMode;
+        state.savedIndex = _savedIndex;
         _view.setState(state);
     }
 }

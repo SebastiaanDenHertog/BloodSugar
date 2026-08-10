@@ -31,13 +31,16 @@ class SettingsState {
     public var editing as Boolean = false;
     public var useMgdl as Boolean = false;
 
-    public var zones as Array<Float> = [0.0, 0.0, 0.0, 0.0];
+    public var zones as Array<Float> = [0.0f, 0.0f, 0.0f, 0.0f];
 
     public var notificationsEnabled as Boolean = false;
-    public var notificationLowMmol as Float = 0.0;
-    public var notificationHighMmol as Float = 0.0;
+    public var notificationLowMmol as Float = 0.0f;
+    public var notificationHighMmol as Float = 0.0f;
 
     public var contextIndex as Number = 0;
     public var confirmBeforeSave as Boolean = false;
     public var status as String = "";
+
+    public var savedMode as Number = -1;
+    public var savedIndex as Number = -1;
 }

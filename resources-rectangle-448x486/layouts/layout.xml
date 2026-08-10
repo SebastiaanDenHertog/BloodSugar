@@ -124,7 +124,7 @@
         <label
             id="inputTitle"
             x="center"
-            y="10%"
+            y="8%"
             font="Graphics.FONT_XTINY"
             justification="Graphics.TEXT_JUSTIFY_CENTER"
             color="Graphics.COLOR_WHITE"
@@ -133,7 +133,7 @@
         <label
             id="inputValue"
             x="center"
-            y="30%"
+            y="31%"
             font="Graphics.FONT_LARGE"
             justification="Graphics.TEXT_JUSTIFY_CENTER"
             color="Graphics.COLOR_WHITE"
@@ -142,8 +142,8 @@
         <label
             id="inputUnit"
             x="center"
-            y="40%"
-            font="Graphics.FONT_LARGE"
+            y="58%"
+            font="Graphics.FONT_XTINY"
             justification="Graphics.TEXT_JUSTIFY_CENTER"
             color="Graphics.COLOR_WHITE"
         />
@@ -151,8 +151,8 @@
         <label
             id="inputContext"
             x="center"
-            y="60%"
-            font="Graphics.FONT_TINY"
+            y="72%"
+            font="Graphics.FONT_XTINY"
             justification="Graphics.TEXT_JUSTIFY_CENTER"
             color="Graphics.COLOR_WHITE"
         />

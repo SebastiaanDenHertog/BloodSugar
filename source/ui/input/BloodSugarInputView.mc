@@ -46,6 +46,18 @@ class BloodSugarView extends WatchUi.View {
         _canDeleteReading = false;
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarInputLayout(dc));
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
+    }
+
     public function setEntry(
         bloodSugar as Float,
         stage as Number,
@@ -70,35 +82,17 @@ class BloodSugarView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
-        SafeText.drawTop(dc, getStageText());
-
-        dc.drawText(
-            centerX,
-            centerY - 50,
-            Graphics.FONT_LARGE,
-            formatValue(),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.drawText(
-            centerX,
-            centerY + 20,
-            Graphics.FONT_XTINY,
-            BloodSugarStore.getUnitText(_useMgdl),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        setLabel("inputTitle", getStageText());
+        setLabel("inputValue", formatValue());
+        setLabel("inputUnit", BloodSugarStore.getUnitText(_useMgdl));
 
         if (_stage >= 1) {
-            dc.drawText(
-                centerX,
-                centerY + 70,
-                Graphics.FONT_XTINY,
-                _context,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+            setLabel("inputContext", _context);
+        } else {
+            setLabel("inputContext", "");
         }
+
+        View.onUpdate(dc);
 
         var footer = getInstructionText();
 

@@ -38,10 +38,9 @@ class BloodSugarHistoryListView extends WatchUi.View {
     private var _time;
     private var _zones;
     private var _unit as String;
-
     private var _selected as Number;
-
     private var _showDetails as Boolean;
+    private var _delegate as BloodSugarHistoryListDelegate?;
 
     public function initialize() {
         View.initialize();
@@ -54,18 +53,42 @@ class BloodSugarHistoryListView extends WatchUi.View {
         _unit = "mmol/L";
         _selected = 0;
         _showDetails = false;
+        _delegate = null;
+    }
+
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarHistoryListLayout(dc));
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
+    }
+
+    private function setLabelColor(id as String, color as Number) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setColor(color);
+        }
+    }
+
+    private function clearLayoutLabels() as Void {
+        setLabel("historyListPosition", "");
+        setLabel("historyListNoData", "");
+        setLabel("historyDetailValue", "");
+        setLabel("historyDetailUnit", "");
+        setLabel("historyDetailZone", "");
+        setLabel("historyDetailDate", "");
     }
 
     public function onShow() as Void {
-        var current = WatchUi.getCurrentView();
-
-        if (
-            current.size() > 1 &&
-            current[1] instanceof BloodSugarHistoryListDelegate
-        ) {
-            (current[1] as BloodSugarHistoryListDelegate).refresh();
+        if (_delegate != null) {
+            (_delegate as BloodSugarHistoryListDelegate).refresh();
         }
-
         WatchUi.requestUpdate();
     }
 
@@ -136,20 +159,56 @@ class BloodSugarHistoryListView extends WatchUi.View {
 
     public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
         dc.clear();
-
+        clearLayoutLabels();
         if (!hasValidData()) {
-            drawNoData(dc);
+            setLabel("historyListNoData", "No history yet");
+            View.onUpdate(dc);
+            SafeText.drawBottom(dc, "BACK to return");
             return;
         }
 
         if (_showDetails) {
-            drawSelectedDetails(dc);
+            updateDetailLayout();
+            View.onUpdate(dc);
+            SafeText.drawBottom(dc, "UP/DOWN browse \n SELECT list");
             return;
         }
-
+        updatePositionLabel();
+        View.onUpdate(dc);
         drawList(dc);
+    }
+
+    private function updatePositionLabel() as Void {
+        var positionText =
+            (_selected + 1).format("%d") +
+            "/" +
+            _bloodSugar.size().format("%d");
+
+        setLabel("historyListPosition", positionText);
+    }
+
+    private function updateDetailLayout() as Void {
+        var historyIndex = getSelectedHistoryIndex();
+        if (historyIndex < 0) {
+            setLabel("historyListNoData", "No history yet");
+            return;
+        }
+        var value = _bloodSugar[historyIndex].toFloat();
+        var timestamp = _time[historyIndex].toNumber();
+        var zoneColor = getValueColor(value);
+        var positionText =
+            (_selected + 1).format("%d") +
+            " of " +
+            _bloodSugar.size().format("%d");
+
+        setLabel("historyListPosition", positionText);
+        setLabel("historyDetailValue", formatValueOnly(value));
+        setLabel("historyDetailUnit", _unit);
+        setLabel("historyDetailZone", getZoneLabel(value));
+        setLabel("historyDetailDate", formatDateTime(timestamp));
+        setLabelColor("historyDetailValue", zoneColor);
+        setLabelColor("historyDetailZone", zoneColor);
     }
 
     private function hasValidData() as Boolean {
@@ -198,56 +257,27 @@ class BloodSugarHistoryListView extends WatchUi.View {
 
     private function drawList(dc as Graphics.Dc) as Void {
         var height = dc.getHeight();
-
         var rowFont = Graphics.FONT_XTINY;
         var rowHeight = dc.getFontHeight(rowFont) + 14;
-
         var centerY = height / 2;
-
         var visibleDistance = (height / 2 / rowHeight).toNumber() + 1;
-
         var firstListIndex = _selected - visibleDistance;
-
         var lastListIndex = _selected + visibleDistance;
-
         if (firstListIndex < 0) {
             firstListIndex = 0;
         }
-
         if (lastListIndex >= _bloodSugar.size()) {
             lastListIndex = _bloodSugar.size() - 1;
         }
-
         for (
             var listIndex = firstListIndex;
             listIndex <= lastListIndex;
             listIndex++
         ) {
             var rowOffset = listIndex - _selected;
-
             var rowCenterY = centerY + rowOffset * rowHeight;
-
             drawRow(dc, listIndex, rowCenterY, rowHeight);
         }
-
-        drawPositionIndicator(dc);
-    }
-
-    private function drawPositionIndicator(dc as Graphics.Dc) as Void {
-        var positionText =
-            (_selected + 1).format("%d") +
-            "/" +
-            _bloodSugar.size().format("%d");
-
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            dc.getWidth() / 2,
-            4,
-            Graphics.FONT_XTINY,
-            positionText,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
     }
 
     private function drawRow(
@@ -258,63 +288,40 @@ class BloodSugarHistoryListView extends WatchUi.View {
     ) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-
         var rowTop = rowCenterY - rowHeight / 2;
-
         var rowBottom = rowCenterY + rowHeight / 2;
-
         if (rowBottom < 0 || rowTop > height) {
             return;
         }
-
         var historyIndex = listIndex;
-
         var value = _bloodSugar[historyIndex].toFloat();
-
         var timestamp = _time[historyIndex].toNumber();
-
         var isSelected = listIndex == _selected;
-
         var valueColor = getValueColor(value);
-
         var distanceFromCenter = rowCenterY - height / 2;
-
         if (distanceFromCenter < 0) {
             distanceFromCenter = -distanceFromCenter;
         }
-
         var maximumDistance = height / 2;
-
         var distanceRatio =
             distanceFromCenter.toFloat() / maximumDistance.toFloat();
-
         var sideMargin = 10 + (distanceRatio * width * 0.18f).toNumber();
-
         var left = sideMargin;
         var right = width - sideMargin;
-
         if (isSelected) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
             dc.fillRectangle(left, rowTop, right - left, rowHeight);
         }
-
         dc.setColor(valueColor, Graphics.COLOR_BLACK);
-
         dc.fillRectangle(left + 4, rowTop + 4, 5, rowHeight - 8);
-
         var textColor = Graphics.COLOR_WHITE;
         var textBackground = Graphics.COLOR_BLACK;
-
         if (isSelected) {
             textColor = Graphics.COLOR_BLACK;
             textBackground = Graphics.COLOR_WHITE;
         }
-
         dc.setColor(textColor, textBackground);
-
         var textY = rowCenterY - dc.getFontHeight(Graphics.FONT_XTINY) / 2;
-
         dc.drawText(
             left + 14,
             textY,
@@ -322,7 +329,6 @@ class BloodSugarHistoryListView extends WatchUi.View {
             formatDateTime(timestamp),
             Graphics.TEXT_JUSTIFY_LEFT
         );
-
         dc.drawText(
             right - 5,
             textY,
@@ -330,82 +336,6 @@ class BloodSugarHistoryListView extends WatchUi.View {
             formatValue(value),
             Graphics.TEXT_JUSTIFY_RIGHT
         );
-    }
-
-    private function drawSelectedDetails(dc as Graphics.Dc) as Void {
-        var historyIndex = getSelectedHistoryIndex();
-
-        if (historyIndex < 0) {
-            drawNoData(dc);
-            return;
-        }
-
-        var width = dc.getWidth();
-        var height = dc.getHeight();
-
-        var centerX = width / 2;
-
-        var value = _bloodSugar[historyIndex].toFloat();
-
-        var timestamp = _time[historyIndex].toNumber();
-
-        var zoneColor = getValueColor(value);
-
-        var positionText =
-            (_selected + 1).format("%d") +
-            " of " +
-            _bloodSugar.size().format("%d");
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            8,
-            Graphics.FONT_XTINY,
-            positionText,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(zoneColor, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            (height * 0.25f).toNumber(),
-            Graphics.FONT_NUMBER_MEDIUM,
-            formatValueOnly(value),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            (height * 0.53f).toNumber(),
-            Graphics.FONT_SMALL,
-            _unit,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(zoneColor, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            (height * 0.66f).toNumber(),
-            Graphics.FONT_SMALL,
-            getZoneLabel(value),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_BLACK);
-
-        dc.drawText(
-            centerX,
-            (height * 0.77f).toNumber(),
-            Graphics.FONT_XTINY,
-            formatDateTime(timestamp),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        SafeText.drawBottomWithPadding(dc, "UP/DOWN browse \n SELECT list");
     }
 
     private function getValueColor(value as Float) as Number {
@@ -472,5 +402,11 @@ class BloodSugarHistoryListView extends WatchUi.View {
             ":" +
             info.min.format("%02d")
         );
+    }
+
+    public function setDelegate(
+        delegate as BloodSugarHistoryListDelegate
+    ) as Void {
+        _delegate = delegate;
     }
 }

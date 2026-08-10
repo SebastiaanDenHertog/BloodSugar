@@ -62,10 +62,8 @@ class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
 
         var zones = BloodSugarStore.getBloodSugarZones();
         var displayZones = [];
-
         for (var zoneIndex = 0; zoneIndex < zones.size(); zoneIndex++) {
             var zoneValue = zones[zoneIndex].toFloat();
-
             if (useMgdl) {
                 displayZones.add(BloodSugarStore.MollToMgdl(zoneValue));
             } else {

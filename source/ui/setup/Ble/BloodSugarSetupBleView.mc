@@ -35,34 +35,38 @@ class BloodSugarSetupBleView extends WatchUi.View {
         View.initialize();
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarSetupBleLayout(dc));
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
+    }
+
     public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
-        var totalWidth = dc.getWidth();
-        SafeText.drawTop(dc, "Setup");
 
-        var y = 100;
+        var status = _status;
+
         if (_isScanning) {
-            _status = "Searching...";
+            status = "Searching...";
         }
-        dc.drawText(
-            totalWidth / 2,
-            y,
-            Graphics.FONT_SMALL,
-            _status,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        y += 50;
 
-        if (_deviceName != null) {
-            dc.drawText(
-                totalWidth / 2,
-                y,
-                Graphics.FONT_SMALL,
-                "Found:" + _deviceName,
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+        setLabel("bleTitle", "Setup");
+        setLabel("bleStatus", status);
+
+        if (_deviceName != null && !_deviceName.equals("")) {
+            setLabel("bleDevice", "Found: " + _deviceName);
+        } else {
+            setLabel("bleDevice", "");
         }
+
+        View.onUpdate(dc);
     }
 
     function onHide() as Void {}

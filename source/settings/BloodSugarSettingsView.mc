@@ -46,6 +46,8 @@ class BloodSugarSettingsView extends WatchUi.View {
     private var _contextIndex as Number;
     private var _confirmBeforeSave as Boolean;
     private var _status as String;
+    private var _savedMode as Number;
+    private var _savedIndex as Number;
 
     public function initialize() {
         View.initialize();
@@ -64,6 +66,8 @@ class BloodSugarSettingsView extends WatchUi.View {
         _contextIndex = 0;
         _confirmBeforeSave = true;
         _status = "";
+        _savedMode = -1;
+        _savedIndex = -1;
     }
 
     public function setState(state as SettingsState) as Void {
@@ -86,7 +90,8 @@ class BloodSugarSettingsView extends WatchUi.View {
         _contextIndex = state.contextIndex;
         _confirmBeforeSave = state.confirmBeforeSave;
         _status = state.status;
-
+        _savedMode = state.savedMode;
+        _savedIndex = state.savedIndex;
         WatchUi.requestUpdate();
     }
 
@@ -94,6 +99,7 @@ class BloodSugarSettingsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
         drawHeader(dc);
+        drawSectionHeader(dc);
         if (_mode == MODE_ZONES) {
             drawZoneList(dc);
         } else {
@@ -102,29 +108,120 @@ class BloodSugarSettingsView extends WatchUi.View {
         drawInstructions(dc);
     }
 
-    private function drawHeader(dc as Graphics.Dc) as Void {
-        var title = "Settings";
+    private function drawSectionHeader(dc as Graphics.Dc) as Void {
+        var width = dc.getWidth();
+        var sectionY = getSectionY(dc);
+        var title = getSectionTitle();
+        var color = Graphics.COLOR_WHITE;
+        if (_mode == MODE_MAIN && _selected == 8) {
+            color = Graphics.COLOR_RED;
+        }
 
+        dc.setColor(color, Graphics.COLOR_BLACK);
+        dc.drawText(
+            (width * 8) / 100,
+            sectionY,
+            Graphics.FONT_XTINY,
+            title,
+            Graphics.TEXT_JUSTIFY_LEFT
+        );
+
+        var lineY = sectionY + dc.getFontHeight(Graphics.FONT_XTINY) + 1;
+        dc.drawLine((width * 8) / 100, lineY, (width * 92) / 100, lineY);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+    }
+
+    private function getSectionTitle() as String {
+        if (_mode == MODE_ZONES) {
+            return "GLUCOSE ZONES";
+        }
+        if (_selected <= 3) {
+            return "GENERAL";
+        }
+        if (_selected == 4) {
+            return "MONITOR";
+        }
+        if (_selected <= 7) {
+            return "NOTIFICATIONS";
+        }
+        return "DANGER";
+    }
+
+    private function drawHeader(dc as Graphics.Dc) as Void {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var title = "Settings";
         if (_mode == MODE_ZONES) {
             title = "Glucose zones";
         }
-
+        var titleFont = Graphics.FONT_MEDIUM;
+        if (height < 220) {
+            titleFont = Graphics.FONT_SMALL;
+        }
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.drawText(
-            dc.getWidth() / 2,
-            (dc.getHeight() * 6) / 100,
-            Graphics.FONT_MEDIUM,
+            width / 2,
+            2,
+            titleFont,
             title,
             Graphics.TEXT_JUSTIFY_CENTER
         );
     }
+    private function getSectionY(dc as Graphics.Dc) as Number {
+        var titleFont = Graphics.FONT_MEDIUM;
+        if (dc.getHeight() < 220) {
+            titleFont = Graphics.FONT_SMALL;
+        }
+        return 2 + dc.getFontHeight(titleFont) + 2;
+    }
 
     private function drawMainList(dc as Graphics.Dc) as Void {
-        drawList(dc, _selected, MAIN_ITEM_COUNT, false);
+        drawSectionList(dc, _selected);
     }
 
     private function drawZoneList(dc as Graphics.Dc) as Void {
         drawList(dc, _zoneSelected, ZONE_ITEM_COUNT, true);
+    }
+
+    private function getListStartY(dc as Graphics.Dc) as Number {
+        var sectionY = getSectionY(dc);
+        return sectionY + dc.getFontHeight(Graphics.FONT_XTINY) + 5;
+    }
+
+    private function drawSectionList(
+        dc as Graphics.Dc,
+        selectedIndex as Number
+    ) as Void {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var rowWidth = (width * 88) / 100;
+        var rowHeight = (height * 12) / 100;
+        var startY = getListStartY(dc);
+        var centerX = width / 2;
+        var sectionStart = getSectionStart(selectedIndex);
+        var sectionEnd = getSectionEnd(selectedIndex);
+        var row = 0;
+        for (var index = sectionStart; index <= sectionEnd; index += 1) {
+            var y = startY + row * rowHeight;
+            var isSelected = index == selectedIndex;
+            var isSaved =
+                isSelected && _savedMode == MODE_MAIN && _savedIndex == index;
+            var isDanger = index == 8;
+            drawRow(
+                dc,
+                centerX,
+                y,
+                rowWidth,
+                rowHeight - 3,
+                getMainTitle(index),
+                getMainValue(index),
+                isSelected,
+                isSaved,
+                isDanger
+            );
+
+            row += 1;
+        }
     }
 
     private function drawList(
@@ -136,12 +233,32 @@ class BloodSugarSettingsView extends WatchUi.View {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var rowWidth = (width * 88) / 100;
-        var rowHeight = (height * 13) / 100;
-        var startY = (height * 22) / 100;
+        var rowHeight = (height * 11) / 100;
+        var startY = (height * 26) / 100;
         var centerX = width / 2;
-        for (var offset = -2; offset <= 2; offset += 1) {
-            var index = wrapIndex(selectedIndex + offset, itemCount);
-            var y = startY + (offset + 2) * rowHeight;
+        var visibleCount = 5;
+        var firstIndex = selectedIndex - 2;
+
+        if (firstIndex < 0) {
+            firstIndex = 0;
+        }
+
+        var maxFirstIndex = itemCount - visibleCount;
+
+        if (maxFirstIndex < 0) {
+            maxFirstIndex = 0;
+        }
+
+        if (firstIndex > maxFirstIndex) {
+            firstIndex = maxFirstIndex;
+        }
+
+        for (var row = 0; row < visibleCount; row += 1) {
+            var index = firstIndex + row;
+            if (index >= itemCount) {
+                break;
+            }
+            var y = startY + row * rowHeight;
             var title = "";
             var value = "";
             if (zoneList) {
@@ -151,15 +268,21 @@ class BloodSugarSettingsView extends WatchUi.View {
                 title = getMainTitle(index);
                 value = getMainValue(index);
             }
+            var isSelected = index == selectedIndex;
+            var isSaved =
+                isSelected && _savedMode == _mode && _savedIndex == index;
+            var isDanger = !zoneList && index == 8;
             drawRow(
                 dc,
                 centerX,
                 y,
                 rowWidth,
-                rowHeight - 4,
+                rowHeight - 3,
                 title,
                 value,
-                offset == 0
+                isSelected,
+                isSaved,
+                isDanger
             );
         }
     }
@@ -172,25 +295,47 @@ class BloodSugarSettingsView extends WatchUi.View {
         height as Number,
         title as String,
         value as String,
-        selected as Boolean
+        selected as Boolean,
+        saved as Boolean,
+        danger as Boolean
     ) as Void {
         var x = centerX - width / 2;
         var font = Graphics.FONT_XTINY;
-        var textY = y + (height - dc.getFontHeight(font)) / 2;
-        var padding = 10;
-        if (selected) {
+        var fontHeight = dc.getFontHeight(font);
+        var textY = y + (height - fontHeight) / 2;
+        var padding = 6;
+        var gap = 6;
+        if (selected && saved) {
+            dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_GREEN);
+            dc.fillRectangle(x, y, width, height);
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_GREEN);
+        } else if (selected && danger) {
+            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_RED);
+            dc.fillRectangle(x, y, width, height);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_RED);
+        } else if (selected) {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
             dc.fillRectangle(x, y, width, height);
             dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
+        } else if (danger) {
+            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_BLACK);
         } else {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         }
-
+        var availableWidth = width - padding * 2;
+        var maximumValueWidth = (availableWidth * 42) / 100;
+        var valueText = shortenToWidth(dc, value, font, maximumValueWidth);
+        var valueWidth = dc.getTextWidthInPixels(valueText, font);
+        var maximumTitleWidth = availableWidth - valueWidth - gap;
+        if (maximumTitleWidth < 1) {
+            maximumTitleWidth = 1;
+        }
+        var titleText = shortenToWidth(dc, title, font, maximumTitleWidth);
         dc.drawText(
             x + padding,
             textY,
             font,
-            shorten(title, 18),
+            titleText,
             Graphics.TEXT_JUSTIFY_LEFT
         );
 
@@ -198,11 +343,37 @@ class BloodSugarSettingsView extends WatchUi.View {
             x + width - padding,
             textY,
             font,
-            shorten(value, 14),
+            valueText,
             Graphics.TEXT_JUSTIFY_RIGHT
         );
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+    }
+
+    private function getSectionStart(index as Number) as Number {
+        if (index <= 3) {
+            return 0;
+        }
+        if (index == 4) {
+            return 4;
+        }
+        if (index <= 7) {
+            return 5;
+        }
+        return 8;
+    }
+
+    private function getSectionEnd(index as Number) as Number {
+        if (index <= 3) {
+            return 3;
+        }
+        if (index == 4) {
+            return 4;
+        }
+        if (index <= 7) {
+            return 7;
+        }
+        return 8;
     }
 
     private function drawInstructions(dc as Graphics.Dc) as Void {
@@ -226,24 +397,24 @@ class BloodSugarSettingsView extends WatchUi.View {
             return "Glucose zones";
         }
         if (index == 2) {
-            return "Monitor setup";
-        }
-        if (index == 3) {
-            return "Notifications";
-        }
-        if (index == 4) {
-            return "Low notification";
-        }
-        if (index == 5) {
-            return "High notification";
-        }
-        if (index == 6) {
             return "Default context";
         }
-        if (index == 7) {
+        if (index == 3) {
             return "Confirm save";
         }
-        return "Delete history";
+        if (index == 4) {
+            return "Monitor setup";
+        }
+        if (index == 5) {
+            return "Notifications";
+        }
+        if (index == 6) {
+            return "Low notification";
+        }
+        if (index == 7) {
+            return "High notification";
+        }
+        return "Delete all history";
     }
 
     private function getMainValue(index as Number) as String {
@@ -254,24 +425,24 @@ class BloodSugarSettingsView extends WatchUi.View {
             return "Open";
         }
         if (index == 2) {
-            return "Open";
-        }
-        if (index == 3) {
-            return getOnOff(_notificationsEnabled);
-        }
-        if (index == 4) {
-            return formatThreshold(_notificationLowMmol);
-        }
-        if (index == 5) {
-            return formatThreshold(_notificationHighMmol);
-        }
-        if (index == 6) {
             return BloodSugarStore.getContextLabel(_contextIndex);
         }
-        if (index == 7) {
+        if (index == 3) {
             return getOnOff(_confirmBeforeSave);
         }
-        return "Delete";
+        if (index == 4) {
+            return "Open";
+        }
+        if (index == 5) {
+            return getOnOff(_notificationsEnabled);
+        }
+        if (index == 6) {
+            return formatThreshold(_notificationLowMmol);
+        }
+        if (index == 7) {
+            return formatThreshold(_notificationHighMmol);
+        }
+        return "DELETE";
     }
 
     private function getZoneTitle(index as Number) as String {
@@ -325,13 +496,38 @@ class BloodSugarSettingsView extends WatchUi.View {
         return index;
     }
 
-    private function shorten(
+    private function shortenToWidth(
+        dc as Graphics.Dc,
         value as String,
-        maximumLength as Number
+        font,
+        maximumWidth as Number
     ) as String {
-        if (value.length() <= maximumLength) {
+        if (dc.getTextWidthInPixels(value, font) <= maximumWidth) {
             return value;
         }
-        return value.substring(0, maximumLength - 3) + "...";
+
+        var ellipsis = "...";
+
+        /*
+         * If even "..." does not fit,
+         * return an empty string.
+         */
+        if (dc.getTextWidthInPixels(ellipsis, font) > maximumWidth) {
+            return "";
+        }
+
+        var endIndex = value.length();
+
+        while (endIndex > 0) {
+            var shortened = value.substring(0, endIndex) + ellipsis;
+
+            if (dc.getTextWidthInPixels(shortened, font) <= maximumWidth) {
+                return shortened;
+            }
+
+            endIndex -= 1;
+        }
+
+        return ellipsis;
     }
 }

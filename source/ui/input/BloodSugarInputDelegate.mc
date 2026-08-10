@@ -207,6 +207,12 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
             updateView();
             return;
         }
+
+        if (_isEditing) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+            return;
+        }
+
         var view = new BloodSugarHistoryListView();
         var delegate = new BloodSugarHistoryListDelegate(view);
         WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);

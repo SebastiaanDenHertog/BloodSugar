@@ -37,7 +37,8 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
         BehaviorDelegate.initialize();
         _select = 1;
         _parentView = view;
-        updateView();
+        _parentView.setDelegate(self);
+        refresh();
     }
 
     public function updateView() as Void {
@@ -101,6 +102,18 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onSelect() as Boolean {
+        if (times == null || times.size() == 0) {
+            return true;
+        }
+
+        if (_select < 1) {
+            _select = 1;
+        }
+
+        if (_select > times.size()) {
+            _select = times.size();
+        }
+
         editSelect(times[_select - 1]);
         return true;
     }
@@ -130,5 +143,16 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
 
     public function refresh() as Void {
         updateView();
+        if (times == null || times.size() == 0) {
+            _select = 1;
+            return;
+        }
+        if (_select < 1) {
+            _select = 1;
+        }
+        if (_select > times.size()) {
+            _select = times.size();
+        }
+        updateSelect();
     }
 }

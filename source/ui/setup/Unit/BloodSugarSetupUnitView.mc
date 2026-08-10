@@ -29,7 +29,6 @@ import Toybox.WatchUi;
 class BloodSugarSetupUnitView extends WatchUi.View {
     private var _useMgdl as Boolean;
     private var _useBloodMonitor as Number;
-
     private var _stage as Number;
 
     public function initialize() {
@@ -37,6 +36,18 @@ class BloodSugarSetupUnitView extends WatchUi.View {
         _useMgdl = BloodSugarStore.getUseMgdl();
         _useBloodMonitor = 0;
         _stage = 0;
+    }
+
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarSetupUnitLayout(dc));
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
     }
 
     public function setEntry(
@@ -54,55 +65,23 @@ class BloodSugarSetupUnitView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var centerX = dc.getWidth() / 2;
-        var centerY = dc.getHeight() / 2;
-        SafeText.drawTop(dc, "Setup");
+        setLabel("unitTitle", "Setup");
 
         if (_stage == 0) {
-            dc.drawText(
-                centerX,
-                centerY - 35,
-                Graphics.FONT_XTINY,
-                "Choose your display unit",
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+            setLabel("unitPrompt", "Choose your display unit");
 
-            dc.drawText(
-                centerX,
-                centerY + 10,
-                Graphics.FONT_MEDIUM,
-                BloodSugarStore.getUnitText(_useMgdl),
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+            setLabel("unitValue", BloodSugarStore.getUnitText(_useMgdl));
+        } else {
+            setLabel("unitPrompt", "Connect a blood monitor?");
 
-            SafeText.drawBottomWithPadding(
-                dc,
-                "UP/DOWN change\nSELECT save",
-                14
+            setLabel(
+                "unitValue",
+                BloodSugarStore.getBloodMonitorText(_useBloodMonitor)
             );
         }
-        if (_stage == 1) {
-            dc.drawText(
-                centerX,
-                centerY - 70,
-                Graphics.FONT_XTINY,
-                "Do you want to connect\na blood monitor?",
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
 
-            dc.drawText(
-                centerX,
-                centerY + 10,
-                Graphics.FONT_MEDIUM,
-                BloodSugarStore.getBloodMonitorText(_useBloodMonitor),
-                Graphics.TEXT_JUSTIFY_CENTER
-            );
+        View.onUpdate(dc);
 
-            SafeText.drawBottomWithPadding(
-                dc,
-                "UP/DOWN change\nSELECT save",
-                14
-            );
-        }
+        SafeText.drawBottomWithPadding(dc, "UP/DOWN change\nSELECT save", 14);
     }
 }

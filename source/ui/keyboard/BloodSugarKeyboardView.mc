@@ -55,8 +55,19 @@ class BloodSugarKeyboardView extends WatchUi.View {
         _height = 0;
     }
 
+    public function onLayout(dc as Graphics.Dc) as Void {
+        setLayout(Rez.Layouts.BloodSugarKeyboardLayout(dc));
+    }
+
     public function getText() as String {
         return _text;
+    }
+
+    private function setLabel(id as String, value as String) as Void {
+        var drawable = findDrawableById(id);
+        if (drawable instanceof WatchUi.Text) {
+            (drawable as WatchUi.Text).setText(value);
+        }
     }
 
     public function toggleUppercase() as Void {
@@ -99,8 +110,12 @@ class BloodSugarKeyboardView extends WatchUi.View {
         _height = dc.getHeight();
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
-        drawInputArea(dc);
+        drawInputField(dc);
         drawKeyboard(dc);
+        setLabel("keyboardTitle", _title);
+        setLabel("keyboardInput", getDisplayText());
+        setLabel("keyboardCounter", _text.length() + "/" + _maximumLength);
+        View.onUpdate(dc);
     }
 
     public function getKeyAt(tapX as Number, tapY as Number) as String? {
@@ -143,37 +158,14 @@ class BloodSugarKeyboardView extends WatchUi.View {
         }
         return null;
     }
-
-    private function drawInputArea(dc as Graphics.Dc) as Void {
+    private function drawInputField(dc as Graphics.Dc) as Void {
         var centerX = _width / 2;
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.drawText(
-            centerX,
-            (_height * 5) / 100,
-            Graphics.FONT_MEDIUM,
-            _title,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
         var fieldWidth = (_width * 76) / 100;
         var fieldHeight = (_height * 13) / 100;
         var fieldX = centerX - fieldWidth / 2;
         var fieldY = (_height * 17) / 100;
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.drawRectangle(fieldX, fieldY, fieldWidth, fieldHeight);
-        dc.drawText(
-            centerX,
-            fieldY + (fieldHeight - dc.getFontHeight(Graphics.FONT_SMALL)) / 2,
-            Graphics.FONT_SMALL,
-            getDisplayText(),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        var counter = _text.length() + "/" + _maximumLength;
-        dc.drawText(
-            centerX,
-            (_height * 33) / 100,
-            Graphics.FONT_XTINY,
-            counter,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
     }
 
     private function drawKeyboard(dc as Graphics.Dc) as Void {
