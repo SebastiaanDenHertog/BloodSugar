@@ -29,6 +29,9 @@ import Toybox.Lang;
 class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarInfoView;
     private var _message as String;
+    private var _menuView = new Rez.Menus.MainMenu() as Rez.Menus.MainMenu;
+    private var _menuDelegate =
+        new BloodSugarMenuDelegate() as BloodSugarMenuDelegate;
 
     public function initialize(view as BloodSugarInfoView) {
         BehaviorDelegate.initialize();
@@ -57,5 +60,10 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
 
     private function updateView() as Void {
         _parentView.setEntry(_message);
+    }
+
+    public function onMenu() as Boolean {
+        WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
+        return true;
     }
 }
