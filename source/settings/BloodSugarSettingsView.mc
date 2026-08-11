@@ -197,7 +197,6 @@ class BloodSugarSettingsView extends WatchUi.View {
         var rowWidth = (width * 88) / 100;
         var rowHeight = (height * 12) / 100;
         var startY = getListStartY(dc);
-        var centerX = width / 2;
         var sectionStart = getSectionStart(selectedIndex);
         var sectionEnd = getSectionEnd(selectedIndex);
         var row = 0;
@@ -209,7 +208,6 @@ class BloodSugarSettingsView extends WatchUi.View {
             var isDanger = index == 8;
             drawRow(
                 dc,
-                centerX,
                 y,
                 rowWidth,
                 rowHeight - 3,
@@ -235,7 +233,6 @@ class BloodSugarSettingsView extends WatchUi.View {
         var rowWidth = (width * 88) / 100;
         var rowHeight = (height * 11) / 100;
         var startY = (height * 26) / 100;
-        var centerX = width / 2;
         var visibleCount = 5;
         var firstIndex = selectedIndex - 2;
 
@@ -274,7 +271,6 @@ class BloodSugarSettingsView extends WatchUi.View {
             var isDanger = !zoneList && index == 8;
             drawRow(
                 dc,
-                centerX,
                 y,
                 rowWidth,
                 rowHeight - 3,
@@ -289,7 +285,6 @@ class BloodSugarSettingsView extends WatchUi.View {
 
     private function drawRow(
         dc as Graphics.Dc,
-        centerX as Number,
         y as Number,
         width as Number,
         height as Number,
@@ -299,7 +294,7 @@ class BloodSugarSettingsView extends WatchUi.View {
         saved as Boolean,
         danger as Boolean
     ) as Void {
-        var x = centerX - width / 2;
+        var x = (dc.getWidth() - width) / 2;
         var font = Graphics.FONT_XTINY;
         var fontHeight = dc.getFontHeight(font);
         var textY = y + (height - fontHeight) / 2;
@@ -322,6 +317,7 @@ class BloodSugarSettingsView extends WatchUi.View {
         } else {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         }
+
         var availableWidth = width - padding * 2;
         var maximumValueWidth = (availableWidth * 42) / 100;
         var valueText = shortenToWidth(dc, value, font, maximumValueWidth);
@@ -330,6 +326,7 @@ class BloodSugarSettingsView extends WatchUi.View {
         if (maximumTitleWidth < 1) {
             maximumTitleWidth = 1;
         }
+
         var titleText = shortenToWidth(dc, title, font, maximumTitleWidth);
         dc.drawText(
             x + padding,

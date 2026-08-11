@@ -42,7 +42,14 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function updateView() as Void {
-        var history = BloodSugarStore.getHistory();
+        var history;
+        if (BloodSugarSystem.isLowMemoryDevice()) {
+            history = BloodSugarStore.getPartOfHistory(
+                BloodSugarSystem.getMaximumHistoryPoints()
+            );
+        } else {
+            history = BloodSugarStore.getHistory();
+        }
         times = [];
         var values = [];
         var useMgdl = BloodSugarStore.getUseMgdl();
