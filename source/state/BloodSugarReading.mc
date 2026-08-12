@@ -55,6 +55,26 @@ module BloodSugarReading {
     const DEFAULT_SOURCE = SOURCE_MANUAL;
     const DEFAULT_CONTEXT = "none";
 
+    const SOURCE_BLE = "ble";
+    const SOURCE_UNKNOWN = "unknown";
+
+    const PACKED_STORAGE_SCHEMA = 1;
+
+    const PACKED_HEADER_SIZE = 1;
+    const PACKED_RECORD_SIZE = 7;
+
+    const PACKED_TIME_OFFSET = 0;
+    const PACKED_GLUCOSE_OFFSET = 4;
+    const PACKED_METADATA_OFFSET = 6;
+
+    const SOURCE_ID_MANUAL = 0;
+    const SOURCE_ID_LIBRE_LINK_UP = 1;
+    const SOURCE_ID_BLE = 2;
+    const SOURCE_ID_UNKNOWN = 15;
+
+    const GLUCOSE_SCALE = 100.0f;
+    const MAX_PACKED_GLUCOSE = 65535;
+
     typedef Record as Array<Storage.ValueType>;
 
     public function create(
@@ -68,16 +88,183 @@ module BloodSugarReading {
         );
     }
 
-    /*
-     * Converts an older stored record into the current format.
-     *
-     * Supported old formats:
-     *
-     * [time, value]
-     * [time, value, source]
-     * [time, value, source, context]
-     * [time, value, source, context, schema]
-     */
+    public function createPackedHistory(
+        recordCount as Number
+    ) as Lang.ByteArray {
+        if (recordCount < 0) {
+            recordCount = 0;
+        }
+
+        var byteCount = PACKED_HEADER_SIZE + recordCount * PACKED_RECORD_SIZE;
+        var bytes = new [byteCount]b;
+        bytes[0] = PACKED_STORAGE_SCHEMA;
+        return bytes;
+    }
+
+    public function isPackedHistory(value) as Boolean {
+        if (!(value instanceof Lang.ByteArray)) {
+            return false;
+        }
+        var bytes = value as Lang.ByteArray;
+        if (bytes.size() < PACKED_HEADER_SIZE) {
+            return false;
+        }
+
+        if (bytes[0].toNumber() != PACKED_STORAGE_SCHEMA) {
+            return false;
+        }
+
+        return (bytes.size() - PACKED_HEADER_SIZE) % PACKED_RECORD_SIZE == 0;
+    }
+
+    public function getPackedCount(bytes as Lang.ByteArray) as Number {
+        if (!isPackedHistory(bytes)) {
+            return 0;
+        }
+
+        return (bytes.size() - PACKED_HEADER_SIZE) / PACKED_RECORD_SIZE;
+    }
+
+    public function getPackedRecordOffset(index as Number) as Number {
+        return PACKED_HEADER_SIZE + index * PACKED_RECORD_SIZE;
+    }
+
+    public function canPackValue(valueMmol as Float) as Boolean {
+        if (valueMmol <= 0.0f) {
+            return false;
+        }
+
+        var scaledValue = (valueMmol * GLUCOSE_SCALE + 0.5f).toNumber();
+        return scaledValue > 0 && scaledValue <= MAX_PACKED_GLUCOSE;
+    }
+
+    public function writePackedRecord(
+        bytes as Lang.ByteArray,
+        index as Number,
+        timestamp as Number,
+        valueMmol as Float,
+        sourceId as Number,
+        contextId as Number
+    ) as Boolean {
+        var count = getPackedCount(bytes);
+
+        if (
+            index < 0 ||
+            index >= count ||
+            timestamp <= 0 ||
+            !canPackValue(valueMmol)
+        ) {
+            return false;
+        }
+
+        var scaledValue = (valueMmol * GLUCOSE_SCALE + 0.5f).toNumber();
+        var offset = getPackedRecordOffset(index);
+        bytes[offset + PACKED_TIME_OFFSET] = timestamp & 0xff;
+        bytes[offset + PACKED_TIME_OFFSET + 1] = (timestamp >> 8) & 0xff;
+        bytes[offset + PACKED_TIME_OFFSET + 2] = (timestamp >> 16) & 0xff;
+        bytes[offset + PACKED_TIME_OFFSET + 3] = (timestamp >> 24) & 0xff;
+        bytes[offset + PACKED_GLUCOSE_OFFSET] = scaledValue & 0xff;
+        bytes[offset + PACKED_GLUCOSE_OFFSET + 1] = (scaledValue >> 8) & 0xff;
+
+        bytes[offset + PACKED_METADATA_OFFSET] =
+            ((sourceId & 0x0f) << 4) | (contextId & 0x0f);
+
+        return true;
+    }
+
+    public function getPackedTime(
+        bytes as Lang.ByteArray,
+        index as Number
+    ) as Number {
+        var offset = getPackedRecordOffset(index) + PACKED_TIME_OFFSET;
+
+        return (
+            bytes[offset].toNumber() |
+            (bytes[offset + 1].toNumber() << 8) |
+            (bytes[offset + 2].toNumber() << 16) |
+            (bytes[offset + 3].toNumber() << 24)
+        );
+    }
+
+    public function getPackedValueMmol(
+        bytes as Lang.ByteArray,
+        index as Number
+    ) as Float {
+        var offset = getPackedRecordOffset(index) + PACKED_GLUCOSE_OFFSET;
+        var scaledValue =
+            bytes[offset].toNumber() | (bytes[offset + 1].toNumber() << 8);
+
+        return scaledValue.toFloat() / GLUCOSE_SCALE;
+    }
+
+    public function getPackedSourceId(
+        bytes as Lang.ByteArray,
+        index as Number
+    ) as Number {
+        var offset = getPackedRecordOffset(index) + PACKED_METADATA_OFFSET;
+        return (bytes[offset].toNumber() >> 4) & 0x0f;
+    }
+
+    public function getPackedContextId(
+        bytes as Lang.ByteArray,
+        index as Number
+    ) as Number {
+        var offset = getPackedRecordOffset(index) + PACKED_METADATA_OFFSET;
+        return bytes[offset].toNumber() & 0x0f;
+    }
+
+    public function copyPackedRecord(
+        source as Lang.ByteArray,
+        sourceIndex as Number,
+        destination as Lang.ByteArray,
+        destinationIndex as Number
+    ) as Void {
+        var sourceOffset = getPackedRecordOffset(sourceIndex);
+
+        var destinationOffset = getPackedRecordOffset(destinationIndex);
+
+        for (
+            var byteIndex = 0;
+            byteIndex < PACKED_RECORD_SIZE;
+            byteIndex += 1
+        ) {
+            destination[destinationOffset + byteIndex] =
+                source[sourceOffset + byteIndex];
+        }
+    }
+
+    public function getSourceId(source as String) as Number {
+        if (source.equals(SOURCE_MANUAL)) {
+            return SOURCE_ID_MANUAL;
+        }
+
+        if (source.equals(SOURCE_LIBRE_LINK_UP)) {
+            return SOURCE_ID_LIBRE_LINK_UP;
+        }
+
+        if (source.equals(SOURCE_BLE)) {
+            return SOURCE_ID_BLE;
+        }
+
+        return SOURCE_ID_UNKNOWN;
+    }
+
+    public function getSourceFromId(sourceId as Number) as String {
+        if (sourceId == SOURCE_ID_MANUAL) {
+            return SOURCE_MANUAL;
+        }
+
+        if (sourceId == SOURCE_ID_LIBRE_LINK_UP) {
+            return SOURCE_LIBRE_LINK_UP;
+        }
+
+        if (sourceId == SOURCE_ID_BLE) {
+            return SOURCE_BLE;
+        }
+
+        return SOURCE_UNKNOWN;
+    }
+
     public function normalize(rawValue, historyIndex as Number) as Record? {
         if (!(rawValue instanceof Array)) {
             System.println(
@@ -106,31 +293,15 @@ module BloodSugarReading {
         }
 
         var timestamp = toTimestamp(rawReading[TIME]);
-
         var valueMmol = toFloatValue(rawReading[VALUE_MMOL]);
-
-        if (timestamp == null) {
-            System.println(
-                "History[" +
-                    historyIndex +
-                    "] invalid timestamp; type=" +
-                    describeType(rawReading[TIME])
-            );
-
+        if (
+            timestamp == null ||
+            (timestamp as Number) <= 0 ||
+            valueMmol == null ||
+            !canPackValue(valueMmol as Float)
+        ) {
             return null;
         }
-
-        if (valueMmol == null || (valueMmol as Float) <= 0.0f) {
-            System.println(
-                "History[" +
-                    historyIndex +
-                    "] invalid glucose value; type=" +
-                    describeType(rawReading[VALUE_MMOL])
-            );
-
-            return null;
-        }
-
         var source = DEFAULT_SOURCE;
         var context = DEFAULT_CONTEXT;
 
@@ -269,6 +440,9 @@ module BloodSugarReading {
     public function describeType(value) as String {
         if (value == null) {
             return "Null";
+        }
+        if (value instanceof Lang.ByteArray) {
+            return "ByteArray";
         }
 
         if (value instanceof Array) {

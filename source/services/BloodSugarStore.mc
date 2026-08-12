@@ -57,157 +57,273 @@ module BloodSugarStore {
     const NOTIFICATION_LOW = 1;
     const NOTIFICATION_HIGH = 2;
 
-    var _history = null;
-    var _historyNeedsRepair = false;
-
     const MONITOR_NONE = 0;
     const MONITOR_ABBOTT = 1;
     const MONITOR_BLE = 2;
 
+    var _historyBytes = null;
+    var _historyNeedsRepair = false as Boolean;
+    var _historyWritable = true;
+
     function load() {
+        if (_historyBytes != null) {
+            return _historyBytes;
+        }
         var saved = null;
 
         try {
             saved = Storage.getValue(STORAGE_KEY);
         } catch (error) {
-            _history = [] as Array;
+            _historyBytes = BloodSugarReading.createPackedHistory(0);
+            _historyWritable = false;
             _historyNeedsRepair = false;
-            return _history;
+            return _historyBytes;
         }
-        if (!(saved instanceof Array)) {
-            _history = [] as Array;
+        if (saved == null) {
+            _historyBytes = BloodSugarReading.createPackedHistory(0);
+            _historyWritable = true;
             _historyNeedsRepair = false;
-            return _history;
+            return _historyBytes;
         }
-        var loadedHistory = [] as Array<Storage.ValueType>;
+        if (saved instanceof Lang.ByteArray) {
+            var bytes = saved as Lang.ByteArray;
+            if (!BloodSugarReading.isPackedHistory(bytes)) {
+                System.println("Unsupported packed glucose history");
+                _historyBytes = BloodSugarReading.createPackedHistory(0);
+                _historyWritable = false;
+                _historyNeedsRepair = false;
+                return _historyBytes;
+            }
+            _historyBytes = bytes;
+            _historyWritable = true;
+            _historyNeedsRepair = false;
+            var count = BloodSugarReading.getPackedCount(bytes);
+            if (count > MAX_POINTS) {
+                var trimmed = BloodSugarReading.createPackedHistory(MAX_POINTS);
+                var startIndex = count - MAX_POINTS;
+                for (var index = 0; index < MAX_POINTS; index += 1) {
+                    BloodSugarReading.copyPackedRecord(
+                        bytes,
+                        startIndex + index,
+                        trimmed,
+                        index
+                    );
+                }
+                _historyBytes = trimmed;
+
+                if (savePacked(trimmed)) {
+                    _historyNeedsRepair = false;
+                } else {
+                    _historyNeedsRepair = true;
+                }
+            }
+            return _historyBytes;
+        }
+
+        if (saved instanceof Array) {
+            var migrated = migrateLegacyHistory(saved as Array);
+            _historyBytes = migrated;
+
+            _historyWritable = true;
+
+            if (savePacked(migrated)) {
+                _historyNeedsRepair = false;
+            } else {
+                _historyNeedsRepair = true;
+            }
+
+            return _historyBytes;
+        }
+
+        _historyBytes = BloodSugarReading.createPackedHistory(0);
+        _historyWritable = false;
         _historyNeedsRepair = false;
-        if (!(saved instanceof Array)) {
-            _history = loadedHistory;
-            return _history;
-        }
-        var storedHistory = saved as Array;
-        for (var index = 0; index < storedHistory.size(); index += 1) {
-            var rawReading = storedHistory[index];
-            var normalizedReading = BloodSugarReading.normalize(
-                rawReading,
+        return _historyBytes;
+    }
+
+    function invalidateHistoryCache() as Void {
+        _historyBytes = null;
+    }
+
+    function migrateLegacyHistory(legacyHistory as Array) as Lang.ByteArray {
+        var validCount = 0;
+
+        for (var index = 0; index < legacyHistory.size(); index += 1) {
+            var normalized = BloodSugarReading.normalize(
+                legacyHistory[index],
                 index
             );
-            if (normalizedReading == null) {
-                _historyNeedsRepair = true;
+
+            if (
+                normalized != null &&
+                normalized[BloodSugarReading.TIME].toNumber() > 0 &&
+                BloodSugarReading.canPackValue(
+                    normalized[BloodSugarReading.VALUE_MMOL].toFloat()
+                )
+            ) {
+                validCount += 1;
+            }
+        }
+
+        var keepCount = validCount;
+        if (keepCount > MAX_POINTS) {
+            keepCount = MAX_POINTS;
+        }
+
+        var skipValid = validCount - keepCount;
+        var packed = BloodSugarReading.createPackedHistory(keepCount);
+        var writeIndex = 0;
+        for (
+            var legacyIndex = 0;
+            legacyIndex < legacyHistory.size();
+            legacyIndex += 1
+        ) {
+            var reading = BloodSugarReading.normalize(
+                legacyHistory[legacyIndex],
+                legacyIndex
+            );
+
+            if (
+                reading == null ||
+                reading[BloodSugarReading.TIME].toNumber() <= 0 ||
+                !BloodSugarReading.canPackValue(
+                    reading[BloodSugarReading.VALUE_MMOL].toFloat()
+                )
+            ) {
                 continue;
             }
-            if (!BloodSugarReading.isCurrent(rawReading)) {
-                _historyNeedsRepair = true;
+
+            if (skipValid > 0) {
+                skipValid -= 1;
+                continue;
             }
-            loadedHistory.add(normalizedReading);
-        }
-        _history = loadedHistory;
 
-        if (_history.size() != storedHistory.size()) {
-            _historyNeedsRepair = true;
+            var source = reading[BloodSugarReading.SOURCE].toString();
+            var context = reading[BloodSugarReading.CONTEXT].toString();
+
+            if (
+                BloodSugarReading.writePackedRecord(
+                    packed,
+                    writeIndex,
+                    reading[BloodSugarReading.TIME].toNumber(),
+                    reading[BloodSugarReading.VALUE_MMOL].toFloat(),
+                    BloodSugarReading.getSourceId(source),
+                    getContextIndex(context)
+                )
+            ) {
+                writeIndex += 1;
+            }
         }
 
-        return _history;
+        return packed;
     }
 
     function historyNeedsRepair() as Boolean {
+        load();
         return _historyNeedsRepair;
     }
 
     function persistHistoryRepair() as Boolean {
+        load();
         if (!_historyNeedsRepair) {
             return true;
         }
 
-        if (_history == null) {
+        if (_historyBytes == null || !_historyWritable) {
             return false;
         }
 
-        if (!save()) {
+        if (!savePacked(_historyBytes as Lang.ByteArray)) {
             return false;
         }
+
         _historyNeedsRepair = false;
+
         return true;
     }
 
-    function normalizeHistory() as Void {
-        var normalized = [] as Array;
-
-        for (var index = 0; index < _history.size(); index += 1) {
-            var item = _history[index];
-
-            if (!(item instanceof Array)) {
-                continue;
-            }
-
-            var reading = item as Array;
-
-            if (reading.size() < 4) {
-                continue;
-            }
-
-            normalized.add(reading);
+    function getHistoryCount() as Number {
+        var value = load();
+        if (!(value instanceof Lang.ByteArray)) {
+            return 0;
         }
-
-        _history = normalized;
+        return BloodSugarReading.getPackedCount(value as Lang.ByteArray);
     }
 
-    function toStoredFloat(value) as Float? {
-        if (value instanceof Float) {
-            return value as Float;
-        }
+    function getReadingAt(index as Number) {
+        var value = load();
 
-        if (value instanceof Number) {
-            return (value as Number).toFloat();
-        }
-
-        if (value instanceof Long) {
-            return (value as Long).toFloat();
-        }
-
-        if (value instanceof Double) {
-            return (value as Double).toFloat();
-        }
-
-        return null;
-    }
-
-    function getHistory() {
-        if (_history == null) {
-            load();
-        }
-
-        return _history;
-    }
-
-    function getPartOfHistory(items as Number) as Array<Object?> {
-        var history = getHistory();
-
-        if (history.size() == 0) {
+        if (!(value instanceof Lang.ByteArray)) {
             return null;
         }
 
-        if (items > history.size()) {
-            items = history.size();
+        var bytes = value as Lang.ByteArray;
+        var count = BloodSugarReading.getPackedCount(bytes);
+        if (index < 0 || index >= count) {
+            return null;
         }
 
-        history = history.slice(history.size() - items, history.size());
+        var contextId = BloodSugarReading.getPackedContextId(bytes, index);
+        var context = "none";
+        if (contextId >= 0 && contextId < getContextCount()) {
+            context = getContextKey(contextId);
+        }
+        return BloodSugarReading.create(
+            BloodSugarReading.getPackedTime(bytes, index),
+            BloodSugarReading.getPackedValueMmol(bytes, index),
+            BloodSugarReading.getSourceFromId(
+                BloodSugarReading.getPackedSourceId(bytes, index)
+            ),
+            context
+        );
+    }
+
+    function getHistory() {
+        var count = getHistoryCount();
+
+        var history = [] as Array;
+
+        for (var index = 0; index < count; index += 1) {
+            var reading = getReadingAt(index);
+
+            if (reading != null) {
+                history.add(reading);
+            }
+        }
+
+        return history;
+    }
+
+    function getPartOfHistory(items as Number) {
+        var count = getHistoryCount();
+
+        if (count == 0 || items <= 0) {
+            return null;
+        }
+
+        if (items > count) {
+            items = count;
+        }
+
+        var history = [] as Array;
+        var startIndex = count - items;
+        for (var index = startIndex; index < count; index += 1) {
+            var reading = getReadingAt(index);
+
+            if (reading != null) {
+                history.add(reading);
+            }
+        }
 
         return history;
     }
 
     function getLatestReading() as Array or Dictionary or Null {
-        var history = getHistory();
-        if (history == null) {
-            return null;
-        }
-        var count = history.size();
+        var count = getHistoryCount();
         if (count == 0) {
             return null;
         }
-        var index = count - 1;
-        var reading = history[index];
-        return reading;
+        return getReadingAt(count - 1);
     }
 
     function addReading(
@@ -215,52 +331,56 @@ module BloodSugarStore {
         inputSource as String,
         context as String
     ) as Boolean {
-        if (valueMmol <= 0.0f) {
+        if (!BloodSugarReading.canPackValue(valueMmol)) {
             return false;
         }
 
-        if (_history == null) {
-            load();
+        var value = load();
+
+        if (!(value instanceof Lang.ByteArray) || !_historyWritable) {
+            return false;
         }
 
-        var point = BloodSugarReading.create(
+        var candidate = insertPackedReadingSorted(
+            value as Lang.ByteArray,
+
             Time.now().value(),
             valueMmol,
-            inputSource,
-            normalizeContext(context)
+
+            BloodSugarReading.getSourceId(inputSource),
+
+            getContextIndex(context)
         );
 
-        var previousHistory = _history;
-        var candidateHistory = _history.slice(0, null);
-        candidateHistory.add(point);
-
-        if (candidateHistory.size() > MAX_POINTS) {
-            candidateHistory = candidateHistory.slice(
-                candidateHistory.size() - MAX_POINTS,
-                null
-            );
+        if (candidate == null) {
+            return false;
         }
 
-        _history = candidateHistory;
-
-        if (save()) {
-            return true;
+        if (!savePacked(candidate as Lang.ByteArray)) {
+            return false;
         }
 
-        _history = previousHistory;
-        return false;
+        _historyBytes = candidate;
+
+        return true;
     }
 
     function save() as Boolean {
-        if (_history == null) {
+        if (_historyBytes == null || !_historyWritable) {
             return false;
         }
 
+        return savePacked(_historyBytes as Lang.ByteArray);
+    }
+
+    function savePacked(bytes as Lang.ByteArray) as Boolean {
         try {
-            Storage.setValue(STORAGE_KEY, _history);
+            Storage.setValue(STORAGE_KEY, bytes);
+
             return true;
         } catch (error) {
             System.println("Could not save glucose history: " + error);
+
             return false;
         }
     }
@@ -269,21 +389,24 @@ module BloodSugarStore {
         if (bloodSugarValueTime == null) {
             return null;
         }
-        var data = getHistory();
-        for (var i = 0; i < data.size(); i++) {
-            var reading = data[i];
 
-            if (
-                reading != null &&
-                reading.size() > BloodSugarReading.TIME &&
-                reading[BloodSugarReading.TIME].toNumber() ==
-                    bloodSugarValueTime.toNumber()
-            ) {
-                return reading;
-            }
+        var value = load();
+
+        if (!(value instanceof Lang.ByteArray)) {
+            return null;
         }
 
-        return null;
+        var index = findPackedIndexByTime(
+            value as Lang.ByteArray,
+
+            bloodSugarValueTime.toNumber()
+        );
+
+        if (index < 0) {
+            return null;
+        }
+
+        return getReadingAt(index);
     }
 
     function updateReadingByTime(
@@ -291,72 +414,205 @@ module BloodSugarStore {
         valueMmol as Float,
         context as String
     ) as Boolean {
-        if (originalTime == null || valueMmol <= 0.0f) {
-            return false;
-        }
-
-        var history = getHistory();
-        var readingIndex = -1;
-
-        for (var i = 0; i < history.size(); i++) {
-            var reading = history[i];
-
-            if (
-                reading != null &&
-                reading.size() > BloodSugarReading.TIME &&
-                reading[BloodSugarReading.TIME].toNumber() ==
-                    originalTime.toNumber()
-            ) {
-                readingIndex = i;
-                break;
-            }
-        }
-
-        if (readingIndex < 0) {
-            return false;
-        }
-
-        var oldReading = history[readingIndex];
-        var source = "manual";
         if (
-            oldReading.size() > BloodSugarReading.SOURCE &&
-            oldReading[BloodSugarReading.SOURCE] != null
+            originalTime == null ||
+            !BloodSugarReading.canPackValue(valueMmol)
         ) {
-            source = oldReading[BloodSugarReading.SOURCE].toString();
+            return false;
         }
 
-        var updatedReading = BloodSugarReading.create(
-            oldReading[BloodSugarReading.TIME].toNumber(),
-            valueMmol,
-            source,
-            normalizeContext(context)
+        var historyValue = load();
+
+        if (!(historyValue instanceof Lang.ByteArray) || !_historyWritable) {
+            return false;
+        }
+
+        var bytes = historyValue as Lang.ByteArray;
+
+        var index = findPackedIndexByTime(
+            bytes,
+
+            originalTime.toNumber()
         );
 
-        var previousHistory = _history;
-        var candidateHistory = history.slice(0, null);
+        if (index < 0) {
+            return false;
+        }
 
-        candidateHistory[readingIndex] = updatedReading;
+        var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+        var oldValue = BloodSugarReading.getPackedValueMmol(bytes, index);
+        var sourceId = BloodSugarReading.getPackedSourceId(bytes, index);
+        var oldContextId = BloodSugarReading.getPackedContextId(bytes, index);
 
-        _history = candidateHistory;
+        if (
+            !BloodSugarReading.writePackedRecord(
+                bytes,
+                index,
+                timestamp,
+                valueMmol,
+                sourceId,
+                getContextIndex(context)
+            )
+        ) {
+            return false;
+        }
 
-        if (save()) {
+        if (savePacked(bytes)) {
             return true;
         }
 
-        _history = previousHistory;
+        BloodSugarReading.writePackedRecord(
+            bytes,
+            index,
+            timestamp,
+            oldValue,
+            sourceId,
+            oldContextId
+        );
+
         return false;
     }
 
     function clear() as Boolean {
-        var previousHistory = getHistory();
-        _history = [];
+        var previousHistory = _historyBytes;
+        var previousWritable = _historyWritable;
+        var empty = BloodSugarReading.createPackedHistory(0);
+        _historyWritable = true;
 
-        if (save()) {
+        if (savePacked(empty)) {
+            _historyBytes = empty;
+            _historyNeedsRepair = false;
             return true;
         }
 
-        _history = previousHistory;
+        _historyBytes = previousHistory;
+        _historyWritable = previousWritable;
         return false;
+    }
+
+    function findPackedIndexByTime(
+        bytes as Lang.ByteArray,
+        timestamp as Number
+    ) as Number {
+        var count = BloodSugarReading.getPackedCount(bytes);
+
+        for (var index = 0; index < count; index += 1) {
+            var storedTime = BloodSugarReading.getPackedTime(bytes, index);
+
+            if (storedTime == timestamp) {
+                return index;
+            }
+
+            if (storedTime > timestamp) {
+                break;
+            }
+        }
+
+        return -1;
+    }
+
+    function packedContainsTime(
+        bytes as Lang.ByteArray,
+        timestamp as Number
+    ) as Boolean {
+        return findPackedIndexByTime(bytes, timestamp) >= 0;
+    }
+
+    function insertPackedReadingSorted(
+        bytes as Lang.ByteArray,
+        timestamp as Number,
+        valueMmol as Float,
+        sourceId as Number,
+        contextId as Number
+    ) as Lang.ByteArray? {
+        if (timestamp <= 0 || !BloodSugarReading.canPackValue(valueMmol)) {
+            return null;
+        }
+
+        var currentCount = BloodSugarReading.getPackedCount(bytes);
+        var insertionIndex = currentCount;
+        for (var index = 0; index < currentCount; index += 1) {
+            var storedTime = BloodSugarReading.getPackedTime(bytes, index);
+
+            if (storedTime == timestamp) {
+                return null;
+            }
+
+            if (storedTime > timestamp) {
+                insertionIndex = index;
+                break;
+            }
+        }
+
+        if (currentCount >= MAX_POINTS && insertionIndex == 0) {
+            return null;
+        }
+
+        var candidateCount = currentCount + 1;
+        if (candidateCount > MAX_POINTS) {
+            candidateCount = MAX_POINTS;
+        }
+        var candidate = BloodSugarReading.createPackedHistory(candidateCount);
+        var firstSourceIndex = 0;
+        var destinationInsertionIndex = insertionIndex;
+        if (currentCount >= MAX_POINTS) {
+            firstSourceIndex = 1;
+
+            destinationInsertionIndex -= 1;
+        }
+
+        var destinationIndex = 0;
+        for (
+            var sourceIndex = firstSourceIndex;
+            sourceIndex < insertionIndex;
+            sourceIndex += 1
+        ) {
+            BloodSugarReading.copyPackedRecord(
+                bytes,
+                sourceIndex,
+                candidate,
+                destinationIndex
+            );
+
+            destinationIndex += 1;
+        }
+
+        if (destinationIndex != destinationInsertionIndex) {
+            return null;
+        }
+
+        if (
+            !BloodSugarReading.writePackedRecord(
+                candidate,
+                destinationIndex,
+                timestamp,
+                valueMmol,
+                sourceId,
+                contextId
+            )
+        ) {
+            return null;
+        }
+
+        destinationIndex += 1;
+
+        for (
+            var sourceIndexAfter = insertionIndex;
+            sourceIndexAfter < currentCount &&
+            destinationIndex < candidateCount;
+            sourceIndexAfter += 1
+        ) {
+            BloodSugarReading.copyPackedRecord(
+                bytes,
+                sourceIndexAfter,
+                candidate,
+                destinationIndex
+            );
+
+            destinationIndex += 1;
+        }
+
+        return candidate;
     }
 
     function MollToMgdl(mmol as Float) as Float {
@@ -387,14 +643,12 @@ module BloodSugarStore {
         switch (BloodMonitor) {
             case MONITOR_NONE:
                 return "no monitor";
-                break;
+
             case MONITOR_ABBOTT:
                 return "Abbott FreeStyle";
-                break;
-            //case MONITOR_BLE:
-            //return "Ble Monitor";
-            //    break;
         }
+
+        return "unknown";
     }
 
     function getUseMgdl() as Boolean {
@@ -422,7 +676,11 @@ module BloodSugarStore {
         propertyKey as String,
         valueMmol as Float
     ) as Void {
-        Properties.setValue(propertyKey, MollToMgdl(valueMmol));
+        Properties.setValue(
+            propertyKey,
+
+            MollToMgdl(valueMmol)
+        );
     }
 
     function getDangerLowMmol() as Float {
@@ -530,8 +788,11 @@ module BloodSugarStore {
     function getDefaultContextIndex() as Number {
         var value = Properties.getValue(PROP_DEFAULT_CONTEXT);
 
-        var index = value.toNumber();
+        if (value == null) {
+            return 0;
+        }
 
+        var index = value.toNumber();
         if (index < 0 || index >= getContextCount()) {
             return 0;
         }
@@ -567,18 +828,23 @@ module BloodSugarStore {
         if (index == 1) {
             return "fasting";
         }
+
         if (index == 2) {
             return "before_meal";
         }
+
         if (index == 3) {
             return "after_meal";
         }
+
         if (index == 4) {
             return "bedtime";
         }
+
         if (index == 5) {
             return "before_exercise";
         }
+
         if (index == 6) {
             return "after_exercise";
         }
@@ -592,18 +858,23 @@ module BloodSugarStore {
         if (index == 1) {
             return "Fasting";
         }
+
         if (index == 2) {
             return "Before meal";
         }
+
         if (index == 3) {
             return "After meal";
         }
+
         if (index == 4) {
             return "Bedtime";
         }
+
         if (index == 5) {
             return "Before exercise";
         }
+
         if (index == 6) {
             return "After exercise";
         }
@@ -615,18 +886,23 @@ module BloodSugarStore {
         if (context.equals("fasting")) {
             return 1;
         }
+
         if (context.equals("before_meal")) {
             return 2;
         }
+
         if (context.equals("after_meal")) {
             return 3;
         }
+
         if (context.equals("bedtime")) {
             return 4;
         }
+
         if (context.equals("before_exercise")) {
             return 5;
         }
+
         if (context.equals("after_exercise")) {
             return 6;
         }
@@ -696,16 +972,22 @@ module BloodSugarStore {
             maxLen = minVersionParts.size();
         }
 
-        for (var i = 0; i < maxLen; i++) {
+        for (var index = 0; index < maxLen; index += 1) {
             var versionNum = 0 as Number;
             var minVersionNum = 0 as Number;
 
-            if (i < versionParts.size() && versionParts[i].length() > 0) {
-                versionNum = versionParts[i].toNumber();
+            if (
+                index < versionParts.size() &&
+                versionParts[index].length() > 0
+            ) {
+                versionNum = versionParts[index].toNumber();
             }
 
-            if (i < minVersionParts.size() && minVersionParts[i].length() > 0) {
-                minVersionNum = minVersionParts[i].toNumber();
+            if (
+                index < minVersionParts.size() &&
+                minVersionParts[index].length() > 0
+            ) {
+                minVersionNum = minVersionParts[index].toNumber();
             }
 
             if (versionNum > minVersionNum) {
@@ -729,16 +1011,18 @@ module BloodSugarStore {
             return -1;
         }
 
-        if (_history == null) {
-            load();
+        var historyValue = load();
+
+        if (!(historyValue instanceof Lang.ByteArray) || !_historyWritable) {
+            return -1;
         }
 
-        var previousHistory = _history;
-        var candidateHistory = _history.slice(0, null);
+        var candidate = historyValue as Lang.ByteArray;
+
         var addedCount = 0;
 
-        for (var i = 0; i < readings.size(); i++) {
-            var incoming = readings[i];
+        for (var index = 0; index < readings.size(); index += 1) {
+            var incoming = readings[index];
 
             if (!(incoming instanceof Array) || incoming.size() < 4) {
                 continue;
@@ -758,22 +1042,23 @@ module BloodSugarStore {
             var source = incoming[2].toString();
             var context = incoming[3].toString();
 
-            if (timestamp <= 0 || valueMmol <= 0.0f) {
+            if (timestamp <= 0 || !BloodSugarReading.canPackValue(valueMmol)) {
                 continue;
             }
 
-            if (historyContainsTime(candidateHistory, timestamp)) {
-                continue;
-            }
-
-            var point = BloodSugarReading.create(
+            var nextCandidate = insertPackedReadingSorted(
+                candidate,
                 timestamp,
                 valueMmol,
-                source,
-                normalizeContext(context)
+                BloodSugarReading.getSourceId(source),
+                getContextIndex(context)
             );
 
-            insertReadingSorted(candidateHistory, point);
+            if (nextCandidate == null) {
+                continue;
+            }
+
+            candidate = nextCandidate as Lang.ByteArray;
             addedCount += 1;
         }
 
@@ -781,69 +1066,22 @@ module BloodSugarStore {
             return 0;
         }
 
-        if (candidateHistory.size() > MAX_POINTS) {
-            candidateHistory = candidateHistory.slice(
-                candidateHistory.size() - MAX_POINTS,
-                null
-            );
+        if (!savePacked(candidate)) {
+            return -1;
         }
 
-        _history = candidateHistory;
+        _historyBytes = candidate;
 
-        if (save()) {
-            return addedCount;
-        }
-
-        _history = previousHistory;
-        return -1;
+        return addedCount;
     }
 
     function hasReadingByTime(timestamp as Number) as Boolean {
-        return historyContainsTime(getHistory(), timestamp);
-    }
-
-    function historyContainsTime(history, timestamp as Number) as Boolean {
-        for (var i = 0; i < history.size(); i++) {
-            var reading = history[i];
-
-            if (
-                reading instanceof Array &&
-                reading.size() > BloodSugarReading.TIME &&
-                reading[BloodSugarReading.TIME] != null &&
-                reading[BloodSugarReading.TIME].toNumber() == timestamp
-            ) {
-                return true;
-            }
+        var value = load();
+        if (!(value instanceof Lang.ByteArray)) {
+            return false;
         }
 
-        return false;
-    }
-
-    function insertReadingSorted(history, point) as Void {
-        var pointTime = point[BloodSugarReading.TIME].toNumber();
-        var insertionIndex = history.size();
-
-        for (var i = 0; i < history.size(); i++) {
-            var reading = history[i];
-
-            if (
-                reading instanceof Array &&
-                reading.size() > BloodSugarReading.TIME &&
-                reading[BloodSugarReading.TIME] != null &&
-                reading[BloodSugarReading.TIME].toNumber() > pointTime
-            ) {
-                insertionIndex = i;
-                break;
-            }
-        }
-
-        history.add(point);
-
-        for (var j = history.size() - 1; j > insertionIndex; j--) {
-            history[j] = history[j - 1];
-        }
-
-        history[insertionIndex] = point;
+        return packedContainsTime(value as Lang.ByteArray, timestamp);
     }
 
     function getCustomContextNames() as Array<String> {
@@ -857,7 +1095,7 @@ module BloodSugarStore {
 
         var contexts = value as Array;
 
-        for (var index = 0; index < contexts.size(); index++) {
+        for (var index = 0; index < contexts.size(); index += 1) {
             var context = contexts[index];
 
             if (!(context instanceof Dictionary)) {
@@ -982,54 +1220,52 @@ module BloodSugarStore {
 
         return NOTIFICATION_NONE;
     }
+
     function deleteReadingByTime(originalTime) as Boolean {
         if (originalTime == null) {
             return false;
         }
 
-        var history = getHistory();
-        var readingIndex = -1;
-
-        for (var i = 0; i < history.size(); i += 1) {
-            var reading = history[i];
-
-            if (
-                reading instanceof Array &&
-                reading.size() > BloodSugarReading.TIME &&
-                reading[BloodSugarReading.TIME] != null &&
-                reading[BloodSugarReading.TIME].toNumber() ==
-                    originalTime.toNumber()
-            ) {
-                readingIndex = i;
-                break;
-            }
+        var historyValue = load();
+        if (!(historyValue instanceof Lang.ByteArray) || !_historyWritable) {
+            return false;
         }
+
+        var bytes = historyValue as Lang.ByteArray;
+        var readingIndex = findPackedIndexByTime(
+            bytes,
+
+            originalTime.toNumber()
+        );
 
         if (readingIndex < 0) {
             return false;
         }
 
-        var previousHistory = _history;
-        var candidateHistory = [] as Array;
+        var count = BloodSugarReading.getPackedCount(bytes);
+        var candidate = BloodSugarReading.createPackedHistory(count - 1);
+        var destinationIndex = 0;
 
-        for (var index = 0; index < history.size(); index += 1) {
-            if (index != readingIndex) {
-                candidateHistory.add(history[index]);
+        for (var sourceIndex = 0; sourceIndex < count; sourceIndex += 1) {
+            if (sourceIndex == readingIndex) {
+                continue;
             }
+
+            BloodSugarReading.copyPackedRecord(
+                bytes,
+                sourceIndex,
+                candidate,
+                destinationIndex
+            );
+
+            destinationIndex += 1;
         }
 
-        _history = candidateHistory;
-
-        if (save()) {
-            return true;
+        if (!savePacked(candidate)) {
+            return false;
         }
 
-        /*
-         * Saving failed, so restore the
-         * history we had before deletion.
-         */
-        _history = previousHistory;
-
-        return false;
+        _historyBytes = candidate;
+        return true;
     }
 }
