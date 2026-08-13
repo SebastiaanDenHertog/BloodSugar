@@ -22,7 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import Toybox.System;
 import Toybox.Timer;
+import Toybox.WatchUi;
 import Toybox.Lang;
 
 class AbbottFreeStylePollingManager {
@@ -30,7 +32,13 @@ class AbbottFreeStylePollingManager {
 
     private var _timer as Timer.Timer?;
     private var _client as AbbottFreeStyleApi?;
-    private var _requestRunning as Boolean = false;
+    private var _requestRunning as Boolean;
+
+    public function initialize() {
+        _timer = null;
+        _client = null;
+        _requestRunning = false;
+    }
 
     public function start() as Void {
         stop();
@@ -43,53 +51,52 @@ class AbbottFreeStylePollingManager {
     public function stop() as Void {
         if (_timer != null) {
             (_timer as Timer.Timer).stop();
+
             _timer = null;
         }
         _client = null;
         _requestRunning = false;
     }
 
-    private function poll() as Void {
+    public function poll() as Void {
         if (_requestRunning) {
             return;
         }
+
         var username = BloodSugarStore.getUsername();
         var password = BloodSugarStore.getPassword();
         if (username.length() == 0 || password.length() == 0) {
             return;
         }
+
+        if (_client == null) {
+            _client = new AbbottFreeStyleApi(username, password);
+        }
+
         _requestRunning = true;
-        var client = new AbbottFreeStyleApi(username, password);
-        _client = client;
-        client.read(method(:onReadComplete));
+
+        (_client as AbbottFreeStyleApi).read(method(:onReadComplete));
     }
 
-    private function onReadComplete(
+    public function onReadComplete(
         success as Boolean,
-        currentReading,
+        latestReadingTime as Number,
+        latestValueMmol,
         addedCount as Number,
         errorMessage as String
     ) as Void {
         _requestRunning = false;
-        _client = null;
 
         if (!success) {
             System.println("Abbott polling error: " + errorMessage);
+            return;
+        }
 
+        if (addedCount <= 0 || latestReadingTime <= 0 || latestValueMmol <= 0) {
             return;
         }
-        if (addedCount <= 0) {
-            return;
-        }
-        if (currentReading == null) {
-            return;
-        }
-        var valueMgdl = currentReading.ValueInMgPerDl;
-        if (valueMgdl <= 0) {
-            return;
-        }
-        var valueMmol = BloodSugarStore.MgdlToMoll(valueMgdl.toFloat());
-        BloodSugarNotificationManager.processReading(valueMmol);
+
+        BloodSugarNotificationManager.processReading(latestValueMmol);
         WatchUi.requestUpdate();
     }
 }

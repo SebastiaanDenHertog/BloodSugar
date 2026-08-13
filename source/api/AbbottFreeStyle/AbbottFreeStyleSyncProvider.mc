@@ -49,46 +49,36 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
 
     public function sync(completion) as Void {
         _completion = completion;
+        var username = BloodSugarStore.getUsername();
+        var password = BloodSugarStore.getPassword();
 
-        if (!isConfigured()) {
+        if (username.length() == 0 || password.length() == 0) {
             finishError("Abbott account is not configured");
 
             return;
         }
 
-        _api = new AbbottFreeStyleApi(
-            BloodSugarStore.getUsername(),
-            BloodSugarStore.getPassword()
-        );
+        _api = new AbbottFreeStyleApi(username, password);
 
         (_api as AbbottFreeStyleApi).read(self.onApiReadComplete);
     }
 
-    private function onApiReadComplete(
+    public function onApiReadComplete(
         success as Boolean,
-        currentReading,
+        latestReadingTime as Number,
+        latestValueMmol,
         addedCount as Number,
         errorMessage as String
     ) as Void {
         var result = new BloodSugarSyncResult(getMonitorId());
-
         result.success = success;
         result.addedCount = addedCount;
         result.errorMessage = errorMessage;
 
-        if (success && currentReading != null) {
-            var item = currentReading as AbbottFreeStyleApiGraph.GlucoseItem;
+        if (success && latestReadingTime > 0 && latestValueMmol > 0) {
+            result.latestReadingTime = latestReadingTime;
 
-            if (item.FactoryTimestamp.length() > 0 && item.ValueInMgPerDl > 0) {
-                result.latestReadingTime =
-                    AbbottFreeStyleApiGraph.parseFactoryTimestamp(
-                        item.FactoryTimestamp
-                    );
-
-                result.latestValueMmol = BloodSugarStore.MgdlToMoll(
-                    item.ValueInMgPerDl.toFloat()
-                );
-            }
+            result.latestValueMmol = latestValueMmol;
         }
 
         finish(result);
@@ -96,16 +86,13 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
 
     private function finishError(message as String) as Void {
         var result = new BloodSugarSyncResult(getMonitorId());
-
         result.success = false;
         result.errorMessage = message;
-
         finish(result);
     }
 
     private function finish(result as BloodSugarSyncResult) as Void {
         var completion = _completion;
-
         _completion = null;
         _api = null;
 
@@ -115,12 +102,6 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
     }
 
     public function stop() as Void {
-        if (_api != null) {
-            try {
-                (_api as AbbottFreeStyleApi).stopPolling();
-            } catch (error) {}
-        }
-
         _api = null;
         _completion = null;
     }

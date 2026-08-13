@@ -1,63 +1,11 @@
-/*
-MIT License
-
-Copyright (c) 2026 Sebastiaan den Hertog
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-And 
-
-MIT License
-
-Copyright (c) 2022 DiaKEM Dexcom Api Client
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
 import Toybox.Communications;
 import Toybox.Cryptography;
 import Toybox.Lang;
+import Toybox.PersistedContent;
 import Toybox.StringUtil;
 import Toybox.System;
-import Toybox.Timer;
-import Toybox.PersistedContent;
+import Toybox.Time.Gregorian;
 
-import AbbottFreeStyleApiLogin;
-import AbbottFreeStyleApiCountries;
-import AbbottFreeStyleApiConnections;
-import AbbottFreeStyleApiGraph;
 import BloodSugarStore;
 
 class AbbottFreeStyleApi {
@@ -69,26 +17,20 @@ class AbbottFreeStyleApi {
 
     const STATE_IDLE = 0;
     const STATE_LOGIN = 1;
-    const STATE_CONNECTIONS = 2;
-    const STATE_GRAPH = 3;
+    const STATE_COUNTRIES = 2;
+    const STATE_CONNECTIONS = 3;
 
     private var _email as String;
     private var _password as String;
 
     private var _baseUrl as String;
     private var _jwtToken as String?;
-    private var _accountId as String?;
-    private var _patientId as String?;
+    private var _accountIdHash as String?;
+    private var _redirectRegion as String?;
 
     private var _state as Number;
     private var _completion;
     private var _authenticationRetried as Boolean;
-
-    private var _redirectResponse as
-        AbbottFreeStyleApiLogin.LoginRedirectResponse?;
-
-    private var _pollTimer as Timer.Timer?;
-    private var _pollCompletion;
 
     public function initialize(email as String, password as String) {
         _email = email;
@@ -96,16 +38,12 @@ class AbbottFreeStyleApi {
 
         _baseUrl = DEFAULT_SERVER;
         _jwtToken = null;
-        _accountId = null;
-        _patientId = null;
+        _accountIdHash = null;
+        _redirectRegion = null;
 
         _state = STATE_IDLE;
         _completion = null;
         _authenticationRetried = false;
-        _redirectResponse = null;
-
-        _pollTimer = null;
-        _pollCompletion = null;
     }
 
     public function read(completion) as Void {
@@ -116,50 +54,12 @@ class AbbottFreeStyleApi {
         _completion = completion;
         _authenticationRetried = false;
 
-        if (_jwtToken == null || _accountId == null) {
+        if (_jwtToken == null || _accountIdHash == null) {
             login();
             return;
         }
 
-        if (_patientId == null) {
-            loadConnections();
-            return;
-        }
-
-        loadGraph();
-    }
-
-    public function startPolling(
-        intervalMinutes as Number,
-        completion
-    ) as Void {
-        if (intervalMinutes < 1) {
-            intervalMinutes = 1;
-        }
-
-        stopPolling();
-
-        _pollCompletion = completion;
-        _pollTimer = new Timer.Timer();
-
-        read(_pollCompletion);
-
-        _pollTimer.start(self.onPollTimer, intervalMinutes * 60 * 1000, true);
-    }
-
-    public function stopPolling() as Void {
-        if (_pollTimer != null) {
-            _pollTimer.stop();
-            _pollTimer = null;
-        }
-
-        _pollCompletion = null;
-    }
-
-    private function onPollTimer() as Void {
-        if (_state == STATE_IDLE && _pollCompletion != null) {
-            read(_pollCompletion);
-        }
+        loadConnections();
     }
 
     private function login() as Void {
@@ -171,11 +71,9 @@ class AbbottFreeStyleApi {
                 "password" => _password,
             }) as Dictionary<Object, Object>;
 
-        var headers = createHeaders(false);
-
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_POST,
-            :headers => headers,
+            :headers => createHeaders(false),
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
         };
 
@@ -187,7 +85,7 @@ class AbbottFreeStyleApi {
         );
     }
 
-    private function onLoginResponse(
+    public function onLoginResponse(
         responseCode as Number,
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
@@ -202,42 +100,11 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var parsedResponse = AbbottFreeStyleApiLogin.dictionaryToLoginResponse(
-            response as Lang.Dictionary
-        );
+        var root = response as Lang.Dictionary;
+        var status = getNumber(root, "status", -1);
+        var data = getObject(root, "data");
 
-        if (parsedResponse == null) {
-            fail("Could not map the login response");
-            return;
-        }
-
-        if (
-            parsedResponse instanceof
-            AbbottFreeStyleApiLogin.LoginRedirectResponseModel
-        ) {
-            var redirectResponse =
-                parsedResponse as
-                AbbottFreeStyleApiLogin.LoginRedirectResponseModel;
-
-            if (!redirectResponse.data.redirect) {
-                fail("Invalid regional redirect response");
-                return;
-            }
-
-            if (redirectResponse.data.region.length() == 0) {
-                fail("Regional redirect did not contain a region");
-                return;
-            }
-
-            _redirectResponse = redirectResponse;
-            loadCountries();
-            return;
-        }
-
-        var loginResponse =
-            parsedResponse as AbbottFreeStyleApiLogin.LoginResponseModel;
-
-        if (loginResponse.status == 2) {
+        if (status == 2) {
             fail(
                 "Bad credentials. Use your LibreLinkUp account " +
                     "credentials, not your LibreLink credentials."
@@ -245,18 +112,37 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        if (loginResponse.status == 4) {
+        if (data == null) {
+            fail("Login response did not contain data");
+            return;
+        }
+
+        if (getBoolean(data, "redirect", false)) {
+            var region = getString(data, "region", "");
+
+            if (region.length() == 0) {
+                fail("Regional redirect did not contain a region");
+                return;
+            }
+
+            _redirectRegion = region;
+            loadCountries();
+            return;
+        }
+
+        /*
+         * Status 4 means Abbott requires an additional
+         * account action.
+         */
+        if (status == 4 || data.hasKey("step")) {
             var stepName = "unknown";
+            var step = getObject(data, "step");
 
-            if (
-                loginResponse.data instanceof
-                AbbottFreeStyleApiLogin.StepDataModel
-            ) {
-                var stepData =
-                    loginResponse.data as AbbottFreeStyleApiLogin.StepDataModel;
+            if (step != null) {
+                var componentName = getString(step, "componentName", "");
 
-                if (stepData.step.componentName.length() > 0) {
-                    stepName = stepData.step.componentName;
+                if (componentName.length() > 0) {
+                    stepName = componentName;
                 }
             }
 
@@ -265,35 +151,44 @@ class AbbottFreeStyleApi {
                     stepName +
                     ". Complete it in LibreLinkUp and try again."
             );
+
             return;
         }
 
-        if (
-            !(loginResponse.data instanceof AbbottFreeStyleApiLogin.DataModel)
-        ) {
-            fail("Successful login did not contain login data");
+        if (status != 0) {
+            fail("Login response status: " + status.toString());
             return;
         }
 
-        var loginData = loginResponse.data as AbbottFreeStyleApiLogin.DataModel;
+        var authTicket = getObject(data, "authTicket");
+        var user = getObject(data, "user");
 
-        if (loginData.authTicket.token.length() == 0) {
+        if (authTicket == null || user == null) {
+            fail("Successful login did not contain authentication data");
+            return;
+        }
+
+        var token = getString(authTicket, "token", "");
+        var userId = getString(user, "id", "");
+
+        if (token.length() == 0) {
             fail("Login response did not contain an auth token");
             return;
         }
 
-        if (loginData.user.id.length() == 0) {
+        if (userId.length() == 0) {
             fail("Login response did not contain a user ID");
             return;
         }
 
-        _jwtToken = loginData.authTicket.token;
-        _accountId = loginData.user.id;
-
+        _jwtToken = token;
+        _accountIdHash = sha256Hex(userId);
         loadConnections();
     }
 
     private function loadCountries() as Void {
+        _state = STATE_COUNTRIES;
+
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_GET,
             :headers => createHeaders(false),
@@ -308,7 +203,7 @@ class AbbottFreeStyleApi {
         );
     }
 
-    private function onCountriesResponse(
+    public function onCountriesResponse(
         responseCode as Number,
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
@@ -323,45 +218,64 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        if (_redirectResponse == null) {
+        if (_redirectRegion == null) {
             fail("Country response received without a redirect");
             return;
         }
 
-        var countryResponse =
-            AbbottFreeStyleApiCountries.dictionaryToCountryResponse(
-                response as Lang.Dictionary
-            ) as CountryResponse;
+        var root = response as Lang.Dictionary;
+        var status = getNumber(root, "status", -1);
 
-        if (countryResponse == null) {
-            fail("Could not map the country response");
+        if (status != 0) {
+            fail("Country response status: " + status.toString());
             return;
         }
 
-        var regionDefinition = AbbottFreeStyleApiCountries.getRegion(
-            countryResponse.data.regionalMap,
-            _redirectResponse.data.region
-        );
+        var data = getObject(root, "data");
 
-        if (regionDefinition == null || regionDefinition.lslApi.length() == 0) {
+        if (data == null) {
+            fail("Country response did not contain data");
+            return;
+        }
+
+        var regionalMap = getObject(data, "regionalMap");
+
+        if (regionalMap == null) {
+            fail("Country response did not contain a regional map");
+            return;
+        }
+
+        var region = _redirectRegion as String;
+        var regionDefinition = getObject(regionalMap, region.toLower());
+
+        if (regionDefinition == null) {
             fail(
                 "Unable to find region '" +
-                    _redirectResponse.data.region +
+                    region +
                     "'. Available nodes: " +
-                    AbbottFreeStyleApiCountries.getAvailableRegions()
+                    "us, eu, fr, jp, de, ap, au, ae"
             );
+
             return;
         }
 
-        _baseUrl = regionDefinition.lslApi;
-        _redirectResponse = null;
+        var lslApi = getString(regionDefinition, "lslApi", "");
 
+        if (lslApi.length() == 0) {
+            fail("Region '" + region + "' did not contain an API URL");
+
+            return;
+        }
+
+        _baseUrl = lslApi;
+        _redirectRegion = null;
         login();
     }
 
     private function loadConnections() as Void {
-        if (_jwtToken == null || _accountId == null) {
+        if (_jwtToken == null || _accountIdHash == null) {
             retryAuthentication("No authentication for connections");
+
             return;
         }
 
@@ -381,210 +295,233 @@ class AbbottFreeStyleApi {
         );
     }
 
-    private function onConnectionsResponse(
+    public function onConnectionsResponse(
         responseCode as Number,
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
     ) as Void {
         if (responseCode == 401 || responseCode == 403) {
             retryAuthentication("Connections authentication failed");
+
             return;
         }
 
         if (responseCode != 200) {
             fail("Could not load connections: HTTP " + responseCode.toString());
+
             return;
         }
 
         if (!(response instanceof Lang.Dictionary)) {
             fail("Connections response was not a JSON object");
+
             return;
         }
 
-        var connectionsResponse =
-            AbbottFreeStyleApiConnections.dictionaryToConnectionsResponse(
-                response as Lang.Dictionary
-            );
+        var root = response as Lang.Dictionary;
 
-        if (connectionsResponse == null) {
-            fail("Could not map the connections response");
+        var status = getNumber(root, "status", -1);
+
+        if (status != 0) {
+            fail("Connections response status: " + status.toString());
+
             return;
         }
 
-        if (connectionsResponse.status != 0) {
-            fail(
-                "Connections response status: " +
-                    connectionsResponse.status.toString()
-            );
-            return;
-        }
+        updateTicket(root);
+        var connections = getArray(root, "data");
 
-        if (connectionsResponse.data.size() == 0) {
+        if (connections == null || connections.size() == 0) {
             fail("This LibreLinkUp account does not follow a patient.");
+
             return;
         }
 
-        var connection = connectionsResponse.data[0];
+        if (!(connections[0] instanceof Lang.Dictionary)) {
+            fail("The first LibreLinkUp connection was invalid");
 
-        if (connection.patientId.length() == 0) {
-            fail("The selected connection has no patient ID");
             return;
         }
 
-        _patientId = connection.patientId;
-
-        if (connectionsResponse.ticket.token.length() > 0) {
-            _jwtToken = connectionsResponse.ticket.token;
-        }
-
-        loadGraph();
+        processCurrentReading(connections[0] as Lang.Dictionary);
     }
 
-    private function loadGraph() as Void {
-        if (_patientId == null) {
-            loadConnections();
-            return;
-        }
-
-        if (_jwtToken == null || _accountId == null) {
-            retryAuthentication("No authentication for graph request");
-            return;
-        }
-
-        _state = STATE_GRAPH;
-
-        var graphPath = CONNECTIONS_PATH + "/" + _patientId + "/graph";
-
-        var options = {
-            :method => Communications.HTTP_REQUEST_METHOD_GET,
-            :headers => createHeaders(true),
-            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-        };
-
-        Communications.makeWebRequest(
-            _baseUrl + graphPath,
-            null,
-            options,
-            method(:onGraphResponse)
-        );
-    }
-
-    private function onGraphResponse(
-        responseCode as Number,
-        response as
-            Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
+    private function processCurrentReading(
+        connection as Lang.Dictionary
     ) as Void {
-        if (responseCode == 401 || responseCode == 403) {
-            retryAuthentication("Graph authentication failed");
+        var currentReading = getObject(connection, "glucoseMeasurement");
+
+        if (currentReading == null) {
+            complete(0, 0.0, 0);
+
             return;
         }
 
-        if (responseCode != 200) {
-            fail(
-                "Could not load glucose graph: HTTP " + responseCode.toString()
-            );
-            return;
-        }
-
-        if (!(response instanceof Lang.Dictionary)) {
-            fail("Graph response was not a JSON object");
-            return;
-        }
-
-        var graphResponse = AbbottFreeStyleApiGraph.dictionaryToGraphData(
-            response as Lang.Dictionary
+        var factoryTimestamp = getString(
+            currentReading,
+            "FactoryTimestamp",
+            ""
         );
 
-        if (graphResponse == null) {
-            fail("Could not map the graph response");
-            return;
-        }
+        var valueMgdl = getNumber(currentReading, "ValueInMgPerDl", 0);
 
-        if (graphResponse.status != 0) {
-            fail("Graph response status: " + graphResponse.status.toString());
-            return;
-        }
-
-        if (graphResponse.ticket.token.length() > 0) {
-            _jwtToken = graphResponse.ticket.token;
-        }
-
-        var newReadings = buildStorageReadings(graphResponse);
-
-        var addedCount = BloodSugarStore.addReadingsBatch(newReadings);
-
-        if (addedCount < 0) {
-            fail("Glucose data was received " + "but could not be stored");
+        if (factoryTimestamp.length() == 0 || valueMgdl <= 0) {
+            complete(0, 0.0, 0);
 
             return;
         }
 
-        var currentReading = graphResponse.data.connection.glucoseMeasurement;
-
-        if (addedCount > 0 && currentReading.ValueInMgPerDl > 0) {
-            var currentValueMmol = BloodSugarStore.MgdlToMoll(
-                currentReading.ValueInMgPerDl.toFloat()
-            );
-
-            BloodSugarNotificationManager.processReading(currentValueMmol);
-        }
-
-        complete(currentReading, addedCount);
-    }
-
-    private function buildStorageReadings(
-        graphResponse as AbbottFreeStyleApiGraph.GraphData
-    ) {
-        var readings = [];
-
-        for (var i = 0; i < graphResponse.data.graphData.size(); i++) {
-            addGlucoseItemToStorageBatch(
-                graphResponse.data.graphData[i],
-                readings
-            );
-        }
-
-        addGlucoseItemToStorageBatch(
-            graphResponse.data.connection.glucoseMeasurement,
-            readings
-        );
-
-        return readings;
-    }
-
-    private function addGlucoseItemToStorageBatch(
-        item as GlucoseItem,
-        readings
-    ) as Void {
-        if (
-            item.FactoryTimestamp.length() == 0 ||
-            item.ValueInMgPerDl <= 0 ||
-            item.FactoryTimestamp == null
-        ) {
-            return;
-        }
-
-        var factoryTimestamp = item.FactoryTimestamp;
-
-        if (!(factoryTimestamp instanceof Lang.String)) {
-            System.println("FactoryTimestamp was not a string");
-            return;
-        }
-
-        var timestamp = AbbottFreeStyleApiGraph.parseFactoryTimestamp(
-            factoryTimestamp as Lang.String
-        );
+        var timestamp = parseFactoryTimestamp(factoryTimestamp);
 
         if (timestamp == null) {
-            System.println("AbbottFreeStyleApi: could not parse timestamp");
+            fail("Could not parse the LibreLinkUp glucose timestamp");
+
             return;
         }
 
-        var valueMmol = BloodSugarStore.MgdlToMoll(
-            item.ValueInMgPerDl.toFloat()
-        );
+        var valueMmol = BloodSugarStore.MgdlToMoll(valueMgdl.toFloat());
+        var readings = [[timestamp, valueMmol, "libre_link_up", "none"]];
+        var addedCount = BloodSugarStore.addReadingsBatch(readings);
 
-        readings.add([timestamp, valueMmol, "libre_link_up", "none"]);
+        if (addedCount < 0) {
+            fail("Glucose data was received but could not be stored");
+
+            return;
+        }
+
+        complete(timestamp, valueMmol, addedCount);
+    }
+
+    private function parseFactoryTimestamp(timestamp as String) as Number? {
+        var slash1 = timestamp.find("/");
+
+        if (slash1 == null) {
+            return null;
+        }
+
+        var monthValue = timestamp.toNumber();
+
+        if (monthValue == null) {
+            return null;
+        }
+
+        var afterMonth = timestamp.substring(slash1 + 1, timestamp.length());
+
+        if (afterMonth == null) {
+            return null;
+        }
+
+        var slash2 = afterMonth.find("/");
+
+        if (slash2 == null) {
+            return null;
+        }
+
+        var dayValue = afterMonth.toNumber();
+
+        if (dayValue == null) {
+            return null;
+        }
+
+        var afterDay = afterMonth.substring(slash2 + 1, afterMonth.length());
+
+        if (afterDay == null) {
+            return null;
+        }
+
+        var yearValue = afterDay.toNumber();
+
+        var space = afterDay.find(" ");
+
+        if (yearValue == null || space == null) {
+            return null;
+        }
+
+        var timePart = afterDay.substring(space + 1, afterDay.length());
+
+        if (timePart == null) {
+            return null;
+        }
+
+        var hourValue = timePart.toNumber();
+
+        var colon1 = timePart.find(":");
+
+        if (hourValue == null || colon1 == null) {
+            return null;
+        }
+
+        var minutePart = timePart.substring(colon1 + 1, timePart.length());
+
+        if (minutePart == null) {
+            return null;
+        }
+
+        var minuteValue = minutePart.toNumber();
+
+        var colon2 = minutePart.find(":");
+
+        if (minuteValue == null || colon2 == null) {
+            return null;
+        }
+
+        var secondPart = minutePart.substring(colon2 + 1, minutePart.length());
+
+        if (secondPart == null) {
+            return null;
+        }
+
+        var secondValue = secondPart.toNumber();
+
+        if (secondValue == null) {
+            return null;
+        }
+
+        var month = monthValue as Number;
+        var day = dayValue as Number;
+        var year = yearValue as Number;
+        var hour = hourValue as Number;
+        var minute = minuteValue as Number;
+        var second = secondValue as Number;
+
+        if (secondPart.find("PM") != null) {
+            if (hour < 12) {
+                hour += 12;
+            }
+        } else if (secondPart.find("AM") != null) {
+            if (hour == 12) {
+                hour = 0;
+            }
+        } else {
+            return null;
+        }
+
+        try {
+            return Gregorian.moment({
+                :year => year,
+                :month => month,
+                :day => day,
+                :hour => hour,
+                :minute => minute,
+                :second => second,
+            }).value();
+        } catch (error) {
+            return null;
+        }
+    }
+
+    private function updateTicket(root as Lang.Dictionary) as Void {
+        var ticket = getObject(root, "ticket");
+
+        if (ticket == null) {
+            return;
+        }
+
+        var token = getString(ticket, "token", "");
+
+        if (token.length() > 0) {
+            _jwtToken = token;
+        }
     }
 
     private function createHeaders(authenticated as Boolean) {
@@ -596,10 +533,9 @@ class AbbottFreeStyleApi {
             "version" => CLIENT_VERSION,
         };
 
-        if (authenticated && _jwtToken != null && _accountId != null) {
-            headers["Authorization"] = "Bearer " + _jwtToken;
-
-            headers["account-id"] = sha256Hex(_accountId);
+        if (authenticated && _jwtToken != null && _accountIdHash != null) {
+            headers["Authorization"] = "Bearer " + (_jwtToken as String);
+            headers["account-id"] = _accountIdHash as String;
         }
 
         return headers;
@@ -624,10 +560,97 @@ class AbbottFreeStyleApi {
         var hex =
             StringUtil.convertEncodedString(hash.digest(), {
                 :fromRepresentation => StringUtil.REPRESENTATION_BYTE_ARRAY,
+
                 :toRepresentation => StringUtil.REPRESENTATION_STRING_HEX,
             }) as String;
 
         return hex.toLower();
+    }
+
+    private function getValue(dictionary as Lang.Dictionary, key as String) {
+        if (dictionary.hasKey(key) && dictionary[key] != null) {
+            return dictionary[key];
+        }
+
+        return null;
+    }
+
+    private function getString(
+        dictionary as Lang.Dictionary,
+        key as String,
+        fallback as String
+    ) as String {
+        var value = getValue(dictionary, key);
+
+        if (value == null) {
+            return fallback;
+        }
+
+        return value.toString();
+    }
+
+    private function getNumber(
+        dictionary as Lang.Dictionary,
+        key as String,
+        fallback as Number
+    ) as Number {
+        var value = getValue(dictionary, key);
+
+        if (value == null) {
+            return fallback;
+        }
+
+        var numberValue = value.toNumber();
+
+        if (numberValue == null) {
+            return fallback;
+        }
+
+        return numberValue;
+    }
+
+    private function getBoolean(
+        dictionary as Lang.Dictionary,
+        key as String,
+        fallback as Boolean
+    ) as Boolean {
+        var value = getValue(dictionary, key);
+
+        if (value == true) {
+            return true;
+        }
+
+        if (value == false) {
+            return false;
+        }
+
+        return fallback;
+    }
+
+    private function getObject(
+        dictionary as Lang.Dictionary,
+        key as String
+    ) as Lang.Dictionary? {
+        var value = getValue(dictionary, key);
+
+        if (value instanceof Lang.Dictionary) {
+            return value as Lang.Dictionary;
+        }
+
+        return null;
+    }
+
+    private function getArray(
+        dictionary as Lang.Dictionary,
+        key as String
+    ) as Lang.Array? {
+        var value = getValue(dictionary, key);
+
+        if (value instanceof Lang.Array) {
+            return value as Lang.Array;
+        }
+
+        return null;
     }
 
     private function retryAuthentication(reason as String) as Void {
@@ -638,33 +661,41 @@ class AbbottFreeStyleApi {
 
         _authenticationRetried = true;
         _jwtToken = null;
-        _accountId = null;
-        _patientId = null;
+        _accountIdHash = null;
+        _redirectRegion = null;
 
         login();
     }
 
-    private function complete(currentReading, addedCount as Number) as Void {
+    private function complete(
+        latestTimestamp as Number,
+        latestValueMmol,
+        addedCount as Number
+    ) as Void {
         var completion = _completion;
 
         _state = STATE_IDLE;
         _completion = null;
 
         if (completion != null) {
-            completion.invoke(true, currentReading, addedCount, "");
+            completion.invoke(
+                true,
+                latestTimestamp,
+                latestValueMmol,
+                addedCount,
+                ""
+            );
         }
     }
 
     private function fail(message as String) as Void {
         var completion = _completion;
-
         _state = STATE_IDLE;
         _completion = null;
-
         System.println("AbbottFreeStyleApi: " + message);
 
         if (completion != null) {
-            completion.invoke(false, null, 0, message);
+            completion.invoke(false, 0, 0.0, 0, message);
         }
     }
 }
