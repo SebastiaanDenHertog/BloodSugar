@@ -214,8 +214,11 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         }
 
         var view = new BloodSugarHistoryListView();
-        var delegate = new BloodSugarHistoryListDelegate(view);
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
+        WatchUi.switchToView(
+            view,
+            new BloodSugarHistoryListDelegate(view),
+            WatchUi.SLIDE_RIGHT
+        );
     }
 
     public function onMenu() as Boolean {

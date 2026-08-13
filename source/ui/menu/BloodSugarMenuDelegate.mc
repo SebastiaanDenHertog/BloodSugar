@@ -32,24 +32,64 @@ class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
     }
 
     function onMenuItem(item as Symbol) as Void {
-        var view;
-        var delegate;
         if (item == :newItem) {
-            view = new BloodSugarView();
-            delegate = new BloodSugarDelegate(view, null);
-        } else if (item == :settings) {
-            view = new BloodSugarSettingsView();
-            delegate = new BloodSugarSettingsDelegate(view);
-        } else if (item == :historyGraph) {
-            view = new BloodSugarHistoryView();
-            delegate = new BloodSugarHistoryDelegate(view);
-        } else if (item == :historyList) {
-            view = new BloodSugarHistoryListView();
-            delegate = new BloodSugarHistoryListDelegate(view);
-        } else if (item == :appInfo) {
-            view = new BloodSugarInfoView();
-            delegate = new BloodSugarInfoDelegate(view);
+            var view = new BloodSugarView();
+
+            WatchUi.switchToView(
+                view,
+                new BloodSugarDelegate(view, null),
+                WatchUi.SLIDE_RIGHT
+            );
+
+            return;
         }
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_RIGHT);
+
+        if (item == :settings) {
+            var view = new BloodSugarSettingsView();
+
+            WatchUi.switchToView(
+                view,
+                new BloodSugarSettingsDelegate(view),
+                WatchUi.SLIDE_RIGHT
+            );
+
+            return;
+        }
+
+        if (item == :historyGraph) {
+            var view = new BloodSugarHistoryView();
+
+            WatchUi.switchToView(
+                view,
+                new BloodSugarHistoryDelegate(view),
+                WatchUi.SLIDE_RIGHT
+            );
+
+            return;
+        }
+
+        if (item == :historyList) {
+            var view = new BloodSugarHistoryListView();
+
+            WatchUi.switchToView(
+                view,
+                new BloodSugarHistoryListDelegate(view),
+                WatchUi.SLIDE_RIGHT
+            );
+
+            return;
+        }
+
+        if (item == :appInfo) {
+            var view = new BloodSugarInfoView();
+
+            WatchUi.switchToView(
+                view,
+                new BloodSugarInfoDelegate(view),
+                WatchUi.SLIDE_RIGHT
+            );
+
+            return;
+        }
     }
 }

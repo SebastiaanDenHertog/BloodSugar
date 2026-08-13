@@ -53,6 +53,22 @@ module BloodSugarStore {
     const PROP_DEFAULT_CONTEXT = "defaultContextIndex";
     const PROP_CONFIRM_SAVE = "confirmBeforeSave";
 
+    // cached items:
+    var _useMgdlCache = null;
+    var _confirmBeforeSaveCache = null;
+    var _defaultContextIndexCache = null;
+    var _bloodMonitorCache = null;
+    var _notificationsEnabledCache = null;
+
+    var _dangerLowMmolCache = null;
+    var _lowMmolCache = null;
+    var _highMmolCache = null;
+    var _dangerHighMmolCache = null;
+    var _notificationLowMmolCache = null;
+    var _notificationHighMmolCache = null;
+
+    var _bleSupportedCache = null;
+
     const NOTIFICATION_NONE = 0;
     const NOTIFICATION_LOW = 1;
     const NOTIFICATION_HIGH = 2;
@@ -276,6 +292,40 @@ module BloodSugarStore {
             ),
             context
         );
+    }
+
+    function getReadingTimeAt(index as Number) as Number? {
+        var value = load();
+
+        if (!(value instanceof Lang.ByteArray)) {
+            return null;
+        }
+
+        var bytes = value as Lang.ByteArray;
+        var count = BloodSugarReading.getPackedCount(bytes);
+
+        if (index < 0 || index >= count) {
+            return null;
+        }
+
+        return BloodSugarReading.getPackedTime(bytes, index);
+    }
+
+    function getReadingValueMmolAt(index as Number) as Float? {
+        var value = load();
+
+        if (!(value instanceof Lang.ByteArray)) {
+            return null;
+        }
+
+        var bytes = value as Lang.ByteArray;
+        var count = BloodSugarReading.getPackedCount(bytes);
+
+        if (index < 0 || index >= count) {
+            return null;
+        }
+
+        return BloodSugarReading.getPackedValueMmol(bytes, index);
     }
 
     function getHistory() {
@@ -652,35 +702,111 @@ module BloodSugarStore {
     }
 
     function getUseMgdl() as Boolean {
-        return Properties.getValue(PROP_USE_MGDL) == true;
+        if (_useMgdlCache == null) {
+            _useMgdlCache = Properties.getValue(PROP_USE_MGDL) == true;
+        }
+
+        return _useMgdlCache as Boolean;
     }
 
     function setUseMgdl(useMgdl as Boolean) as Void {
         Properties.setValue(PROP_USE_MGDL, useMgdl);
+
+        _useMgdlCache = useMgdl;
+    }
+
+    function getCachedRangeValue(propertyKey as String) {
+        if (propertyKey.equals(PROP_DANGER_LOW)) {
+            return _dangerLowMmolCache;
+        }
+
+        if (propertyKey.equals(PROP_LOW)) {
+            return _lowMmolCache;
+        }
+
+        if (propertyKey.equals(PROP_HIGH)) {
+            return _highMmolCache;
+        }
+
+        if (propertyKey.equals(PROP_DANGER_HIGH)) {
+            return _dangerHighMmolCache;
+        }
+
+        if (propertyKey.equals(PROP_NOTIFICATION_LOW)) {
+            return _notificationLowMmolCache;
+        }
+
+        if (propertyKey.equals(PROP_NOTIFICATION_HIGH)) {
+            return _notificationHighMmolCache;
+        }
+
+        return null;
+    }
+
+    function setCachedRangeValue(
+        propertyKey as String,
+        valueMmol as Float
+    ) as Void {
+        if (propertyKey.equals(PROP_DANGER_LOW)) {
+            _dangerLowMmolCache = valueMmol;
+            return;
+        }
+
+        if (propertyKey.equals(PROP_LOW)) {
+            _lowMmolCache = valueMmol;
+            return;
+        }
+
+        if (propertyKey.equals(PROP_HIGH)) {
+            _highMmolCache = valueMmol;
+            return;
+        }
+
+        if (propertyKey.equals(PROP_DANGER_HIGH)) {
+            _dangerHighMmolCache = valueMmol;
+            return;
+        }
+
+        if (propertyKey.equals(PROP_NOTIFICATION_LOW)) {
+            _notificationLowMmolCache = valueMmol;
+            return;
+        }
+
+        if (propertyKey.equals(PROP_NOTIFICATION_HIGH)) {
+            _notificationHighMmolCache = valueMmol;
+        }
     }
 
     function getRangePropertyMmol(
         propertyKey as String,
         defaultMgdl as Float
     ) as Float {
-        var value = Properties.getValue(propertyKey);
+        var cached = getCachedRangeValue(propertyKey);
 
-        if (value == null) {
-            return MgdlToMoll(defaultMgdl);
+        if (cached != null) {
+            return cached as Float;
         }
 
-        return MgdlToMoll(value.toFloat());
+        var value = Properties.getValue(propertyKey);
+
+        var result = MgdlToMoll(defaultMgdl);
+
+        if (value != null) {
+            result = MgdlToMoll(value.toFloat());
+        }
+
+        setCachedRangeValue(propertyKey, result);
+
+        return result;
     }
 
     function setRangePropertyMmol(
         propertyKey as String,
         valueMmol as Float
     ) as Void {
-        Properties.setValue(
-            propertyKey,
+        Properties.setValue(propertyKey, MollToMgdl(valueMmol));
 
-            MollToMgdl(valueMmol)
-        );
+        setCachedRangeValue(propertyKey, valueMmol);
     }
 
     function getDangerLowMmol() as Float {
@@ -778,30 +904,47 @@ module BloodSugarStore {
     }
 
     function getConfirmBeforeSave() as Boolean {
-        return Properties.getValue(PROP_CONFIRM_SAVE) != false;
+        if (_confirmBeforeSaveCache == null) {
+            _confirmBeforeSaveCache =
+                Properties.getValue(PROP_CONFIRM_SAVE) != false;
+        }
+
+        return _confirmBeforeSaveCache as Boolean;
     }
 
     function setConfirmBeforeSave(confirm as Boolean) as Void {
         Properties.setValue(PROP_CONFIRM_SAVE, confirm);
+        _confirmBeforeSaveCache = confirm;
     }
 
     function getDefaultContextIndex() as Number {
+        if (_defaultContextIndexCache != null) {
+            return _defaultContextIndexCache as Number;
+        }
+
         var value = Properties.getValue(PROP_DEFAULT_CONTEXT);
 
-        if (value == null) {
-            return 0;
+        var index = 0;
+
+        if (value != null) {
+            index = value.toNumber();
+
+            if (index < 0 || index >= getContextCount()) {
+                index = 0;
+            }
         }
 
-        var index = value.toNumber();
-        if (index < 0 || index >= getContextCount()) {
-            return 0;
-        }
+        _defaultContextIndexCache = index;
 
         return index;
     }
 
     function setDefaultContextIndex(index as Number) as Void {
-        Properties.setValue(PROP_DEFAULT_CONTEXT, normalizeContextIndex(index));
+        var normalizedIndex = normalizeContextIndex(index);
+
+        Properties.setValue(PROP_DEFAULT_CONTEXT, normalizedIndex);
+
+        _defaultContextIndexCache = normalizedIndex;
     }
 
     function getContextCount() as Number {
@@ -1003,7 +1146,11 @@ module BloodSugarStore {
     }
 
     function isBleSupported() as Boolean {
-        return isSupportedVersion(getAppVersion(), "1.0.0");
+        if (_bleSupportedCache == null) {
+            _bleSupportedCache = isSupportedVersion(getAppVersion(), "1.0.0");
+        }
+
+        return _bleSupportedCache as Boolean;
     }
 
     function addReadingsBatch(readings) as Number {
@@ -1118,16 +1265,25 @@ module BloodSugarStore {
 
     public function setBloodMonitor(selected as Number) as Void {
         Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
+
+        _bloodMonitorCache = selected;
     }
 
     public function getBloodMonitor() as Number {
-        var value = Properties.getValue(PROP_BLOOD_MONITOR_INDEX);
-
-        if (value instanceof Number) {
-            return value as Number;
+        if (_bloodMonitorCache != null) {
+            return _bloodMonitorCache as Number;
         }
 
-        return BloodSugarMonitor.NONE;
+        var value = Properties.getValue(PROP_BLOOD_MONITOR_INDEX);
+        var selected = BloodSugarMonitor.NONE;
+
+        if (value instanceof Number) {
+            selected = value as Number;
+        }
+
+        _bloodMonitorCache = selected;
+
+        return selected;
     }
 
     public function getUsername() as String {
@@ -1182,11 +1338,17 @@ module BloodSugarStore {
     }
 
     function getNotificationsEnabled() as Boolean {
-        return Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false;
+        if (_notificationsEnabledCache == null) {
+            _notificationsEnabledCache =
+                Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false;
+        }
+
+        return _notificationsEnabledCache as Boolean;
     }
 
     function setNotificationsEnabled(enabled as Boolean) as Void {
         Properties.setValue(PROP_NOTIFICATIONS_ENABLED, enabled);
+        _notificationsEnabledCache = enabled;
     }
 
     function getNotificationLowMmol() as Float {

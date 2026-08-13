@@ -79,7 +79,10 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    // 0 = Abbott FreeStyle
+    public function onBack() as Boolean {
+        WatchUi.popView(SLIDE_LEFT);
+        //pushView(view, delegate, WatchUi.SLIDE_LEFT);
+    }
 
     public function onSelect() as Boolean {
         BloodSugarStore.setBloodMonitor(_select);

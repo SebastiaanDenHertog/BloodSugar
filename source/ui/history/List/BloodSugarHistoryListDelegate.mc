@@ -28,62 +28,67 @@ import Toybox.System;
 
 class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarHistoryListView;
-    private var _menuView = new Rez.Menus.MainMenu();
-    private var _menuDelegate = new BloodSugarMenuDelegate();
     private var _select as Number;
-    private var times;
+    private var _times as Array<Number>;
 
     public function initialize(view as BloodSugarHistoryListView) {
         BehaviorDelegate.initialize();
-        _select = 1;
+
         _parentView = view;
+        _select = 0;
+        _times = [] as Array<Number>;
+
         _parentView.setDelegate(self);
+
         refresh();
     }
 
     public function updateView() as Void {
-        var history;
-        if (BloodSugarSystem.isLowMemoryDevice()) {
-            history = BloodSugarStore.getPartOfHistory(
-                BloodSugarSystem.getMaximumHistoryPoints()
-            );
-        } else {
-            history = BloodSugarStore.getHistory();
-        }
-        times = [];
-        var values = [];
+        var times = [] as Array<Number>;
+        var values = [] as Array<Float>;
+
+        var count = BloodSugarStore.getHistoryCount();
         var useMgdl = BloodSugarStore.getUseMgdl();
 
-        for (var i = 0; i < history.size(); i++) {
-            var reading = history[i];
+        for (var index = 0; index < count; index++) {
+            var timestamp = BloodSugarStore.getReadingTimeAt(index);
 
-            if (!(reading instanceof Array) || reading.size() < 2) {
+            var valueMmol = BloodSugarStore.getReadingValueMmolAt(index);
+
+            if (timestamp == null || valueMmol == null) {
                 continue;
             }
 
-            var valueMmol = reading[BloodSugarReading.VALUE_MMOL].toFloat();
+            var glucose = valueMmol as Float;
 
-            if (useMgdl) {
-                values.add(BloodSugarStore.MollToMgdl(valueMmol));
-            } else {
-                values.add(valueMmol);
+            if ((timestamp as Number) <= 0 || glucose <= 0.0f) {
+                continue;
             }
 
-            times.add(reading[BloodSugarReading.TIME]);
-        }
-
-        var zones = BloodSugarStore.getBloodSugarZones();
-        var displayZones = [];
-
-        for (var zoneIndex = 0; zoneIndex < zones.size(); zoneIndex++) {
-            var zoneValue = zones[zoneIndex].toFloat();
-
             if (useMgdl) {
-                displayZones.add(BloodSugarStore.MollToMgdl(zoneValue));
-            } else {
-                displayZones.add(zoneValue);
+                glucose = BloodSugarStore.MollToMgdl(glucose);
             }
+
+            times.add(timestamp as Number);
+
+            values.add(glucose);
         }
+
+        _times = times;
+        clampSelection();
+        var dangerLow = BloodSugarStore.getDangerLowMmol();
+        var low = BloodSugarStore.getLowMmol();
+        var high = BloodSugarStore.getHighMmol();
+        var dangerHigh = BloodSugarStore.getDangerHighMmol();
+
+        if (useMgdl) {
+            dangerLow = BloodSugarStore.MollToMgdl(dangerLow);
+            low = BloodSugarStore.MollToMgdl(low);
+            high = BloodSugarStore.MollToMgdl(high);
+            dangerHigh = BloodSugarStore.MollToMgdl(dangerHigh);
+        }
+
+        var displayZones = [dangerLow, low, high, dangerHigh] as Array<Float>;
 
         _parentView.setBloodSugarHistory(
             values,
@@ -91,75 +96,113 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
             displayZones,
             BloodSugarStore.getUnitText(useMgdl)
         );
+
+        if (_select > 0) {
+            updateSelect();
+        }
+    }
+
+    private function clampSelection() as Void {
+        if (_times.size() == 0) {
+            _select = 0;
+            return;
+        }
+
+        if (_select < 1) {
+            _select = 1;
+        }
+
+        if (_select > _times.size()) {
+            _select = _times.size();
+        }
     }
 
     public function updateSelect() as Void {
+        if (_times.size() == 0) {
+            return;
+        }
+
+        clampSelection();
+
         _parentView.setBloodSugarSelect(_select);
     }
 
-    public function editSelect(selectedTime) {
+    public function editSelect(selectedTime) as Void {
+        if (selectedTime == null) {
+            return;
+        }
+
         var view = new BloodSugarView();
-        var delegate = new BloodSugarDelegate(view, selectedTime);
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_UP);
+
+        WatchUi.pushView(
+            view,
+            new BloodSugarDelegate(view, selectedTime),
+            WatchUi.SLIDE_UP
+        );
     }
 
     public function onBack() as Boolean {
         System.exit();
+
         return true;
     }
 
     public function onSelect() as Boolean {
-        if (times == null || times.size() == 0) {
+        if (_times.size() == 0) {
             return true;
         }
 
-        if (_select < 1) {
-            _select = 1;
+        clampSelection();
+
+        if (_select <= 0) {
+            return true;
         }
 
-        if (_select > times.size()) {
-            _select = times.size();
-        }
+        editSelect(_times[_select - 1]);
 
-        editSelect(times[_select - 1]);
         return true;
     }
 
     public function onMenu() as Boolean {
-        WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
+        var menu = new Rez.Menus.MainMenu();
+        WatchUi.pushView(menu, new BloodSugarMenuDelegate(), WatchUi.SLIDE_UP);
+
         return true;
     }
 
     public function onNextPage() as Boolean {
-        _select++;
-        if (_select > times.size()) {
-            _select = times.size();
+        if (_times.size() == 0) {
+            return true;
         }
+
+        _select++;
+
+        if (_select > _times.size()) {
+            _select = _times.size();
+        }
+
         updateSelect();
+
         return true;
     }
 
     public function onPreviousPage() as Boolean {
+        if (_times.size() == 0) {
+            return true;
+        }
+
         _select--;
+
         if (_select < 1) {
             _select = 1;
         }
+
         updateSelect();
+
         return true;
     }
 
     public function refresh() as Void {
         updateView();
-        if (times == null || times.size() == 0) {
-            _select = 1;
-            return;
-        }
-        if (_select < 1) {
-            _select = 1;
-        }
-        if (_select > times.size()) {
-            _select = times.size();
-        }
-        updateSelect();
     }
 }

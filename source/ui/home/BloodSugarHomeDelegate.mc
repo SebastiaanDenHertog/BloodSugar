@@ -28,8 +28,6 @@ import Toybox.Lang;
 
 class BloodSugarHomeDelegate extends WatchUi.BehaviorDelegate {
     private var _view as BloodSugarHomeView;
-    private var _menuView = new Rez.Menus.MainMenu();
-    private var _menuDelegate = new BloodSugarMenuDelegate();
 
     public function initialize(view as BloodSugarHomeView) {
         BehaviorDelegate.initialize();
@@ -51,7 +49,9 @@ class BloodSugarHomeDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onMenu() as Boolean {
-        WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
+        var menu = new Rez.Menus.MainMenu();
+        var delegate = new BloodSugarMenuDelegate();
+        WatchUi.pushView(menu, delegate, WatchUi.SLIDE_UP);
         return true;
     }
 

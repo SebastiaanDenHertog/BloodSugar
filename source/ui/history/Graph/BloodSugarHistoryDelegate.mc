@@ -24,60 +24,74 @@ SOFTWARE.
 
 import Toybox.Lang;
 import Toybox.WatchUi;
-import Toybox.System;
 
 class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
+    const MAX_GRAPH_POINTS = 24;
+
     private var _parentView as BloodSugarHistoryView;
-    private var _menuView = new Rez.Menus.MainMenu() as Rez.Menus.MainMenu;
-    private var _menuDelegate =
-        new BloodSugarMenuDelegate() as BloodSugarMenuDelegate;
     private var _select as Number;
+    private var _displayedCount as Number;
 
     public function initialize(view as BloodSugarHistoryView) {
         BehaviorDelegate.initialize();
-        _select = 0;
+
         _parentView = view;
+        _select = 0;
+        _displayedCount = 0;
         updateView();
     }
 
-    public function updateView() as Void {
-        var history;
-        if (BloodSugarSystem.isLowMemoryDevice()) {
-            history = BloodSugarStore.getPartOfHistory(
-                BloodSugarSystem.getMaximumHistoryPoints()
-            );
-        } else {
-            history = BloodSugarStore.getHistory();
+    private function updateView() as Void {
+        var times = [] as Array<Number>;
+        var values = [] as Array<Float>;
+
+        var count = BloodSugarStore.getHistoryCount();
+        var useMgdl = BloodSugarStore.getUseMgdl();
+        var startIndex = 0;
+
+        if (count > MAX_GRAPH_POINTS) {
+            startIndex = count - MAX_GRAPH_POINTS;
         }
 
-        var times = [];
-        var values = [];
-        var useMgdl = BloodSugarStore.getUseMgdl();
-        for (var i = 0; i < history.size(); i++) {
-            var reading = history[i];
-            if (!(reading instanceof Array) || reading.size() < 2) {
+        for (var index = startIndex; index < count; index++) {
+            var timestamp = BloodSugarStore.getReadingTimeAt(index);
+
+            var valueMmol = BloodSugarStore.getReadingValueMmolAt(index);
+
+            if (timestamp == null || valueMmol == null) {
                 continue;
             }
-            var valueMmol = reading[BloodSugarReading.VALUE_MMOL].toFloat();
-            if (useMgdl) {
-                values.add(BloodSugarStore.MollToMgdl(valueMmol));
-            } else {
-                values.add(valueMmol);
+
+            var glucose = valueMmol as Float;
+
+            if (glucose <= 0.0f) {
+                continue;
             }
 
-            times.add(reading[BloodSugarReading.TIME]);
+            if (useMgdl) {
+                glucose = BloodSugarStore.MollToMgdl(glucose);
+            }
+
+            times.add(timestamp as Number);
+
+            values.add(glucose);
         }
 
-        var zones = BloodSugarStore.getBloodSugarZones();
-        var displayZones = [];
-        for (var zoneIndex = 0; zoneIndex < zones.size(); zoneIndex++) {
-            var zoneValue = zones[zoneIndex].toFloat();
-            if (useMgdl) {
-                displayZones.add(BloodSugarStore.MollToMgdl(zoneValue));
-            } else {
-                displayZones.add(zoneValue);
-            }
+        _displayedCount = values.size();
+        clampSelection();
+        var dangerLow = BloodSugarStore.getDangerLowMmol();
+        var low = BloodSugarStore.getLowMmol();
+        var high = BloodSugarStore.getHighMmol();
+        var dangerHigh = BloodSugarStore.getDangerHighMmol();
+
+        if (useMgdl) {
+            dangerLow = BloodSugarStore.MollToMgdl(dangerLow);
+            low = BloodSugarStore.MollToMgdl(low);
+            high = BloodSugarStore.MollToMgdl(high);
+            dangerHigh = BloodSugarStore.MollToMgdl(dangerHigh);
         }
+
+        var displayZones = [dangerLow, low, high, dangerHigh] as Array<Float>;
 
         _parentView.setBloodSugarHistory(
             values,
@@ -85,38 +99,75 @@ class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
             displayZones,
             BloodSugarStore.getUnitText(useMgdl)
         );
+
+        if (_displayedCount > 0) {
+            updateSelect();
+        }
+    }
+
+    private function clampSelection() as Void {
+        if (_displayedCount <= 0) {
+            _select = 0;
+            return;
+        }
+
+        if (_select < 0) {
+            _select = 0;
+        }
+
+        var lastIndex = _displayedCount - 1;
+
+        if (_select > lastIndex) {
+            _select = lastIndex;
+        }
     }
 
     public function updateSelect() as Void {
+        if (_displayedCount <= 0) {
+            return;
+        }
+
+        clampSelection();
+
         _parentView.setBloodSugarSelect(_select);
     }
 
     public function onBack() as Boolean {
-        //WatchUi.popView(WatchUi.SLIDE_LEFT);
-        //return true;
+        WatchUi.popView(WatchUi.SLIDE_LEFT);
+
+        return true;
     }
 
     public function onSelect() as Boolean {
-        //return onBack();
+        return false;
     }
 
     public function onMenu() as Boolean {
-        WatchUi.pushView(_menuView, _menuDelegate, WatchUi.SLIDE_UP);
+        var menu = new Rez.Menus.MainMenu();
+        WatchUi.pushView(menu, new BloodSugarMenuDelegate(), WatchUi.SLIDE_UP);
         return true;
     }
 
     public function onPreviousPage() as Boolean {
+        if (_displayedCount <= 0) {
+            return true;
+        }
+
         _select++;
+        clampSelection();
         updateSelect();
         return true;
     }
 
     public function onNextPage() as Boolean {
-        _select--;
-        if (_select < 0) {
-            _select = 0;
+        if (_displayedCount <= 0) {
+            return true;
         }
+
+        _select--;
+        clampSelection();
         updateSelect();
+
         return true;
     }
 
