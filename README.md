@@ -35,6 +35,18 @@ memory than keeping every reading as a nested array or dictionary.
 
 ## Change log
 
+### v0.9.61
+
+- Added a button-controlled keyboard for non-touch watches, while keeping the
+  QWERTY keyboard on touchscreen watches.
+- Added a smaller history profile for watches with limited app memory.
+- Improved history navigation and reduced memory use when opening the history
+  list repeatedly.
+- Made graph limits clearer: danger-low and danger-high are red, while the
+  warning limits are orange with matching labels.
+- Improved monitor setup and sync cancellation reliability.
+- Abbott FreeStyle integration remains in beta until v1.0.0.
+
 ### v0.9.6
 
 - Reduced temporary allocations in the keyboard, glance, history list,
