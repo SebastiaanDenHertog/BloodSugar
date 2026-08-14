@@ -20,6 +20,10 @@ memory than keeping every reading as a nested array or dictionary.
   30, and six-hour averages through day 180.
 - The history is capped at 3,200 packed points (about 21.9 KiB at full capacity),
   leaving space below Garmin's 32 KB per-value storage limit.
+- Watches with 128 KiB or less app memory, including the Forerunner 55, use a
+  smaller profile: three days at full resolution, two-hour averages through day
+  30, and twelve-hour averages after that, capped at 1,500 packed points. The
+  profile is based on available app memory rather than screen dimensions.
 - The history list loads only the rows currently visible on screen.
 - The glance reads packed history values directly instead of creating temporary
   reading arrays.

@@ -62,7 +62,7 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
     public function onMenu() as Boolean {
         var menu = new Rez.Menus.MainMenu();
         var delegate = new BloodSugarMenuDelegate();
-        WatchUi.pushView(menu, delegate, WatchUi.SLIDE_UP);
+        WatchUi.switchToView(menu, delegate, WatchUi.SLIDE_UP);
         return true;
     }
 }

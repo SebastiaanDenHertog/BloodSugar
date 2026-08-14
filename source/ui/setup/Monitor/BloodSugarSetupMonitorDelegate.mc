@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 import Toybox.WatchUi;
+import Toybox.Application;
 import Toybox.System;
 import Toybox.Lang;
 
@@ -30,9 +31,6 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.BehaviorDelegate {
     private var _view as BloodSugarSetupMonitorView;
     private var _select as Number;
     private var _bloodMonitors as Array<String>;
-    private var view as BloodSugarSetupBleView or BloodSugarSetupApiView;
-    private var delegate as
-        BloodSugarSetupBleDelegate or BloodSugarSetupApiDelegate;
 
     public function initialize(view as BloodSugarSetupMonitorView) {
         BehaviorDelegate.initialize();
@@ -43,9 +41,6 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.BehaviorDelegate {
     }
 
     private function updateView() as Void {
-        System.println(
-            "_select: " + _select + " _bloodMonitors: " + _bloodMonitors
-        );
         _view.setEntry(_select, _bloodMonitors);
     }
 
@@ -80,27 +75,52 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onBack() as Boolean {
-        WatchUi.popView(SLIDE_LEFT);
-        //pushView(view, delegate, WatchUi.SLIDE_LEFT);
+        WatchUi.popView(WatchUi.SLIDE_LEFT);
+        return true;
     }
 
     public function onSelect() as Boolean {
-        BloodSugarStore.setBloodMonitor(_select);
-        System.println(_bloodMonitors[_select]);
-        if (_select == 0) {
-            view = new BloodSugarSetupApiView();
-            delegate = new BloodSugarSetupApiDelegate(view);
-        } else {
-            view = new BloodSugarSetupBleView();
-            var profileManager = new ProfileManager();
-            var bleDelegate = new BloodSugarServiceBleDelegate(profileManager);
-            var deviceManager = new DeviceManager(bleDelegate, profileManager);
-            delegate = new BloodSugarSetupBleDelegate(
-                bleDelegate as BloodSugarServiceBleDelegate,
-                deviceManager as DeviceManager,
-                view as BloodSugarSetupBleView
-            );
+        var monitorId = BloodSugarStore.getBloodMonitorIdAt(_select);
+        if (monitorId == BloodSugarStore.MONITOR_NONE) {
+            return false;
         }
-        WatchUi.pushView(view, delegate, WatchUi.SLIDE_LEFT);
+
+        if (monitorId == BloodSugarStore.MONITOR_ABBOTT) {
+            BloodSugarStore.setBloodMonitor(monitorId);
+            var apiView = new BloodSugarSetupApiView();
+            WatchUi.pushView(
+                apiView,
+                new BloodSugarSetupApiDelegate(apiView),
+                WatchUi.SLIDE_LEFT
+            );
+            return true;
+        }
+
+        if (monitorId == BloodSugarStore.MONITOR_BLE) {
+            var app = Application.getApp() as BloodSugarApp;
+            app.initializeBle();
+            var bleDelegate = app.getBleDelegate();
+            var deviceManager = app.getDeviceManager();
+
+            if (bleDelegate == null || deviceManager == null) {
+                System.println("BLE setup is not available");
+                return true;
+            }
+
+            BloodSugarStore.setBloodMonitor(monitorId);
+            var bleView = new BloodSugarSetupBleView();
+            WatchUi.pushView(
+                bleView,
+                new BloodSugarSetupBleDelegate(
+                    bleDelegate as BloodSugarServiceBleDelegate,
+                    deviceManager as DeviceManager,
+                    bleView
+                ),
+                WatchUi.SLIDE_LEFT
+            );
+            return true;
+        }
+
+        return false;
     }
 }

@@ -31,6 +31,7 @@ class AbbottFreeStyleApi {
     private var _state as Number;
     private var _completion;
     private var _authenticationRetried as Boolean;
+    private var _cancelled as Boolean;
 
     public function initialize(email as String, password as String) {
         _email = email;
@@ -44,6 +45,7 @@ class AbbottFreeStyleApi {
         _state = STATE_IDLE;
         _completion = null;
         _authenticationRetried = false;
+        _cancelled = false;
     }
 
     public function read(completion) as Void {
@@ -53,6 +55,7 @@ class AbbottFreeStyleApi {
 
         _completion = completion;
         _authenticationRetried = false;
+        _cancelled = false;
 
         if (_jwtToken == null || _accountIdHash == null) {
             login();
@@ -90,6 +93,10 @@ class AbbottFreeStyleApi {
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
     ) as Void {
+        if (_cancelled) {
+            return;
+        }
+
         if (responseCode != 200) {
             fail("Could not login: HTTP " + responseCode.toString());
             return;
@@ -208,6 +215,10 @@ class AbbottFreeStyleApi {
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
     ) as Void {
+        if (_cancelled) {
+            return;
+        }
+
         if (responseCode != 200) {
             fail("Could not load countries: HTTP " + responseCode.toString());
             return;
@@ -300,6 +311,10 @@ class AbbottFreeStyleApi {
         response as
             Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
     ) as Void {
+        if (_cancelled) {
+            return;
+        }
+
         if (responseCode == 401 || responseCode == 403) {
             retryAuthentication("Connections authentication failed");
 
@@ -665,6 +680,13 @@ class AbbottFreeStyleApi {
         _redirectRegion = null;
 
         login();
+    }
+
+    public function cancel() as Void {
+        _cancelled = true;
+        _state = STATE_IDLE;
+        _completion = null;
+        Communications.cancelAllRequests();
     }
 
     private function complete(

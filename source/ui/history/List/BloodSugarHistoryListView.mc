@@ -43,7 +43,6 @@ class BloodSugarHistoryListView extends WatchUi.View {
     private var _unit as String;
     private var _selected as Number;
     private var _showDetails as Boolean;
-    private var _delegate as BloodSugarHistoryListDelegate?;
 
     public function initialize() {
         View.initialize();
@@ -57,7 +56,6 @@ class BloodSugarHistoryListView extends WatchUi.View {
         _unit = "mmol/L";
         _selected = 0;
         _showDetails = false;
-        _delegate = null;
     }
 
     public function onLayout(dc as Graphics.Dc) as Void {
@@ -90,8 +88,12 @@ class BloodSugarHistoryListView extends WatchUi.View {
     }
 
     public function onShow() as Void {
-        if (_delegate != null) {
-            (_delegate as BloodSugarHistoryListDelegate).refresh();
+        var current = WatchUi.getCurrentView();
+        if (
+            current.size() > 1 &&
+            current[1] instanceof BloodSugarHistoryListDelegate
+        ) {
+            (current[1] as BloodSugarHistoryListDelegate).refresh();
         }
         WatchUi.requestUpdate();
     }
@@ -191,9 +193,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
 
     private function updatePositionLabel() as Void {
         var positionText =
-            (_selected + 1).format("%d") +
-            "/" +
-            _historyCount.format("%d");
+            (_selected + 1).format("%d") + "/" + _historyCount.format("%d");
 
         setLabel("historyListPosition", positionText);
     }
@@ -215,9 +215,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
         var value = getDisplayValue(valueMmol as Float);
         var zoneColor = getValueColor(value);
         var positionText =
-            (_selected + 1).format("%d") +
-            " of " +
-            _historyCount.format("%d");
+            (_selected + 1).format("%d") + " of " + _historyCount.format("%d");
 
         setLabel("historyListPosition", positionText);
         setLabel("historyDetailValue", formatValueOnly(value));
@@ -320,7 +318,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
         var maximumDistance = height / 2;
         var distanceRatio =
             distanceFromCenter.toFloat() / maximumDistance.toFloat();
-        var sideMargin = 10 + (distanceRatio * width * 0.18f).toNumber();
+        var sideMargin = 2 + (distanceRatio * width * 0.18f).toNumber();
         var left = sideMargin;
         var right = width - sideMargin;
         if (isSelected) {
@@ -354,17 +352,11 @@ class BloodSugarHistoryListView extends WatchUi.View {
     }
 
     private function getValueColor(value as Float) as Number {
-        if (
-            value < _dangerLow ||
-            value > _dangerHigh
-        ) {
+        if (value < _dangerLow || value > _dangerHigh) {
             return Graphics.COLOR_RED;
         }
 
-        if (
-            value < _low ||
-            value > _high
-        ) {
+        if (value < _low || value > _high) {
             return Graphics.COLOR_ORANGE;
         }
 
@@ -425,11 +417,5 @@ class BloodSugarHistoryListView extends WatchUi.View {
             ":" +
             info.min.format("%02d")
         );
-    }
-
-    public function setDelegate(
-        delegate as BloodSugarHistoryListDelegate
-    ) as Void {
-        _delegate = delegate;
     }
 }

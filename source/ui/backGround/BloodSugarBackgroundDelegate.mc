@@ -53,15 +53,11 @@ class BloodSugarBackgroundDelegate extends System.ServiceDelegate {
         }
     }
 
-    private function onSyncComplete(
-        result as BloodSugarSyncResult,
-        notificationShown as Boolean
-    ) as Void {
+    private function onSyncComplete(result as BloodSugarSyncResult) as Void {
         Background.exit({
             "success" => result.success,
             "added" => result.addedCount,
             "monitor" => result.monitorId,
-            "notification" => notificationShown,
         });
     }
 }

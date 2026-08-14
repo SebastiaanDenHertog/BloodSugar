@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import Toybox.Application;
 import Toybox.Application.Storage;
 import Toybox.System;
 import Toybox.WatchUi;
@@ -114,12 +115,14 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         var title = passwordMode ? "Password" : "Username";
         var initialText = passwordMode ? _password : _username;
         var allowSpace = passwordMode;
+        var buttonMode = shouldUseButtonKeyboard();
         var keyboardView = new BloodSugarKeyboardView(
             initialText,
             passwordMode,
             title,
             96,
-            allowSpace
+            allowSpace,
+            buttonMode
         );
         var keyboardDelegate = new BloodSugarKeyboardDelegate(
             keyboardView,
@@ -127,6 +130,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
             field
         );
         WatchUi.pushView(keyboardView, keyboardDelegate, WatchUi.SLIDE_UP);
+    }
+
+    private function shouldUseButtonKeyboard() as Boolean {
+        var settings = System.getDeviceSettings();
+        return !settings.isTouchScreen;
     }
 
     public function handleKeyboardCompleted(
@@ -192,6 +200,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         }
 
         BloodSugarStore.setSetupDone(true);
+        (Application.getApp() as BloodSugarApp).updateBackgroundSync();
         if (addedCount > 0) {
             _status = "Connected: " + addedCount + " readings added";
         } else {

@@ -52,9 +52,7 @@ class BloodSugarApp extends Application.AppBase {
     }
 
     public function onStart(state as Dictionary?) as Void {}
-
     public function onInactive(state as Dictionary?) as Void {}
-
     public function onStop(state as Dictionary?) as Void {
         if (_syncManager != null) {
             (_syncManager as BloodSugarSyncManager).stop();
@@ -82,6 +80,8 @@ class BloodSugarApp extends Application.AppBase {
     public function getInitialView() as
         [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates]
     {
+        BloodSugarStore.configureHistoryProfileForForeground();
+
         if (!BloodSugarStore.getSetupDone()) {
             var setupView = new BloodSugarSetupUnitView();
 
@@ -150,7 +150,7 @@ class BloodSugarApp extends Application.AppBase {
         return username.length() > 0 && password.length() > 0;
     }
 
-    private function initializeBle() as Void {
+    public function initializeBle() as Void {
         if (!BloodSugarStore.isBleSupported()) {
             System.println("BLE is not supported");
             return;
@@ -187,6 +187,12 @@ class BloodSugarApp extends Application.AppBase {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
         } catch (error) {
             System.println("Could not stop BLE scan: " + error.toString());
+        }
+
+        try {
+            BluetoothLowEnergy.setDelegate(null);
+        } catch (error) {
+            System.println("Could not release BLE delegate");
         }
 
         _deviceManager = null;

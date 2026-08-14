@@ -30,19 +30,26 @@ import Toybox.Time;
 
 (:glance)
 module BloodSugarStore {
-    const MAX_POINTS = 3200;
+    const STANDARD_MAX_POINTS = 3200;
+    const COMPACT_MAX_POINTS = 1500;
 
     const SECONDS_PER_HOUR = 60 * 60;
     const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
-    const RAW_RETENTION_SECONDS = 7 * SECONDS_PER_DAY;
-    const HOURLY_RETENTION_SECONDS = 30 * SECONDS_PER_DAY;
+    const STANDARD_RAW_RETENTION_SECONDS = 7 * SECONDS_PER_DAY;
+    const COMPACT_RAW_RETENTION_SECONDS = 3 * SECONDS_PER_DAY;
+    const MIDDLE_RETENTION_SECONDS = 30 * SECONDS_PER_DAY;
     const MAX_RETENTION_SECONDS = 180 * SECONDS_PER_DAY;
-    const SIX_HOUR_BUCKET_SECONDS = 6 * SECONDS_PER_HOUR;
+    const STANDARD_MIDDLE_BUCKET_SECONDS = SECONDS_PER_HOUR;
+    const COMPACT_MIDDLE_BUCKET_SECONDS = 2 * SECONDS_PER_HOUR;
+    const STANDARD_OLD_BUCKET_SECONDS = 6 * SECONDS_PER_HOUR;
+    const COMPACT_OLD_BUCKET_SECONDS = 12 * SECONDS_PER_HOUR;
 
     const RAW_BUCKET = -1;
 
     const STORAGE_KEY = "BloodSugarHistory";
+    const COMPACT_PROFILE_MEMORY_LIMIT = 128 * 1024;
     const PROP_APP_VERSION = "appVersion";
+    const PROP_COMPACT_HISTORY_PROFILE = "compactHistoryProfile";
     const STORAGE_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
     const PROP_USERNAME = "username";
@@ -77,6 +84,7 @@ module BloodSugarStore {
     var _notificationHighMmolCache = null;
 
     var _bleSupportedCache = null;
+    var _compactHistoryProfileCache = null;
 
     const NOTIFICATION_NONE = 0;
     const NOTIFICATION_LOW = 1;
@@ -182,8 +190,9 @@ module BloodSugarStore {
         }
 
         var keepCount = validCount;
-        if (keepCount > MAX_POINTS) {
-            keepCount = MAX_POINTS;
+        var maximumPoints = getMaximumHistoryPoints();
+        if (keepCount > maximumPoints) {
+            keepCount = maximumPoints;
         }
 
         var skipValid = validCount - keepCount;
@@ -336,15 +345,72 @@ module BloodSugarStore {
             return 0;
         }
 
-        if (timestamp >= now - RAW_RETENTION_SECONDS) {
+        if (timestamp >= now - getRawRetentionSeconds()) {
             return RAW_BUCKET;
         }
 
-        if (timestamp >= now - HOURLY_RETENTION_SECONDS) {
-            return SECONDS_PER_HOUR;
+        if (timestamp >= now - MIDDLE_RETENTION_SECONDS) {
+            return getMiddleBucketSeconds();
         }
 
-        return SIX_HOUR_BUCKET_SECONDS;
+        return getOldBucketSeconds();
+    }
+
+    function configureHistoryProfileForForeground() as Void {
+        var totalMemory = System.getSystemStats().totalMemory;
+        var useCompactProfile =
+            totalMemory <= COMPACT_PROFILE_MEMORY_LIMIT;
+        _compactHistoryProfileCache = useCompactProfile;
+
+        try {
+            Properties.setValue(
+                PROP_COMPACT_HISTORY_PROFILE,
+                useCompactProfile
+            );
+        } catch (error) {
+            System.println("Unable to save history memory profile");
+        }
+    }
+
+    function usesCompactHistoryProfile() as Boolean {
+        if (_compactHistoryProfileCache == null) {
+            _compactHistoryProfileCache =
+                Properties.getValue(PROP_COMPACT_HISTORY_PROFILE) != false;
+        }
+
+        return _compactHistoryProfileCache as Boolean;
+    }
+
+    function getMaximumHistoryPoints() as Number {
+        if (usesCompactHistoryProfile()) {
+            return COMPACT_MAX_POINTS;
+        }
+
+        return STANDARD_MAX_POINTS;
+    }
+
+    function getRawRetentionSeconds() as Number {
+        if (usesCompactHistoryProfile()) {
+            return COMPACT_RAW_RETENTION_SECONDS;
+        }
+
+        return STANDARD_RAW_RETENTION_SECONDS;
+    }
+
+    function getMiddleBucketSeconds() as Number {
+        if (usesCompactHistoryProfile()) {
+            return COMPACT_MIDDLE_BUCKET_SECONDS;
+        }
+
+        return STANDARD_MIDDLE_BUCKET_SECONDS;
+    }
+
+    function getOldBucketSeconds() as Number {
+        if (usesCompactHistoryProfile()) {
+            return COMPACT_OLD_BUCKET_SECONDS;
+        }
+
+        return STANDARD_OLD_BUCKET_SECONDS;
     }
 
     function historyNeedsCompaction(
@@ -352,7 +418,7 @@ module BloodSugarStore {
         now as Number
     ) as Boolean {
         var count = BloodSugarReading.getPackedCount(bytes);
-        if (count > MAX_POINTS) {
+        if (count > getMaximumHistoryPoints()) {
             return true;
         }
 
@@ -455,9 +521,10 @@ module BloodSugarStore {
         // Count first so the fixed-size ByteArray is allocated only once.
         var outputCount = getCompactedHistoryCount(bytes, now);
         var skipOutput = 0;
-        if (outputCount > MAX_POINTS) {
-            skipOutput = outputCount - MAX_POINTS;
-            outputCount = MAX_POINTS;
+        var maximumPoints = getMaximumHistoryPoints();
+        if (outputCount > maximumPoints) {
+            skipOutput = outputCount - maximumPoints;
+            outputCount = maximumPoints;
         }
 
         var compacted = BloodSugarReading.createPackedHistory(outputCount);
@@ -840,18 +907,19 @@ module BloodSugarStore {
             }
         }
 
-        if (currentCount >= MAX_POINTS && insertionIndex == 0) {
+        var maximumPoints = getMaximumHistoryPoints();
+        if (currentCount >= maximumPoints && insertionIndex == 0) {
             return null;
         }
 
         var candidateCount = currentCount + 1;
-        if (candidateCount > MAX_POINTS) {
-            candidateCount = MAX_POINTS;
+        if (candidateCount > maximumPoints) {
+            candidateCount = maximumPoints;
         }
         var candidate = BloodSugarReading.createPackedHistory(candidateCount);
         var firstSourceIndex = 0;
         var destinationInsertionIndex = insertionIndex;
-        if (currentCount >= MAX_POINTS) {
+        if (currentCount >= maximumPoints) {
             firstSourceIndex = 1;
 
             destinationInsertionIndex -= 1;
@@ -942,6 +1010,9 @@ module BloodSugarStore {
 
             case MONITOR_ABBOTT:
                 return "Abbott FreeStyle";
+
+            case MONITOR_BLE:
+                return "Bluetooth LE";
         }
 
         return "unknown";
@@ -1463,7 +1534,8 @@ module BloodSugarStore {
             }
 
             if (
-                BloodSugarReading.getPackedCount(candidate) >= MAX_POINTS &&
+                BloodSugarReading.getPackedCount(candidate) >=
+                    getMaximumHistoryPoints() &&
                 historyNeedsCompaction(candidate, now)
             ) {
                 candidate = compactPackedHistory(candidate, now);
@@ -1545,7 +1617,25 @@ module BloodSugarStore {
     }
 
     public function getBloodMonitors() as Array<String> {
-        return ["Abbott FreeStyle"] as Array<String>;
+        var monitors = ["Abbott FreeStyle"] as Array<String>;
+
+        if (isBleSupported()) {
+            monitors.add("Bluetooth LE");
+        }
+
+        return monitors;
+    }
+
+    public function getBloodMonitorIdAt(index as Number) as Number {
+        if (index == 0) {
+            return MONITOR_ABBOTT;
+        }
+
+        if (index == 1 && isBleSupported()) {
+            return MONITOR_BLE;
+        }
+
+        return MONITOR_NONE;
     }
 
     public function setBloodMonitor(selected as Number) as Void {

@@ -54,6 +54,11 @@ class AbbottFreeStylePollingManager {
 
             _timer = null;
         }
+
+        if (_client != null) {
+            (_client as AbbottFreeStyleApi).cancel();
+        }
+
         _client = null;
         _requestRunning = false;
     }

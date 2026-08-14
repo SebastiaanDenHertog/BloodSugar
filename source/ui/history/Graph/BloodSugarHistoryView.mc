@@ -30,6 +30,7 @@ import Toybox.Math;
 
 class BloodSugarHistoryView extends WatchUi.View {
     const MAX_VISIBLE_POINTS = 24;
+    const COLOR_WARNING = 0xFFAA00;
 
     const ZONE_DANGER_LOW = 0;
     const ZONE_LOW = 1;
@@ -170,30 +171,10 @@ class BloodSugarHistoryView extends WatchUi.View {
         _graphMinimum = minimum;
         _graphMaximum = maximum;
 
-        drawRangeLine(
-            dc,
-            _zones[ZONE_DANGER_LOW].toFloat() as Float,
-            _zones[ZONE_DANGER_LOW].format("%.2f"),
-            true
-        );
-        drawRangeLine(
-            dc,
-            _zones[ZONE_LOW].toFloat() as Float,
-            _zones[ZONE_LOW].format("%.2f"),
-            false
-        );
-        drawRangeLine(
-            dc,
-            _zones[ZONE_HIGH].toFloat() as Float,
-            _zones[ZONE_HIGH].format("%.2f"),
-            false
-        );
-        drawRangeLine(
-            dc,
-            _zones[ZONE_DANGER_HIGH].toFloat() as Float,
-            _zones[ZONE_DANGER_HIGH].format("%.2f"),
-            true
-        );
+        drawThresholdLine(dc, ZONE_DANGER_LOW);
+        drawThresholdLine(dc, ZONE_LOW);
+        drawThresholdLine(dc, ZONE_HIGH);
+        drawThresholdLine(dc, ZONE_DANGER_HIGH);
 
         var previousX = -1;
         var previousY = -1;
@@ -248,12 +229,26 @@ class BloodSugarHistoryView extends WatchUi.View {
         }
     }
 
-    private function drawRangeLine(
+    private function drawThresholdLine(
         dc as Graphics.Dc,
-        target as Float,
-        label as String,
-        isDanger as Boolean
+        thresholdIndex as Number
     ) as Void {
+        if (
+            thresholdIndex < ZONE_DANGER_LOW ||
+            thresholdIndex > ZONE_DANGER_HIGH
+        ) {
+            return;
+        }
+
+        var target = _zones[thresholdIndex].toFloat() as Float;
+        var color = COLOR_WARNING;
+        if (
+            thresholdIndex == ZONE_DANGER_LOW ||
+            thresholdIndex == ZONE_DANGER_HIGH
+        ) {
+            color = Graphics.COLOR_RED;
+        }
+
         var y = valueToY(
             target,
             _graphTop,
@@ -261,32 +256,24 @@ class BloodSugarHistoryView extends WatchUi.View {
             _graphMinimum,
             _graphMaximum
         );
+        var label = formatAxisValue(target);
+        var font = Graphics.FONT_XTINY;
+        var labelY = y - dc.getFontHeight(font);
 
-        var lineColor = Graphics.COLOR_ORANGE;
-
-        if (isDanger) {
-            lineColor = Graphics.COLOR_RED;
+        if (thresholdIndex == ZONE_DANGER_LOW) {
+            labelY = y - dc.getFontHeight(font) / 2;
         }
 
-        dc.setColor(lineColor, Graphics.COLOR_BLACK);
+        dc.setColor(color, Graphics.COLOR_BLACK);
         dc.drawLine(_graphLeft, y, _graphRight, y);
-        if (label.equals(_zones[ZONE_DANGER_LOW].format("%.2f").toString())) {
-            dc.drawText(
-                _graphRight - 2,
-                y - dc.getFontHeight(Graphics.FONT_XTINY) / 2,
-                Graphics.FONT_XTINY,
-                label,
-                Graphics.TEXT_JUSTIFY_RIGHT
-            );
-        } else {
-            dc.drawText(
-                _graphRight - 2,
-                y - dc.getFontHeight(Graphics.FONT_XTINY),
-                Graphics.FONT_XTINY,
-                label,
-                Graphics.TEXT_JUSTIFY_RIGHT
-            );
-        }
+        dc.setColor(color, Graphics.COLOR_BLACK);
+        dc.drawText(
+            _graphRight - 2,
+            labelY,
+            font,
+            label,
+            Graphics.TEXT_JUSTIFY_RIGHT
+        );
     }
 
     private function getPointColor(value as Float) as Number {
@@ -301,7 +288,7 @@ class BloodSugarHistoryView extends WatchUi.View {
             value < _zones[ZONE_LOW].toFloat() ||
             value > _zones[ZONE_HIGH].toFloat()
         ) {
-            return Graphics.COLOR_ORANGE;
+            return COLOR_WARNING;
         }
 
         return Graphics.COLOR_GREEN;

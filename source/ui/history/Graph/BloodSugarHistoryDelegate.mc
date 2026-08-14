@@ -144,7 +144,11 @@ class BloodSugarHistoryDelegate extends WatchUi.BehaviorDelegate {
 
     public function onMenu() as Boolean {
         var menu = new Rez.Menus.MainMenu();
-        WatchUi.pushView(menu, new BloodSugarMenuDelegate(), WatchUi.SLIDE_UP);
+        WatchUi.switchToView(
+            menu,
+            new BloodSugarMenuDelegate(),
+            WatchUi.SLIDE_UP
+        );
         return true;
     }
 

@@ -102,6 +102,10 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
     }
 
     public function stop() as Void {
+        if (_api != null) {
+            (_api as AbbottFreeStyleApi).cancel();
+        }
+
         _api = null;
         _completion = null;
     }

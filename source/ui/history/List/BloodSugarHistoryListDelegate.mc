@@ -24,7 +24,6 @@ SOFTWARE.
 
 import Toybox.Lang;
 import Toybox.WatchUi;
-import Toybox.System;
 
 class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarHistoryListView;
@@ -37,8 +36,6 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
         _parentView = view;
         _select = 0;
         _historyCount = 0;
-
-        _parentView.setDelegate(self);
 
         refresh();
     }
@@ -114,7 +111,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onBack() as Boolean {
-        System.exit();
+        WatchUi.popView(WatchUi.SLIDE_LEFT);
 
         return true;
     }
@@ -137,7 +134,11 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
 
     public function onMenu() as Boolean {
         var menu = new Rez.Menus.MainMenu();
-        WatchUi.pushView(menu, new BloodSugarMenuDelegate(), WatchUi.SLIDE_UP);
+        WatchUi.switchToView(
+            menu,
+            new BloodSugarMenuDelegate(),
+            WatchUi.SLIDE_UP
+        );
 
         return true;
     }
