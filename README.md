@@ -1,42 +1,78 @@
 # BloodSugar
 
-A Connect IQ app for logging your blood sugars.
+BloodSugar is a Garmin Connect IQ watch app for manually logging glucose
+readings and viewing recent glucose history. It supports mmol/L and mg/dL,
+configurable glucose zones, notifications, and Abbott FreeStyle integration.
 
-## Change Log
+## Requirements
 
-* v0.9.1
-    * Created a basic app with a graph and list view and basic input for blood sugar level.
-    
-    * Two deferent units in witch it can be added.
+- Connect IQ API level 3.0.0 or newer.
+- A Garmin watch included in `manifest.xml`.
 
-* v0.9.2
-    * Introduced our first Glucose monitor that could be added: Abbott FreeStyle.
+API level 3.0.0 is required because glucose history is stored as a packed
+`ByteArray`. This format uses substantially less persistent storage and runtime
+memory than keeping every reading as a nested array or dictionary.
 
-    * With added notifications about low or high levels
-        
-* v0.9.3
-    * Added a new settings interface
+## Memory efficiency
 
-* v0.9.4
-    * Added a keyboard on the watch to have a alternative input way
+- Glucose history is packed into a compact `ByteArray`.
+- History retains five-minute readings for 7 days, hourly averages through day
+  30, and six-hour averages through day 180.
+- The history is capped at 3,200 packed points (about 21.9 KiB at full capacity),
+  leaving space below Garmin's 32 KB per-value storage limit.
+- The history list loads only the rows currently visible on screen.
+- The glance reads packed history values directly instead of creating temporary
+  reading arrays.
+- Keyboard key and width tables are shared instead of recreated during each
+  draw or tap.
+- Settings reuse one state object and one glucose-zone buffer.
+- Text fitting avoids temporary font arrays and uses a binary search when text
+  must be shortened.
 
-* v0.9.5
-    * Settings is devided in categories and and gets green when the settings is saved.
-    * The layout update all pages are moved to layouts to make use of the size family.
+## Change log
 
-## References 
-    [DiaKEM libre api](https://github.com/DiaKEM/libre-link-up-api-client) for the connection of your monitor to the watch
+### v0.9.6
 
-## Dev Info
+- Reduced temporary allocations in the keyboard, glance, history list,
+  settings, and text-rendering paths.
+- Added compact packed history storage.
+- Added automatic six-month history retention with age-based averaging.
+- Raised the minimum Connect IQ API level to 3.0.0 for `ByteArray` support.
 
-Formating: 
-    Name: Prettier Monkey C
-    Id: markw65.prettier-extension-monkeyc
-    Description: A Monkey C source transformation extension
-    Version: 2.0.131
-    Publisher: Mark W
-    VS Marketplace Link: https://marketplace.visualstudio.com/items?itemName=markw65.prettier-extension-monkeyc
+### v0.9.5
+
+- Divided settings into categories and added a green saved-state indicator.
+- Moved page layouts into size-family resources.
+
+### v0.9.4
+
+- Added an on-watch keyboard as an alternative input method.
+
+### v0.9.3
+
+- Added a new settings interface.
+
+### v0.9.2
+
+- Added Abbott FreeStyle monitor integration.
+- Added low- and high-glucose notifications.
+
+### v0.9.1
+
+- Added the initial graph, list view, and manual glucose input.
+- Added support for mmol/L and mg/dL.
+
+## Reference
+
+The Abbott FreeStyle connection is based on the
+[DiaKEM Libre API client](https://github.com/DiaKEM/libre-link-up-api-client).
+
+## Development
+
+Monkey C files are formatted with
+[Prettier Monkey C](https://marketplace.visualstudio.com/items?itemName=markw65.prettier-extension-monkeyc)
+(`markw65.prettier-extension-monkeyc`).
 
 ## License
 
-This Project is under a MIT License. See the [LICENSE](LICENSE.txt) file for details.
+This project is licensed under the MIT License. See [LICENSE.txt](LICENSE.txt).

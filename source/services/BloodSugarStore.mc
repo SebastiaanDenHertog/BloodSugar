@@ -30,7 +30,16 @@ import Toybox.Time;
 
 (:glance)
 module BloodSugarStore {
-    const MAX_POINTS = 240;
+    const MAX_POINTS = 3200;
+
+    const SECONDS_PER_HOUR = 60 * 60;
+    const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+    const RAW_RETENTION_SECONDS = 7 * SECONDS_PER_DAY;
+    const HOURLY_RETENTION_SECONDS = 30 * SECONDS_PER_DAY;
+    const MAX_RETENTION_SECONDS = 180 * SECONDS_PER_DAY;
+    const SIX_HOUR_BUCKET_SECONDS = 6 * SECONDS_PER_HOUR;
+
+    const RAW_BUCKET = -1;
 
     const STORAGE_KEY = "BloodSugarHistory";
     const PROP_APP_VERSION = "appVersion";
@@ -113,21 +122,12 @@ module BloodSugarStore {
             _historyBytes = bytes;
             _historyWritable = true;
             _historyNeedsRepair = false;
-            var count = BloodSugarReading.getPackedCount(bytes);
-            if (count > MAX_POINTS) {
-                var trimmed = BloodSugarReading.createPackedHistory(MAX_POINTS);
-                var startIndex = count - MAX_POINTS;
-                for (var index = 0; index < MAX_POINTS; index += 1) {
-                    BloodSugarReading.copyPackedRecord(
-                        bytes,
-                        startIndex + index,
-                        trimmed,
-                        index
-                    );
-                }
-                _historyBytes = trimmed;
+            var now = Time.now().value();
+            if (historyNeedsCompaction(bytes, now)) {
+                var compacted = compactPackedHistory(bytes, now);
+                _historyBytes = compacted;
 
-                if (savePacked(trimmed)) {
+                if (savePacked(compacted)) {
                     _historyNeedsRepair = false;
                 } else {
                     _historyNeedsRepair = true;
@@ -328,6 +328,242 @@ module BloodSugarStore {
         return BloodSugarReading.getPackedValueMmol(bytes, index);
     }
 
+    function getRetentionBucketSize(
+        timestamp as Number,
+        now as Number
+    ) as Number {
+        if (timestamp < now - MAX_RETENTION_SECONDS) {
+            return 0;
+        }
+
+        if (timestamp >= now - RAW_RETENTION_SECONDS) {
+            return RAW_BUCKET;
+        }
+
+        if (timestamp >= now - HOURLY_RETENTION_SECONDS) {
+            return SECONDS_PER_HOUR;
+        }
+
+        return SIX_HOUR_BUCKET_SECONDS;
+    }
+
+    function historyNeedsCompaction(
+        bytes as Lang.ByteArray,
+        now as Number
+    ) as Boolean {
+        var count = BloodSugarReading.getPackedCount(bytes);
+        if (count > MAX_POINTS) {
+            return true;
+        }
+
+        var activeBucketSize = 0;
+        var activeBucket = -1;
+
+        for (var index = 0; index < count; index += 1) {
+            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var bucketSize = getRetentionBucketSize(timestamp, now);
+
+            if (bucketSize == 0) {
+                return true;
+            }
+
+            if (bucketSize == RAW_BUCKET) {
+                activeBucketSize = 0;
+                activeBucket = -1;
+                continue;
+            }
+
+            var bucket = timestamp / bucketSize;
+            if (activeBucketSize == bucketSize && activeBucket == bucket) {
+                return true;
+            }
+
+            activeBucketSize = bucketSize;
+            activeBucket = bucket;
+        }
+
+        return false;
+    }
+
+    function getCompactedHistoryCount(
+        bytes as Lang.ByteArray,
+        now as Number
+    ) as Number {
+        var count = BloodSugarReading.getPackedCount(bytes);
+        var outputCount = 0;
+        var activeBucketSize = 0;
+        var activeBucket = -1;
+
+        for (var index = 0; index < count; index += 1) {
+            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var bucketSize = getRetentionBucketSize(timestamp, now);
+
+            if (bucketSize == 0) {
+                continue;
+            }
+
+            if (bucketSize == RAW_BUCKET) {
+                outputCount += 1;
+                activeBucketSize = 0;
+                activeBucket = -1;
+                continue;
+            }
+
+            var bucket = timestamp / bucketSize;
+            if (activeBucketSize != bucketSize || activeBucket != bucket) {
+                outputCount += 1;
+                activeBucketSize = bucketSize;
+                activeBucket = bucket;
+            }
+        }
+
+        return outputCount;
+    }
+
+    function writeCompactedAverage(
+        destination as Lang.ByteArray,
+        destinationIndex as Number,
+        timestamp as Number,
+        totalValue as Float,
+        sampleCount as Number,
+        sourceId as Number,
+        contextId as Number
+    ) as Void {
+        if (sampleCount > 1) {
+            sourceId = BloodSugarReading.SOURCE_ID_AGGREGATE;
+            contextId = 0;
+        }
+
+        BloodSugarReading.writePackedRecord(
+            destination,
+            destinationIndex,
+            timestamp,
+            totalValue / sampleCount,
+            sourceId,
+            contextId
+        );
+    }
+
+    function compactPackedHistory(
+        bytes as Lang.ByteArray,
+        now as Number
+    ) as Lang.ByteArray {
+        if (!historyNeedsCompaction(bytes, now)) {
+            return bytes;
+        }
+
+        // Count first so the fixed-size ByteArray is allocated only once.
+        var outputCount = getCompactedHistoryCount(bytes, now);
+        var skipOutput = 0;
+        if (outputCount > MAX_POINTS) {
+            skipOutput = outputCount - MAX_POINTS;
+            outputCount = MAX_POINTS;
+        }
+
+        var compacted = BloodSugarReading.createPackedHistory(outputCount);
+        var destinationIndex = 0;
+        var activeBucketSize = 0;
+        var activeBucket = -1;
+        var totalValue = 0.0f;
+        var sampleCount = 0;
+        var lastTimestamp = 0;
+        var firstSourceId = 0;
+        var firstContextId = 0;
+        var count = BloodSugarReading.getPackedCount(bytes);
+
+        for (var index = 0; index < count; index += 1) {
+            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var bucketSize = getRetentionBucketSize(timestamp, now);
+
+            if (bucketSize == 0) {
+                continue;
+            }
+
+            var bucket = -1;
+            if (bucketSize != RAW_BUCKET) {
+                bucket = timestamp / bucketSize;
+            }
+
+            if (
+                sampleCount > 0 &&
+                (bucketSize == RAW_BUCKET ||
+                    activeBucketSize != bucketSize ||
+                    activeBucket != bucket)
+            ) {
+                if (skipOutput > 0) {
+                    skipOutput -= 1;
+                } else {
+                    writeCompactedAverage(
+                        compacted,
+                        destinationIndex,
+                        lastTimestamp,
+                        totalValue,
+                        sampleCount,
+                        firstSourceId,
+                        firstContextId
+                    );
+                    destinationIndex += 1;
+                }
+
+                sampleCount = 0;
+                totalValue = 0.0f;
+            }
+
+            if (bucketSize == RAW_BUCKET) {
+                if (skipOutput > 0) {
+                    skipOutput -= 1;
+                } else {
+                    BloodSugarReading.copyPackedRecord(
+                        bytes,
+                        index,
+                        compacted,
+                        destinationIndex
+                    );
+                    destinationIndex += 1;
+                }
+
+                activeBucketSize = 0;
+                activeBucket = -1;
+                continue;
+            }
+
+            if (sampleCount == 0) {
+                activeBucketSize = bucketSize;
+                activeBucket = bucket;
+                firstSourceId = BloodSugarReading.getPackedSourceId(
+                    bytes,
+                    index
+                );
+                firstContextId = BloodSugarReading.getPackedContextId(
+                    bytes,
+                    index
+                );
+            }
+
+            totalValue += BloodSugarReading.getPackedValueMmol(bytes, index);
+            sampleCount += 1;
+            lastTimestamp = timestamp;
+        }
+
+        if (sampleCount > 0) {
+            if (skipOutput > 0) {
+                skipOutput -= 1;
+            } else {
+                writeCompactedAverage(
+                    compacted,
+                    destinationIndex,
+                    lastTimestamp,
+                    totalValue,
+                    sampleCount,
+                    firstSourceId,
+                    firstContextId
+                );
+            }
+        }
+
+        return compacted;
+    }
+
     function getHistory() {
         var count = getHistoryCount();
 
@@ -391,10 +627,16 @@ module BloodSugarStore {
             return false;
         }
 
-        var candidate = insertPackedReadingSorted(
-            value as Lang.ByteArray,
+        var now = Time.now().value();
+        var historyBytes = value as Lang.ByteArray;
+        if (historyNeedsCompaction(historyBytes, now)) {
+            historyBytes = compactPackedHistory(historyBytes, now);
+        }
 
-            Time.now().value(),
+        var candidate = insertPackedReadingSorted(
+            historyBytes,
+
+            now,
             valueMmol,
 
             BloodSugarReading.getSourceId(inputSource),
@@ -404,6 +646,10 @@ module BloodSugarStore {
 
         if (candidate == null) {
             return false;
+        }
+
+        if (historyNeedsCompaction(candidate as Lang.ByteArray, now)) {
+            candidate = compactPackedHistory(candidate as Lang.ByteArray, now);
         }
 
         if (!savePacked(candidate as Lang.ByteArray)) {
@@ -841,7 +1087,17 @@ module BloodSugarStore {
         setRangePropertyMmol(PROP_DANGER_HIGH, value);
     }
 
-    function getBloodSugarZones() {
+    function getBloodSugarZones() as Array<Float> {
+        var zones = [0.0f, 0.0f, 0.0f, 0.0f];
+        fillBloodSugarZones(zones);
+        return zones;
+    }
+
+    function fillBloodSugarZones(zones as Array<Float>) as Void {
+        if (zones.size() < 4) {
+            return;
+        }
+
         var dangerLow = getDangerLowMmol();
         var low = getLowMmol();
         var high = getHighMmol();
@@ -864,7 +1120,10 @@ module BloodSugarStore {
             dangerHigh = high + minimumGap;
         }
 
-        return [dangerLow, low, high, dangerHigh];
+        zones[0] = dangerLow;
+        zones[1] = low;
+        zones[2] = high;
+        zones[3] = dangerHigh;
     }
 
     function getTargetLowMmol() as Float {
@@ -1164,7 +1423,13 @@ module BloodSugarStore {
             return -1;
         }
 
+        var now = Time.now().value();
         var candidate = historyValue as Lang.ByteArray;
+        var compactedBeforeInsert = false;
+        if (historyNeedsCompaction(candidate, now)) {
+            candidate = compactPackedHistory(candidate, now);
+            compactedBeforeInsert = true;
+        }
 
         var addedCount = 0;
 
@@ -1193,6 +1458,17 @@ module BloodSugarStore {
                 continue;
             }
 
+            if (timestamp < now - MAX_RETENTION_SECONDS) {
+                continue;
+            }
+
+            if (
+                BloodSugarReading.getPackedCount(candidate) >= MAX_POINTS &&
+                historyNeedsCompaction(candidate, now)
+            ) {
+                candidate = compactPackedHistory(candidate, now);
+            }
+
             var nextCandidate = insertPackedReadingSorted(
                 candidate,
                 timestamp,
@@ -1210,7 +1486,17 @@ module BloodSugarStore {
         }
 
         if (addedCount == 0) {
+            if (compactedBeforeInsert) {
+                if (!savePacked(candidate)) {
+                    return -1;
+                }
+                _historyBytes = candidate;
+            }
             return 0;
+        }
+
+        if (historyNeedsCompaction(candidate, now)) {
+            candidate = compactPackedHistory(candidate, now);
         }
 
         if (!savePacked(candidate)) {
@@ -1233,7 +1519,6 @@ module BloodSugarStore {
 
     function getCustomContextNames() as Array<String> {
         var names = [] as Array<String>;
-
         var value = Properties.getValue(PROP_CUSTOM_CONTEXTS);
 
         if (!(value instanceof Array)) {
@@ -1396,7 +1681,6 @@ module BloodSugarStore {
         var bytes = historyValue as Lang.ByteArray;
         var readingIndex = findPackedIndexByTime(
             bytes,
-
             originalTime.toNumber()
         );
 

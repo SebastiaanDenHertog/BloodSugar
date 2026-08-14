@@ -28,22 +28,73 @@ import Toybox.Math;
 import Toybox.Lang;
 
 module SafeText {
+    const FONT_COUNT = 5;
+    const ELLIPSIS = "...";
+
+    var _isRectangleCache = null;
+
+    function isRectangleScreen() as Boolean {
+        if (_isRectangleCache == null) {
+            _isRectangleCache =
+                System.getDeviceSettings().screenShape ==
+                System.SCREEN_SHAPE_RECTANGLE;
+        }
+
+        return _isRectangleCache as Boolean;
+    }
+
+    function getCandidateFont(index as Number) as Graphics.FontType {
+        if (index == 0) {
+            return Graphics.FONT_LARGE;
+        }
+
+        if (index == 1) {
+            return Graphics.FONT_MEDIUM;
+        }
+
+        if (index == 2) {
+            return Graphics.FONT_SMALL;
+        }
+
+        if (index == 3) {
+            return Graphics.FONT_TINY;
+        }
+
+        return Graphics.FONT_XTINY;
+    }
+
     function getSafeTextWidth(
         dc as Dc,
         centerY as Number,
         font as Graphics.FontType,
         edgeMargin as Number
-    ) {
+    ) as Number {
+        return getSafeTextWidthForShape(
+            dc,
+            centerY,
+            font,
+            edgeMargin,
+            isRectangleScreen()
+        );
+    }
+
+    function getSafeTextWidthForShape(
+        dc as Dc,
+        centerY as Number,
+        font as Graphics.FontType,
+        edgeMargin as Number,
+        isRectangle as Boolean
+    ) as Number {
         var screenWidth = dc.getWidth() as Number;
-        var screenHeight = dc.getHeight() as Number;
-        var settings = System.getDeviceSettings();
 
         /*
          * Rectangular screens can use nearly the full width.
          */
-        if (settings.screenShape == System.SCREEN_SHAPE_RECTANGLE) {
+        if (isRectangle) {
             return screenWidth - edgeMargin * 2;
         }
+
+        var screenHeight = dc.getHeight() as Number;
 
         /*
          * Treat other screen shapes conservatively as round.
@@ -102,7 +153,7 @@ module SafeText {
         text as String,
         font as Graphics.FontType,
         maxWidth as Number
-    ) {
+    ) as String {
         if (maxWidth <= 0) {
             return "";
         }
@@ -111,21 +162,48 @@ module SafeText {
             return text;
         }
 
-        var suffix = "...";
-        var result = text;
-
-        if (dc.getTextWidthInPixels(suffix, font) > maxWidth) {
+        if (dc.getTextWidthInPixels(ELLIPSIS, font) > maxWidth) {
             return "";
         }
 
-        while (
-            result.length() > 0 &&
-            dc.getTextWidthInPixels(result + suffix, font) > maxWidth
-        ) {
-            result = result.substring(0, result.length() - 1);
+        /*
+         * Find the longest fitting prefix in logarithmic time. This avoids
+         * creating one shorter String for every character in long text.
+         */
+        var low = 0;
+        var high = text.length();
+        var bestLength = 0;
+
+        while (low <= high) {
+            var midpoint = (low + high) / 2;
+            var prefix = text.substring(0, midpoint);
+
+            if (prefix == null) {
+                high = midpoint - 1;
+                continue;
+            }
+
+            var candidate = prefix + ELLIPSIS;
+
+            if (dc.getTextWidthInPixels(candidate, font) <= maxWidth) {
+                bestLength = midpoint;
+                low = midpoint + 1;
+            } else {
+                high = midpoint - 1;
+            }
         }
 
-        return result + suffix;
+        if (bestLength == 0) {
+            return ELLIPSIS;
+        }
+
+        var result = text.substring(0, bestLength);
+
+        if (result == null) {
+            return ELLIPSIS;
+        }
+
+        return result + ELLIPSIS;
     }
 
     /*
@@ -185,26 +263,20 @@ module SafeText {
         dc as Dc,
         text as String,
         padding as Number,
-        isTop
-    ) {
+        isTop as Boolean
+    ) as Void {
         var screenWidth = dc.getWidth() as Number;
         var screenHeight = dc.getHeight() as Number;
-        var edgeMargin = (screenWidth * 3) / (100 as Number);
-
-        var fonts = [
-            Graphics.FONT_LARGE,
-            Graphics.FONT_MEDIUM,
-            Graphics.FONT_SMALL,
-            Graphics.FONT_TINY,
-            Graphics.FONT_XTINY,
-        ];
+        var edgeMargin = (screenWidth * 3) / 100;
+        var isRectangle = isRectangleScreen();
 
         var selectedFont = Graphics.FONT_XTINY;
         var selectedCenterY = 0;
         var selectedWidth = 0;
+        var selectedTextFits = false;
 
-        for (var i = 0; i < fonts.size(); i++) {
-            var font = fonts[i];
+        for (var i = 0; i < FONT_COUNT; i++) {
+            var font = getCandidateFont(i);
             var fontHeight = dc.getFontHeight(font) as Number;
             var centerY;
 
@@ -214,8 +286,13 @@ module SafeText {
                 centerY = screenHeight - padding - fontHeight / 2;
             }
 
-            var safeWidth =
-                getSafeTextWidth(dc, centerY, font, edgeMargin) as Number;
+            var safeWidth = getSafeTextWidthForShape(
+                dc,
+                centerY,
+                font,
+                edgeMargin,
+                isRectangle
+            );
 
             if (
                 safeWidth > 0 &&
@@ -224,13 +301,14 @@ module SafeText {
                 selectedFont = font;
                 selectedCenterY = centerY;
                 selectedWidth = safeWidth;
+                selectedTextFits = true;
                 break;
             }
 
             /*
              * Save the smallest font as fallback.
              */
-            if (i == fonts.size() - 1) {
+            if (i == FONT_COUNT - 1) {
                 selectedFont = font;
                 selectedCenterY = centerY;
                 selectedWidth = safeWidth;
@@ -241,7 +319,11 @@ module SafeText {
             return;
         }
 
-        var visibleText = truncateText(dc, text, selectedFont, selectedWidth);
+        var visibleText = text;
+
+        if (!selectedTextFits) {
+            visibleText = truncateText(dc, text, selectedFont, selectedWidth);
+        }
 
         if (visibleText.length() == 0) {
             return;

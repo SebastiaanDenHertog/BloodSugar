@@ -166,7 +166,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         updateView();
         var client = new AbbottFreeStyleApi(_username, _password);
         _apiClient = client;
-        client.read(method(:onApiReadComplete));
+        client.read(self.onApiReadComplete);
     }
 
     private function onApiReadComplete(

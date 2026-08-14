@@ -34,9 +34,12 @@ class BloodSugarHistoryListView extends WatchUi.View {
     const ZONE_HIGH = 2;
     const ZONE_DANGER_HIGH = 3;
 
-    private var _bloodSugar;
-    private var _time;
-    private var _zones;
+    private var _historyCount as Number;
+    private var _useMgdl as Boolean;
+    private var _dangerLow as Float;
+    private var _low as Float;
+    private var _high as Float;
+    private var _dangerHigh as Float;
     private var _unit as String;
     private var _selected as Number;
     private var _showDetails as Boolean;
@@ -45,11 +48,12 @@ class BloodSugarHistoryListView extends WatchUi.View {
     public function initialize() {
         View.initialize();
 
-        _bloodSugar = [];
-        _time = [];
-
-        _zones = [4.4f, 5.0f, 7.8f, 12.2f];
-
+        _historyCount = 0;
+        _useMgdl = false;
+        _dangerLow = 4.4f;
+        _low = 5.0f;
+        _high = 7.8f;
+        _dangerHigh = 12.2f;
         _unit = "mmol/L";
         _selected = 0;
         _showDetails = false;
@@ -92,15 +96,21 @@ class BloodSugarHistoryListView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    public function setBloodSugarHistory(
-        bloodSugar,
-        time,
-        zones,
+    public function setHistory(
+        historyCount as Number,
+        useMgdl as Boolean,
+        dangerLow as Float,
+        low as Float,
+        high as Float,
+        dangerHigh as Float,
         unit as String
     ) as Void {
-        _bloodSugar = bloodSugar;
-        _time = time;
-        _zones = zones;
+        _historyCount = historyCount;
+        _useMgdl = useMgdl;
+        _dangerLow = dangerLow;
+        _low = low;
+        _high = high;
+        _dangerHigh = dangerHigh;
         _unit = unit;
 
         clampSelection();
@@ -183,7 +193,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
         var positionText =
             (_selected + 1).format("%d") +
             "/" +
-            _bloodSugar.size().format("%d");
+            _historyCount.format("%d");
 
         setLabel("historyListPosition", positionText);
     }
@@ -194,36 +204,36 @@ class BloodSugarHistoryListView extends WatchUi.View {
             setLabel("historyListNoData", "No history yet");
             return;
         }
-        var value = _bloodSugar[historyIndex].toFloat();
-        var timestamp = _time[historyIndex].toNumber();
+        var valueMmol = BloodSugarStore.getReadingValueMmolAt(historyIndex);
+        var timestamp = BloodSugarStore.getReadingTimeAt(historyIndex);
+
+        if (valueMmol == null || timestamp == null) {
+            setLabel("historyListNoData", "Reading unavailable");
+            return;
+        }
+
+        var value = getDisplayValue(valueMmol as Float);
         var zoneColor = getValueColor(value);
         var positionText =
             (_selected + 1).format("%d") +
             " of " +
-            _bloodSugar.size().format("%d");
+            _historyCount.format("%d");
 
         setLabel("historyListPosition", positionText);
         setLabel("historyDetailValue", formatValueOnly(value));
         setLabel("historyDetailUnit", _unit);
         setLabel("historyDetailZone", getZoneLabel(value));
-        setLabel("historyDetailDate", formatDateTime(timestamp));
+        setLabel("historyDetailDate", formatDateTime(timestamp as Number));
         setLabelColor("historyDetailValue", zoneColor);
         setLabelColor("historyDetailZone", zoneColor);
     }
 
     private function hasValidData() as Boolean {
-        return (
-            _bloodSugar != null &&
-            _time != null &&
-            _zones != null &&
-            _bloodSugar.size() > 0 &&
-            _bloodSugar.size() == _time.size() &&
-            _zones.size() >= 4
-        );
+        return _historyCount > 0;
     }
 
     private function clampSelection() as Void {
-        if (_bloodSugar == null || _bloodSugar.size() == 0) {
+        if (_historyCount == 0) {
             _selected = 0;
             return;
         }
@@ -232,7 +242,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
             _selected = 0;
         }
 
-        var lastPosition = _bloodSugar.size() - 1;
+        var lastPosition = _historyCount - 1;
         if (_selected > lastPosition) {
             _selected = lastPosition;
         }
@@ -266,8 +276,8 @@ class BloodSugarHistoryListView extends WatchUi.View {
         if (firstListIndex < 0) {
             firstListIndex = 0;
         }
-        if (lastListIndex >= _bloodSugar.size()) {
-            lastListIndex = _bloodSugar.size() - 1;
+        if (lastListIndex >= _historyCount) {
+            lastListIndex = _historyCount - 1;
         }
         for (
             var listIndex = firstListIndex;
@@ -293,9 +303,14 @@ class BloodSugarHistoryListView extends WatchUi.View {
         if (rowBottom < 0 || rowTop > height) {
             return;
         }
-        var historyIndex = listIndex;
-        var value = _bloodSugar[historyIndex].toFloat();
-        var timestamp = _time[historyIndex].toNumber();
+        var valueMmol = BloodSugarStore.getReadingValueMmolAt(listIndex);
+        var timestamp = BloodSugarStore.getReadingTimeAt(listIndex);
+
+        if (valueMmol == null || timestamp == null) {
+            return;
+        }
+
+        var value = getDisplayValue(valueMmol as Float);
         var isSelected = listIndex == _selected;
         var valueColor = getValueColor(value);
         var distanceFromCenter = rowCenterY - height / 2;
@@ -326,7 +341,7 @@ class BloodSugarHistoryListView extends WatchUi.View {
             left + 14,
             textY,
             Graphics.FONT_XTINY,
-            formatDateTime(timestamp),
+            formatDateTime(timestamp as Number),
             Graphics.TEXT_JUSTIFY_LEFT
         );
         dc.drawText(
@@ -340,15 +355,15 @@ class BloodSugarHistoryListView extends WatchUi.View {
 
     private function getValueColor(value as Float) as Number {
         if (
-            value < _zones[ZONE_DANGER_LOW].toFloat() ||
-            value > _zones[ZONE_DANGER_HIGH].toFloat()
+            value < _dangerLow ||
+            value > _dangerHigh
         ) {
             return Graphics.COLOR_RED;
         }
 
         if (
-            value < _zones[ZONE_LOW].toFloat() ||
-            value > _zones[ZONE_HIGH].toFloat()
+            value < _low ||
+            value > _high
         ) {
             return Graphics.COLOR_ORANGE;
         }
@@ -357,23 +372,31 @@ class BloodSugarHistoryListView extends WatchUi.View {
     }
 
     private function getZoneLabel(value as Float) as String {
-        if (value < _zones[ZONE_DANGER_LOW].toFloat()) {
+        if (value < _dangerLow) {
             return "Danger low";
         }
 
-        if (value < _zones[ZONE_LOW].toFloat()) {
+        if (value < _low) {
             return "Low";
         }
 
-        if (value > _zones[ZONE_DANGER_HIGH].toFloat()) {
+        if (value > _dangerHigh) {
             return "Danger high";
         }
 
-        if (value > _zones[ZONE_HIGH].toFloat()) {
+        if (value > _high) {
             return "High";
         }
 
         return "In range";
+    }
+
+    private function getDisplayValue(valueMmol as Float) as Float {
+        if (_useMgdl) {
+            return BloodSugarStore.MollToMgdl(valueMmol);
+        }
+
+        return valueMmol;
     }
 
     private function formatValue(value as Float) as String {

@@ -41,37 +41,30 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var storedReading = BloodSugarStore.getLatestReading();
-        if (!(storedReading instanceof Array)) {
+        var historyCount = BloodSugarStore.getHistoryCount();
+        if (historyCount <= 0) {
             setNoData();
             GlanceView.onUpdate(dc);
             return;
         }
 
-        var reading = storedReading as Array;
-        if (reading.size() <= BloodSugarReading.VALUE_MMOL) {
+        var latestIndex = historyCount - 1;
+        var timestamp = BloodSugarStore.getReadingTimeAt(latestIndex);
+        var valueMmol = BloodSugarStore.getReadingValueMmolAt(latestIndex);
+        if (timestamp == null || valueMmol == null) {
             setNoData();
             GlanceView.onUpdate(dc);
             return;
         }
 
-        if (
-            reading[BloodSugarReading.TIME] == null ||
-            reading[BloodSugarReading.VALUE_MMOL] == null
-        ) {
-            setNoData();
-            GlanceView.onUpdate(dc);
-            return;
-        }
-
-        var timestamp = reading[BloodSugarReading.TIME].toNumber() as Number;
-        var valueMmol =
-            reading[BloodSugarReading.VALUE_MMOL].toFloat() as Float;
         var useMgdl = BloodSugarStore.getUseMgdl();
-        var displayValue = BloodSugarStore.formatValue(valueMmol, useMgdl);
+        var displayValue = BloodSugarStore.formatValue(
+            valueMmol as Float,
+            useMgdl
+        );
         var unit = BloodSugarStore.getUnitText(useMgdl);
-        var status = getStatus(valueMmol);
-        var ageText = getReadingAge(timestamp);
+        var status = getStatus(valueMmol as Float);
+        var ageText = getReadingAge(timestamp as Number);
 
         setLabelText("GlanceValue", displayValue);
         setLabelText("GlanceUnit", unit);
@@ -115,8 +108,8 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
     }
 
     private function getReadingAge(timestamp as Number) as String {
-        var cuttentTimestamp = Time.now().value();
-        var ageSeconds = cuttentTimestamp - timestamp;
+        var currentTimestamp = Time.now().value();
+        var ageSeconds = currentTimestamp - timestamp;
         if (ageSeconds < 0) {
             ageSeconds = 0;
         }
@@ -183,32 +176,25 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
     }
 
     private function getTrend() as Number {
-        var readings = BloodSugarStore.getPartOfHistory(5);
-
-        if (readings == null || readings.size() == 0) {
+        var historyCount = BloodSugarStore.getHistoryCount();
+        if (historyCount <= 0) {
             return 0;
         }
 
         var total = 0.0f;
         var count = 0;
+        var firstIndex = historyCount - 5;
+        if (firstIndex < 0) {
+            firstIndex = 0;
+        }
 
-        for (var i = 0; i < readings.size(); i++) {
-            var reading = readings[i];
-
-            if (!(reading instanceof Array)) {
+        for (var i = firstIndex; i < historyCount; i++) {
+            var valueMmol = BloodSugarStore.getReadingValueMmolAt(i);
+            if (valueMmol == null) {
                 continue;
             }
 
-            var record = reading as Array;
-
-            if (
-                record.size() <= BloodSugarReading.VALUE_MMOL ||
-                record[BloodSugarReading.VALUE_MMOL] == null
-            ) {
-                continue;
-            }
-
-            total += record[BloodSugarReading.VALUE_MMOL].toFloat();
+            total += valueMmol as Float;
             count += 1;
         }
 

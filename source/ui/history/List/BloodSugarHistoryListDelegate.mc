@@ -29,14 +29,14 @@ import Toybox.System;
 class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     private var _parentView as BloodSugarHistoryListView;
     private var _select as Number;
-    private var _times as Array<Number>;
+    private var _historyCount as Number;
 
     public function initialize(view as BloodSugarHistoryListView) {
         BehaviorDelegate.initialize();
 
         _parentView = view;
         _select = 0;
-        _times = [] as Array<Number>;
+        _historyCount = 0;
 
         _parentView.setDelegate(self);
 
@@ -44,37 +44,8 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function updateView() as Void {
-        var times = [] as Array<Number>;
-        var values = [] as Array<Float>;
-
-        var count = BloodSugarStore.getHistoryCount();
+        _historyCount = BloodSugarStore.getHistoryCount();
         var useMgdl = BloodSugarStore.getUseMgdl();
-
-        for (var index = 0; index < count; index++) {
-            var timestamp = BloodSugarStore.getReadingTimeAt(index);
-
-            var valueMmol = BloodSugarStore.getReadingValueMmolAt(index);
-
-            if (timestamp == null || valueMmol == null) {
-                continue;
-            }
-
-            var glucose = valueMmol as Float;
-
-            if ((timestamp as Number) <= 0 || glucose <= 0.0f) {
-                continue;
-            }
-
-            if (useMgdl) {
-                glucose = BloodSugarStore.MollToMgdl(glucose);
-            }
-
-            times.add(timestamp as Number);
-
-            values.add(glucose);
-        }
-
-        _times = times;
         clampSelection();
         var dangerLow = BloodSugarStore.getDangerLowMmol();
         var low = BloodSugarStore.getLowMmol();
@@ -88,12 +59,13 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
             dangerHigh = BloodSugarStore.MollToMgdl(dangerHigh);
         }
 
-        var displayZones = [dangerLow, low, high, dangerHigh] as Array<Float>;
-
-        _parentView.setBloodSugarHistory(
-            values,
-            times,
-            displayZones,
+        _parentView.setHistory(
+            _historyCount,
+            useMgdl,
+            dangerLow,
+            low,
+            high,
+            dangerHigh,
             BloodSugarStore.getUnitText(useMgdl)
         );
 
@@ -103,7 +75,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     private function clampSelection() as Void {
-        if (_times.size() == 0) {
+        if (_historyCount == 0) {
             _select = 0;
             return;
         }
@@ -112,13 +84,13 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
             _select = 1;
         }
 
-        if (_select > _times.size()) {
-            _select = _times.size();
+        if (_select > _historyCount) {
+            _select = _historyCount;
         }
     }
 
     public function updateSelect() as Void {
-        if (_times.size() == 0) {
+        if (_historyCount == 0) {
             return;
         }
 
@@ -148,7 +120,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onSelect() as Boolean {
-        if (_times.size() == 0) {
+        if (_historyCount == 0) {
             return true;
         }
 
@@ -158,7 +130,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
 
-        editSelect(_times[_select - 1]);
+        editSelect(BloodSugarStore.getReadingTimeAt(_select - 1));
 
         return true;
     }
@@ -171,14 +143,14 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onNextPage() as Boolean {
-        if (_times.size() == 0) {
+        if (_historyCount == 0) {
             return true;
         }
 
         _select++;
 
-        if (_select > _times.size()) {
-            _select = _times.size();
+        if (_select > _historyCount) {
+            _select = _historyCount;
         }
 
         updateSelect();
@@ -187,7 +159,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onPreviousPage() as Boolean {
-        if (_times.size() == 0) {
+        if (_historyCount == 0) {
             return true;
         }
 

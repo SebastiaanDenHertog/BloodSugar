@@ -71,6 +71,7 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     private var _status as String;
     private var _savedMode as Number;
     private var _savedIndex as Number;
+    private var _state as SettingsState;
 
     public function initialize(view as BloodSugarSettingsView) {
         BehaviorDelegate.initialize();
@@ -82,6 +83,7 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         _status = "";
         _savedMode = -1;
         _savedIndex = -1;
+        _state = new SettingsState();
         updateView();
     }
 
@@ -283,7 +285,8 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
         selectedIndex as Number,
         direction as Number
     ) as Void {
-        var zones = BloodSugarStore.getBloodSugarZones();
+        var zones = _state.zones;
+        BloodSugarStore.fillBloodSugarZones(zones);
         var step = getThresholdStepMmol();
         var value = zones[selectedIndex].toFloat() + step * direction;
         if (selectedIndex == ZONE_DANGER_LOW) {
@@ -379,13 +382,13 @@ class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
     }
 
     private function updateView() as Void {
-        var state = new SettingsState();
+        var state = _state;
         state.mode = _mode;
         state.selected = _selected;
         state.zoneSelected = _zoneSelected;
         state.editing = _editing;
         state.useMgdl = BloodSugarStore.getUseMgdl();
-        state.zones = BloodSugarStore.getBloodSugarZones();
+        BloodSugarStore.fillBloodSugarZones(state.zones);
         state.notificationsEnabled = BloodSugarStore.getNotificationsEnabled();
         state.notificationLowMmol = BloodSugarStore.getNotificationLowMmol();
         state.notificationHighMmol = BloodSugarStore.getNotificationHighMmol();

@@ -56,6 +56,7 @@ module BloodSugarReading {
     const DEFAULT_CONTEXT = "none";
 
     const SOURCE_BLE = "ble";
+    const SOURCE_AGGREGATE = "aggregate";
     const SOURCE_UNKNOWN = "unknown";
 
     const PACKED_STORAGE_SCHEMA = 1;
@@ -70,6 +71,7 @@ module BloodSugarReading {
     const SOURCE_ID_MANUAL = 0;
     const SOURCE_ID_LIBRE_LINK_UP = 1;
     const SOURCE_ID_BLE = 2;
+    const SOURCE_ID_AGGREGATE = 3;
     const SOURCE_ID_UNKNOWN = 15;
 
     const GLUCOSE_SCALE = 100.0f;
@@ -246,6 +248,10 @@ module BloodSugarReading {
             return SOURCE_ID_BLE;
         }
 
+        if (source.equals(SOURCE_AGGREGATE)) {
+            return SOURCE_ID_AGGREGATE;
+        }
+
         return SOURCE_ID_UNKNOWN;
     }
 
@@ -260,6 +266,10 @@ module BloodSugarReading {
 
         if (sourceId == SOURCE_ID_BLE) {
             return SOURCE_BLE;
+        }
+
+        if (sourceId == SOURCE_ID_AGGREGATE) {
+            return SOURCE_AGGREGATE;
         }
 
         return SOURCE_UNKNOWN;

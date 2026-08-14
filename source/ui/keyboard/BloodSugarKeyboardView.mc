@@ -28,6 +28,42 @@ import Toybox.WatchUi;
 
 class BloodSugarKeyboardView extends WatchUi.View {
     const ROW_COUNT = 4;
+
+    private const LETTER_ROW_0 = [
+        "q",
+        "w",
+        "e",
+        "r",
+        "t",
+        "y",
+        "u",
+        "i",
+        "o",
+        "p",
+    ];
+    private const LETTER_ROW_1 = ["a", "s", "d", "f", "g", "h", "j", "k", "l"];
+    private const LETTER_ROW_2 = [
+        "SHIFT",
+        "z",
+        "x",
+        "c",
+        "v",
+        "b",
+        "n",
+        "m",
+        "DEL",
+    ];
+    private const NUMBER_ROW_0 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+    private const NUMBER_ROW_1 = ["!", "@", "#", "$", "%", "&", "*", "(", ")", "?"];
+    private const NUMBER_ROW_2 = [":", ";", "\"", "'", "+", "=", "/", "DEL"];
+    private const ACTION_ROW = ["PAGE", "@", ".", "_", "-", "CANCEL", "DONE"];
+
+    private const WEIGHTS_TEN = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
+    private const WEIGHTS_NINE = [10, 10, 10, 10, 10, 10, 10, 10, 10];
+    private const WEIGHTS_LETTER_ROW_2 = [15, 10, 10, 10, 10, 10, 10, 10, 15];
+    private const WEIGHTS_NUMBER_ROW_2 = [10, 10, 10, 10, 10, 10, 10, 15];
+    private const WEIGHTS_ACTION_ROW = [15, 8, 8, 8, 8, 16, 15];
+
     private var _text as String;
     private var _passwordMode as Boolean;
     private var _title as String;
@@ -259,69 +295,53 @@ class BloodSugarKeyboardView extends WatchUi.View {
 
     private function getLetterRowKeys(row as Number) as Array<String> {
         if (row == 0) {
-            return (
-                ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"] as
-                Array<String>
-            );
+            return LETTER_ROW_0 as Array<String>;
         }
 
         if (row == 1) {
-            return (
-                ["a", "s", "d", "f", "g", "h", "j", "k", "l"] as Array<String>
-            );
+            return LETTER_ROW_1 as Array<String>;
         }
 
         if (row == 2) {
-            return (
-                ["SHIFT", "z", "x", "c", "v", "b", "n", "m", "DEL"] as
-                Array<String>
-            );
+            return LETTER_ROW_2 as Array<String>;
         }
 
-        return ["PAGE", "@", ".", "_", "-", "CANCEL", "DONE"] as Array<String>;
+        return ACTION_ROW as Array<String>;
     }
 
     private function getNumberRowKeys(row as Number) as Array<String> {
         if (row == 0) {
-            return (
-                ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as
-                Array<String>
-            );
+            return NUMBER_ROW_0 as Array<String>;
         }
 
         if (row == 1) {
-            return (
-                ["!", "@", "#", "$", "%", "&", "*", "(", ")", "?"] as
-                Array<String>
-            );
+            return NUMBER_ROW_1 as Array<String>;
         }
 
         if (row == 2) {
-            return [":", ";", "\"", "'", "+", "=", "/", "DEL"] as Array<String>;
+            return NUMBER_ROW_2 as Array<String>;
         }
 
-        return ["PAGE", "@", ".", "_", "-", "CANCEL", "DONE"] as Array<String>;
+        return ACTION_ROW as Array<String>;
     }
 
     private function getRowWeights(row as Number) as Array<Number> {
         if (row == 0) {
-            return [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] as Array<Number>;
+            return WEIGHTS_TEN as Array<Number>;
         }
         if (row == 1) {
             if (_numberPage) {
-                return (
-                    [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] as Array<Number>
-                );
+                return WEIGHTS_TEN as Array<Number>;
             }
-            return [10, 10, 10, 10, 10, 10, 10, 10, 10] as Array<Number>;
+            return WEIGHTS_NINE as Array<Number>;
         }
         if (row == 2) {
             if (_numberPage) {
-                return [10, 10, 10, 10, 10, 10, 10, 15] as Array<Number>;
+                return WEIGHTS_NUMBER_ROW_2 as Array<Number>;
             }
-            return [15, 10, 10, 10, 10, 10, 10, 10, 15] as Array<Number>;
+            return WEIGHTS_LETTER_ROW_2 as Array<Number>;
         }
-        return [15, 8, 8, 8, 8, 16, 15] as Array<Number>;
+        return WEIGHTS_ACTION_ROW as Array<Number>;
     }
 
     private function getTotalWeight(weights as Array<Number>) as Number {
