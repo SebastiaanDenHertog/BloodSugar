@@ -22,64 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.Graphics;
 import Toybox.Lang;
-import Toybox.WatchUi;
 
-class BloodSugarSetupMonitorView extends WatchUi.View {
-    private var _select as Number;
-    private var _bloodMonitors as Array<String>;
-    function initialize() {
-        View.initialize();
-        _select = 0;
-        _bloodMonitors = [];
-    }
-
-    public function onLayout(dc as Graphics.Dc) as Void {
-        setLayout(Rez.Layouts.BloodSugarSetupMonitorLayout(dc));
-    }
-
-    public function setEntry(
-        select as Number,
-        bloodMonitors as Array<String>
-    ) as Void {
-        _bloodMonitors = bloodMonitors;
-        _select = select;
-        WatchUi.requestUpdate();
-    }
-
-    public function onUpdate(dc as Graphics.Dc) as Void {
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.clear();
-
-        var monitorName = "No monitors available";
-
-        if (
-            _bloodMonitors.size() > 0 &&
-            _select >= 0 &&
-            _select < _bloodMonitors.size()
-        ) {
-            monitorName = _bloodMonitors[_select];
-        }
-
-        setLabel("monitorTitle", "Monitor");
-        setLabel("monitorPrompt", "Choose your monitor");
-        setLabel("monitorName", monitorName);
-
-        View.onUpdate(dc);
-
-        SafeText.drawBottomWithPadding(
-            dc,
-            "SELECT to continue\nUP/DOWN change",
-            12
+class BloodSugarSetupMonitorView extends BloodSugarSelectionPicker {
+    public function initialize() {
+        BloodSugarSelectionPicker.initialize(
+            "Choose your monitor",
+            BloodSugarStore.getBloodMonitors(),
+            getDefaultIndex()
         );
     }
 
-    private function setLabel(id as String, value as String) as Void {
-        var drawable = findDrawableById(id);
-
-        if (drawable instanceof WatchUi.Text) {
-            (drawable as WatchUi.Text).setText(value);
+    private function getDefaultIndex() as Number {
+        if (
+            BloodSugarStore.getBloodMonitor() == BloodSugarStore.MONITOR_BLE &&
+            BloodSugarStore.isBleSupported()
+        ) {
+            return 1;
         }
+        return 0;
     }
 }

@@ -26,12 +26,13 @@ import Toybox.Lang;
 import Toybox.System;
 import Toybox.WatchUi;
 
-class BloodSugarMenuDelegate extends WatchUi.MenuInputDelegate {
+class BloodSugarMenuDelegate extends WatchUi.Menu2InputDelegate {
     function initialize() {
-        MenuInputDelegate.initialize();
+        Menu2InputDelegate.initialize();
     }
 
-    function onMenuItem(item as Symbol) as Void {
+    function onSelect(menuItem as WatchUi.MenuItem) as Void {
+        var item = menuItem.getId();
         if (item == :newItem) {
             var view = new BloodSugarView();
 

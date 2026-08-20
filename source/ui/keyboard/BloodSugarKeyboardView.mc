@@ -29,25 +29,6 @@ import Toybox.WatchUi;
 class BloodSugarKeyboardView extends WatchUi.View {
     const ROW_COUNT = 4;
 
-    private const BUTTON_PAGE_LOWER = 0;
-    private const BUTTON_PAGE_UPPER = 1;
-    private const BUTTON_PAGE_NUMBERS = 2;
-    private const BUTTON_PAGE_SYMBOLS = 3;
-    private const BUTTON_PAGE_ACTIONS = 4;
-    private const BUTTON_PAGE_COUNT = 5;
-
-    private const BUTTON_LOWER = "abcdefghijklmnopqrstuvwxyz";
-    private const BUTTON_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private const BUTTON_NUMBERS = "0123456789";
-    private const BUTTON_SYMBOLS = ",@._-+!#$%&*?:;\"'=()/[]{}<>";
-    private const BUTTON_ACTIONS = ["DEL", "DONE", "CANCEL"];
-    private const BUTTON_ACTIONS_WITH_SPACE = [
-        "SPACE",
-        "DEL",
-        "DONE",
-        "CANCEL",
-    ];
-
     private const LETTER_ROW_0 = [
         "q",
         "w",
@@ -72,8 +53,30 @@ class BloodSugarKeyboardView extends WatchUi.View {
         "m",
         "DEL",
     ];
-    private const NUMBER_ROW_0 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
-    private const NUMBER_ROW_1 = ["!", "@", "#", "$", "%", "&", "*", "(", ")", "?"];
+    private const NUMBER_ROW_0 = [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "0",
+    ];
+    private const NUMBER_ROW_1 = [
+        "!",
+        "@",
+        "#",
+        "$",
+        "%",
+        "&",
+        "*",
+        "(",
+        ")",
+        "?",
+    ];
     private const NUMBER_ROW_2 = [":", ";", "\"", "'", "+", "=", "/", "DEL"];
     private const ACTION_ROW = ["PAGE", "@", ".", "_", "-", "CANCEL", "DONE"];
 
@@ -89,10 +92,6 @@ class BloodSugarKeyboardView extends WatchUi.View {
     private var _maximumLength as Number;
     private var _uppercase as Boolean;
     private var _numberPage as Boolean;
-    private var _allowSpace as Boolean;
-    private var _buttonMode as Boolean;
-    private var _buttonPage as Number;
-    private var _buttonIndex as Number;
     private var _width as Number;
     private var _height as Number;
 
@@ -101,8 +100,7 @@ class BloodSugarKeyboardView extends WatchUi.View {
         passwordMode as Boolean,
         title as String,
         maximumLength as Number,
-        allowSpace as Boolean,
-        buttonMode as Boolean
+        allowSpace as Boolean
     ) {
         View.initialize();
         _text = initialText;
@@ -111,63 +109,16 @@ class BloodSugarKeyboardView extends WatchUi.View {
         _maximumLength = maximumLength;
         _uppercase = false;
         _numberPage = false;
-        _allowSpace = allowSpace;
-        _buttonMode = buttonMode;
-        _buttonPage = BUTTON_PAGE_LOWER;
-        _buttonIndex = 0;
         _width = 0;
         _height = 0;
     }
 
     public function onLayout(dc as Graphics.Dc) as Void {
-        if (_buttonMode) {
-            return;
-        }
         setLayout(Rez.Layouts.BloodSugarKeyboardLayout(dc));
     }
 
     public function getText() as String {
         return _text;
-    }
-
-    public function isButtonMode() as Boolean {
-        return _buttonMode;
-    }
-
-    public function selectPreviousButtonKey() as Void {
-        _buttonIndex -= 1;
-        if (_buttonIndex < 0) {
-            _buttonIndex = getButtonKeyCount() - 1;
-        }
-        WatchUi.requestUpdate();
-    }
-
-    public function selectNextButtonKey() as Void {
-        _buttonIndex += 1;
-        if (_buttonIndex >= getButtonKeyCount()) {
-            _buttonIndex = 0;
-        }
-        WatchUi.requestUpdate();
-    }
-
-    public function selectNextButtonPage() as Void {
-        _buttonPage += 1;
-        if (_buttonPage >= BUTTON_PAGE_COUNT) {
-            _buttonPage = BUTTON_PAGE_LOWER;
-        }
-        _buttonIndex = 0;
-        WatchUi.requestUpdate();
-    }
-
-    public function getSelectedButtonKey() as String {
-        if (_buttonPage == BUTTON_PAGE_ACTIONS) {
-            var actions = getButtonActions();
-            return actions[_buttonIndex];
-        }
-
-        var characters = getButtonCharacters();
-        var selected = characters.substring(_buttonIndex, _buttonIndex + 1);
-        return selected == null ? "" : selected;
     }
 
     private function setLabel(id as String, value as String) as Void {
@@ -217,144 +168,12 @@ class BloodSugarKeyboardView extends WatchUi.View {
         _height = dc.getHeight();
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
-        if (_buttonMode) {
-            drawButtonKeyboard(dc);
-            return;
-        }
-        drawInputField(dc);
-        drawKeyboard(dc);
         setLabel("keyboardTitle", _title);
         setLabel("keyboardInput", getDisplayText());
         setLabel("keyboardCounter", _text.length() + "/" + _maximumLength);
         View.onUpdate(dc);
-    }
-
-    private function drawButtonKeyboard(dc as Graphics.Dc) as Void {
-        var centerX = _width / 2;
-        var selectedKey = getSelectedButtonKey();
-        var selectedFont = selectedKey.length() == 1
-            ? Graphics.FONT_LARGE
-            : Graphics.FONT_SMALL;
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.drawText(
-            centerX,
-            (_height * 4) / 100,
-            Graphics.FONT_TINY,
-            _title,
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawText(
-            centerX,
-            (_height * 17) / 100,
-            Graphics.FONT_XTINY,
-            getDisplayText(),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawLine(
-            (_width * 14) / 100,
-            (_height * 31) / 100,
-            (_width * 86) / 100,
-            (_height * 31) / 100
-        );
-        dc.drawText(
-            centerX,
-            (_height * 35) / 100,
-            selectedFont,
-            getButtonKeyLabel(selectedKey),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawText(
-            centerX,
-            (_height * 54) / 100,
-            Graphics.FONT_XTINY,
-            getButtonPageLabel()
-                + " "
-                + (_buttonIndex + 1)
-                + "/"
-                + getButtonKeyCount(),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawText(
-            centerX,
-            (_height * 65) / 100,
-            Graphics.FONT_XTINY,
-            "UP/DOWN: choose",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawText(
-            centerX,
-            (_height * 75) / 100,
-            Graphics.FONT_XTINY,
-            "SELECT: add/action",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-        dc.drawText(
-            centerX,
-            (_height * 85) / 100,
-            Graphics.FONT_XTINY,
-            "HOLD UP: next set",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-    }
-
-    private function getButtonCharacters() as String {
-        if (_buttonPage == BUTTON_PAGE_LOWER) {
-            return BUTTON_LOWER;
-        }
-        if (_buttonPage == BUTTON_PAGE_UPPER) {
-            return BUTTON_UPPER;
-        }
-        if (_buttonPage == BUTTON_PAGE_NUMBERS) {
-            return BUTTON_NUMBERS;
-        }
-        return BUTTON_SYMBOLS;
-    }
-
-    private function getButtonActions() as Array<String> {
-        if (_allowSpace) {
-            return BUTTON_ACTIONS_WITH_SPACE as Array<String>;
-        }
-        return BUTTON_ACTIONS as Array<String>;
-    }
-
-    private function getButtonKeyCount() as Number {
-        if (_buttonPage == BUTTON_PAGE_ACTIONS) {
-            return getButtonActions().size();
-        }
-        return getButtonCharacters().length();
-    }
-
-    private function getButtonPageLabel() as String {
-        if (_buttonPage == BUTTON_PAGE_LOWER) {
-            return "abc";
-        }
-        if (_buttonPage == BUTTON_PAGE_UPPER) {
-            return "ABC";
-        }
-        if (_buttonPage == BUTTON_PAGE_NUMBERS) {
-            return "123";
-        }
-        if (_buttonPage == BUTTON_PAGE_SYMBOLS) {
-            return "symbols";
-        }
-        return "actions";
-    }
-
-    private function getButtonKeyLabel(key as String) as String {
-        if (key.equals("SPACE")) {
-            return "space";
-        }
-        if (key.equals("DEL")) {
-            return "delete";
-        }
-        if (key.equals("DONE")) {
-            return "done";
-        }
-        if (key.equals("CANCEL")) {
-            return "cancel";
-        }
-        return key;
+        drawInputField(dc);
+        drawKeyboard(dc);
     }
 
     public function getKeyAt(tapX as Number, tapY as Number) as String? {
@@ -463,12 +282,25 @@ class BloodSugarKeyboardView extends WatchUi.View {
             return _passwordMode ? "Enter password" : "Enter username";
         }
 
-        var visibleLength = _buttonMode ? 16 : 24;
-        var tailLength = _buttonMode ? 13 : 21;
-        if (_text.length() <= visibleLength) {
+        if (_passwordMode) {
+            var visibleLength = _text.length();
+            if (visibleLength > 24) {
+                visibleLength = 24;
+            }
+            var masked = "";
+            for (var index = 0; index < visibleLength; index++) {
+                masked += "*";
+            }
+            if (_text.length() > visibleLength) {
+                masked += "+";
+            }
+            return masked;
+        }
+
+        if (_text.length() <= 24) {
             return _text;
         }
-        var tail = _text.substring(_text.length() - tailLength, _text.length());
+        var tail = _text.substring(_text.length() - 21, _text.length());
         if (tail == null) {
             return _text;
         }

@@ -26,156 +26,74 @@ import Toybox.Graphics;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
-class BloodSugarSetupApiView extends WatchUi.View {
-    private var _selected as Number;
-    private var _username as String;
-    private var _passwordLength as Number;
-    private var _status as String;
-    private var _busy as Boolean;
+class BloodSugarSetupApiView extends WatchUi.Menu2 {
+    private var _usernameItem as WatchUi.MenuItem;
+    private var _passwordItem as WatchUi.MenuItem;
+    private var _connectItem as WatchUi.MenuItem;
 
     public function initialize() {
-        View.initialize();
+        Menu2.initialize({ :title => "Account credentials" });
 
-        _selected = 0;
-        _username = "";
-        _passwordLength = 0;
-        _status = "";
-        _busy = false;
-    }
+        _usernameItem = new WatchUi.MenuItem(
+            "Username",
+            "Enter username",
+            :username,
+            {}
+        );
+        _passwordItem = new WatchUi.MenuItem(
+            "Password",
+            "Enter password",
+            :password,
+            {}
+        );
+        _connectItem = new WatchUi.MenuItem(
+            "Connect",
+            "Test and save account",
+            :connect,
+            {}
+        );
 
-    public function onLayout(dc as Graphics.Dc) as Void {
-        setLayout(Rez.Layouts.BloodSugarSetupApiLayout(dc));
+        addItem(_usernameItem);
+        addItem(_passwordItem);
+        addItem(_connectItem);
     }
 
     public function setState(
-        selected as Number,
         username as String,
         passwordLength as Number,
         status as String,
         busy as Boolean
     ) as Void {
-        _selected = selected;
-        _username = username;
-        _passwordLength = passwordLength;
-        _status = status;
-        _busy = busy;
+        _usernameItem.setSubLabel(getUsernameDisplay(username));
+        _passwordItem.setSubLabel(getPasswordDisplay(passwordLength));
+        _connectItem.setLabel(busy ? "Connecting..." : "Connect");
+        _connectItem.setSubLabel(
+            status.length() > 0 ? status : "Test and save account"
+        );
 
-        WatchUi.requestUpdate();
+        updateItem(_usernameItem, 0);
+        updateItem(_passwordItem, 1);
+        updateItem(_connectItem, 2);
     }
 
-    public function onUpdate(dc as Graphics.Dc) as Void {
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.clear();
-
-        var width = dc.getWidth();
-        var height = dc.getHeight();
-        var centerX = width / 2;
-
-        var fieldWidth = (width * 70) / 100;
-        var fieldHeight = (height * 11) / 100;
-
-        if (fieldHeight < 30) {
-            fieldHeight = 30;
-        }
-
-        drawFieldBackground(
-            dc,
-            centerX,
-            (height * 20) / 100,
-            fieldWidth,
-            fieldHeight,
-            _selected == 0
-        );
-
-        drawFieldBackground(
-            dc,
-            centerX,
-            (height * 40) / 100,
-            fieldWidth,
-            fieldHeight,
-            _selected == 1
-        );
-
-        drawFieldBackground(
-            dc,
-            centerX,
-            (height * 60) / 100,
-            fieldWidth,
-            fieldHeight,
-            _selected == 2
-        );
-
-        setLabel("apiTitle", "Account credentials", Graphics.COLOR_WHITE);
-        setLabel(
-            "apiUsername",
-            shorten(getUsernameDisplay(), 24),
-            _selected == 0 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
-        );
-        setLabel(
-            "apiPassword",
-            getPasswordDisplay(),
-            _selected == 1 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
-        );
-        setLabel(
-            "apiConnect",
-            _busy ? "CONNECTING..." : "CONNECT",
-            _selected == 2 ? Graphics.COLOR_BLACK : Graphics.COLOR_WHITE
-        );
-        setLabel("apiStatus", _status, Graphics.COLOR_WHITE);
-        View.onUpdate(dc);
-        SafeText.drawBottom(dc, "UP/DOWN choose");
+    public function focusItem(index as Number) as Void {
+        setFocus(index);
     }
 
-    private function drawFieldBackground(
-        dc as Graphics.Dc,
-        centerX as Number,
-        y as Number,
-        width as Number,
-        height as Number,
-        selected as Boolean
-    ) as Void {
-        var x = centerX - width / 2;
-
-        if (selected) {
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-            dc.fillRectangle(x, y, width, height);
-        } else {
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-            dc.drawRectangle(x, y, width, height);
-        }
-    }
-
-    private function setLabel(
-        id as String,
-        value as String,
-        color as Number
-    ) as Void {
-        var drawable = findDrawableById(id);
-
-        if (drawable instanceof WatchUi.Text) {
-            var text = drawable as WatchUi.Text;
-
-            text.setText(value);
-            text.setColor(color);
-        }
-    }
-
-    private function getUsernameDisplay() as String {
-        if (_username.length() == 0) {
+    private function getUsernameDisplay(username as String) as String {
+        if (username.length() == 0) {
             return "Enter username";
         }
-
-        return _username;
+        return shorten(username, 24);
     }
 
-    private function getPasswordDisplay() as String {
-        if (_passwordLength == 0) {
+    private function getPasswordDisplay(passwordLength as Number) as String {
+        if (passwordLength == 0) {
             return "Enter password";
         }
 
-        var visibleLength = _passwordLength;
+        var visibleLength = passwordLength;
         var masked = "";
-
         if (visibleLength > 16) {
             visibleLength = 16;
         }
@@ -183,11 +101,9 @@ class BloodSugarSetupApiView extends WatchUi.View {
         for (var index = 0; index < visibleLength; index++) {
             masked += "*";
         }
-
-        if (_passwordLength > visibleLength) {
+        if (passwordLength > visibleLength) {
             masked += "+";
         }
-
         return masked;
     }
 
@@ -198,7 +114,6 @@ class BloodSugarSetupApiView extends WatchUi.View {
         if (value.length() <= maximumLength) {
             return value;
         }
-
         return value.substring(0, maximumLength - 3) + "...";
     }
 }

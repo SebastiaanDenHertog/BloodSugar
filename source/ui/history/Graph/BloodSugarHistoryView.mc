@@ -30,7 +30,7 @@ import Toybox.Math;
 
 class BloodSugarHistoryView extends WatchUi.View {
     const MAX_VISIBLE_POINTS = 24;
-    const COLOR_WARNING = 0xFFAA00;
+    const COLOR_WARNING = 0xffaa00;
 
     const ZONE_DANGER_LOW = 0;
     const ZONE_LOW = 1;

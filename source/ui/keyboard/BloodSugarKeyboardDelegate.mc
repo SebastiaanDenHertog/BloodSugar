@@ -43,10 +43,6 @@ class BloodSugarKeyboardDelegate extends WatchUi.BehaviorDelegate {
     }
 
     public function onTap(clickEvent as WatchUi.ClickEvent) as Boolean {
-        if (_view.isButtonMode()) {
-            return false;
-        }
-
         var coordinates = clickEvent.getCoordinates();
         var key = _view.getKeyAt(coordinates[0], coordinates[1]);
         if (key == null) {
@@ -74,50 +70,6 @@ class BloodSugarKeyboardDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         _view.appendKey(key);
-        return true;
-    }
-
-    public function onPreviousPage() as Boolean {
-        if (!_view.isButtonMode()) {
-            return false;
-        }
-        _view.selectPreviousButtonKey();
-        return true;
-    }
-
-    public function onNextPage() as Boolean {
-        if (!_view.isButtonMode()) {
-            return false;
-        }
-        _view.selectNextButtonKey();
-        return true;
-    }
-
-    public function onSelect() as Boolean {
-        if (!_view.isButtonMode()) {
-            return false;
-        }
-
-        var key = _view.getSelectedButtonKey();
-        if (key.equals("DEL")) {
-            _view.deleteLastCharacter();
-        } else if (key.equals("DONE")) {
-            closeCompleted();
-        } else if (key.equals("CANCEL")) {
-            closeCancelled();
-        } else if (key.equals("SPACE")) {
-            _view.appendKey(" ");
-        } else {
-            _view.appendKey(key);
-        }
-        return true;
-    }
-
-    public function onMenu() as Boolean {
-        if (!_view.isButtonMode()) {
-            return false;
-        }
-        _view.selectNextButtonPage();
         return true;
     }
 

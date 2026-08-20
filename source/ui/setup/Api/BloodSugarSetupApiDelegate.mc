@@ -28,14 +28,12 @@ import Toybox.System;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
-class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
+class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     const FIELD_USERNAME = 0;
     const FIELD_PASSWORD = 1;
     const FIELD_CONNECT = 2;
-    const FIELD_COUNT = 3;
 
     private var _view as BloodSugarSetupApiView;
-    private var _selected as Number;
     private var _username as String;
     private var _password as String;
     private var _status as String;
@@ -44,9 +42,8 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
     private var _apiClient as AbbottFreeStyleApi?;
 
     public function initialize(view as BloodSugarSetupApiView) {
-        BehaviorDelegate.initialize();
+        Menu2InputDelegate.initialize();
         _view = view;
-        _selected = FIELD_USERNAME;
         _username = BloodSugarStore.getUsername();
         _password = BloodSugarStore.getPassword();
         _status = "";
@@ -55,59 +52,31 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         updateView();
     }
 
-    public function onPreviousPage() as Boolean {
+    public function onSelect(item as WatchUi.MenuItem) as Void {
         if (_busy) {
-            return true;
+            return;
         }
-        _selected -= 1;
-        if (_selected < 0) {
-            _selected = FIELD_COUNT - 1;
-        }
-        _status = "";
-        updateView();
-        return true;
-    }
-
-    public function onNextPage() as Boolean {
-        if (_busy) {
-            return true;
-        }
-        _selected += 1;
-        if (_selected >= FIELD_COUNT) {
-            _selected = 0;
-        }
-        _status = "";
-        updateView();
-        return true;
-    }
-
-    public function onSelect() as Boolean {
-        if (_busy) {
-            return true;
-        }
-        if (_selected == FIELD_USERNAME) {
+        var id = item.getId();
+        if (id == :username) {
             openKeyboard(FIELD_USERNAME);
-            return true;
+            return;
         }
-        if (_selected == FIELD_PASSWORD) {
+        if (id == :password) {
             openKeyboard(FIELD_PASSWORD);
-            return true;
+            return;
         }
-        if (_selected == FIELD_CONNECT) {
+        if (id == :connect) {
             connect();
-            return true;
         }
-        return false;
     }
 
-    public function onBack() as Boolean {
+    public function onBack() as Void {
         if (_busy) {
             _status = "Wait for the current request";
             updateView();
-            return true;
+            return;
         }
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
-        return true;
     }
 
     private function openKeyboard(field as Number) as Void {
@@ -115,14 +84,28 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
         var title = passwordMode ? "Password" : "Username";
         var initialText = passwordMode ? _password : _username;
         var allowSpace = passwordMode;
-        var buttonMode = shouldUseButtonKeyboard();
+        if (!System.getDeviceSettings().isTouchScreen) {
+            var picker = new BloodSugarCharacterPicker(
+                initialText,
+                title,
+                96,
+                allowSpace,
+                passwordMode
+            );
+            WatchUi.pushView(
+                picker,
+                new BloodSugarCharacterPickerDelegate(picker, self, field),
+                WatchUi.SLIDE_UP
+            );
+            return;
+        }
+
         var keyboardView = new BloodSugarKeyboardView(
             initialText,
             passwordMode,
             title,
             96,
-            allowSpace,
-            buttonMode
+            allowSpace
         );
         var keyboardDelegate = new BloodSugarKeyboardDelegate(
             keyboardView,
@@ -130,11 +113,6 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
             field
         );
         WatchUi.pushView(keyboardView, keyboardDelegate, WatchUi.SLIDE_UP);
-    }
-
-    private function shouldUseButtonKeyboard() as Boolean {
-        var settings = System.getDeviceSettings();
-        return !settings.isTouchScreen;
     }
 
     public function handleKeyboardCompleted(
@@ -157,14 +135,14 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
 
     private function connect() as Void {
         if (_username.length() == 0) {
-            _selected = FIELD_USERNAME;
+            _view.focusItem(FIELD_USERNAME);
             _status = "Enter your username";
             updateView();
             return;
         }
 
         if (_password.length() == 0) {
-            _selected = FIELD_PASSWORD;
+            _view.focusItem(FIELD_PASSWORD);
             _status = "Enter your password";
             updateView();
             return;
@@ -232,7 +210,6 @@ class BloodSugarSetupApiDelegate extends WatchUi.BehaviorDelegate {
 
     private function updateView() as Void {
         _view.setState(
-            _selected,
             _username,
             _password.length(),
             _status,

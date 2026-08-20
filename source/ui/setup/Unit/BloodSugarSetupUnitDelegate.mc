@@ -22,69 +22,46 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.WatchUi;
-import Toybox.System;
-import Toybox.BluetoothLowEnergy;
 import Toybox.Lang;
+import Toybox.WatchUi;
 
-class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
-    private var _view as BloodSugarSetupUnitView;
-    private var _useMgdl as Boolean;
-    private var _useBloodMonitor as Number;
-    private var _stage as Number;
-
+class BloodSugarSetupUnitDelegate extends WatchUi.PickerDelegate {
     public function initialize(view as BloodSugarSetupUnitView) {
-        BehaviorDelegate.initialize();
-        _view = view;
-        _useMgdl = BloodSugarStore.getUseMgdl();
-        _useBloodMonitor = BloodSugarStore.getBloodMonitor();
-        _stage = 0;
-        updateView();
+        PickerDelegate.initialize();
     }
 
-    public function onNextPage() as Boolean {
-        if (_stage == 0) {
-            _useMgdl = false;
-            updateView();
-            return true;
-        }
-        if (_stage == 1) {
-            _useBloodMonitor = 0;
-            updateView();
-            return true;
-        }
-
-        return false;
-    }
-
-    public function onPreviousPage() as Boolean {
-        if (_stage == 0) {
-            _useMgdl = true;
-            updateView();
-            return true;
-        }
-        if (_stage == 1) {
-            _useBloodMonitor = 1;
-            updateView();
-            return true;
-        }
-
-        return false;
-    }
-
-    public function onSelect() as Boolean {
-        if (_stage == 0) {
-            BloodSugarStore.setUseMgdl(_useMgdl);
-            _stage = 1;
-            updateView();
-            return true;
-        }
-
-        if (_stage != 1) {
+    public function onAccept(values as Array) as Boolean {
+        var selected = values[0];
+        if (!(selected instanceof Number)) {
             return false;
         }
 
-        if (_useBloodMonitor > 0) {
+        BloodSugarStore.setUseMgdl((selected as Number) == 1);
+        var confirmation = new WatchUi.Confirmation(
+            "Connect a blood monitor?"
+        );
+        WatchUi.pushView(
+            confirmation,
+            new BloodSugarMonitorConfirmationDelegate(),
+            WatchUi.SLIDE_UP
+        );
+        return true;
+    }
+
+    public function onCancel() as Boolean {
+        return true;
+    }
+}
+
+class BloodSugarMonitorConfirmationDelegate
+    extends WatchUi.ConfirmationDelegate
+{
+    public function initialize() {
+        ConfirmationDelegate.initialize();
+    }
+
+    public function onResponse(response as WatchUi.Confirm) as Boolean {
+        if (response == WatchUi.CONFIRM_YES) {
             var monitorView = new BloodSugarSetupMonitorView();
             WatchUi.switchToView(
                 monitorView,
@@ -94,31 +71,16 @@ class BloodSugarSetupUnitDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
 
-        BloodSugarStore.setBloodMonitor(BloodSugarStore.MONITOR_NONE);
-        BloodSugarStore.setSetupDone(true);
-        var homeView = new BloodSugarHomeView();
-        WatchUi.switchToView(
-            homeView,
-            new BloodSugarHomeDelegate(homeView),
-            WatchUi.SLIDE_UP
-        );
+        if (response == WatchUi.CONFIRM_NO) {
+            BloodSugarStore.setBloodMonitor(BloodSugarStore.MONITOR_NONE);
+            BloodSugarStore.setSetupDone(true);
+            var homeView = new BloodSugarHomeView();
+            WatchUi.switchToView(
+                homeView,
+                new BloodSugarHomeDelegate(homeView),
+                WatchUi.SLIDE_UP
+            );
+        }
         return true;
-    }
-
-    public function onBack() as Boolean {
-        if (_stage == 0) {
-            updateView();
-            return true;
-        }
-        if (_stage == 1) {
-            _stage = 0;
-            updateView();
-            return true;
-        }
-
-        return false;
-    }
-    private function updateView() as Void {
-        _view.setEntry(_useMgdl, _stage, _useBloodMonitor);
     }
 }

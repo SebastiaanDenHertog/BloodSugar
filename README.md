@@ -35,6 +35,18 @@ memory than keeping every reading as a nested array or dictionary.
 
 ## Change log
 
+### v0.9.63
+
+- Added Garmin button hints to custom screens on non-touch watches.
+- Moved the main menu, settings, and setup choices to Garmin native controls,
+  including native toggle switches for boolean settings.
+- Checked and corrected layouts across the supported watch families.
+
+### v0.9.62
+
+- Keyboard is visible.
+- The selected item for entering a username or password is shown more clearly.
+
 ### v0.9.61
 
 - Added a button-controlled keyboard for non-touch watches, while keeping the
@@ -82,6 +94,12 @@ memory than keeping every reading as a nested array or dictionary.
 
 The Abbott FreeStyle connection is based on the
 [DiaKEM Libre API client](https://github.com/DiaKEM/libre-link-up-api-client).
+Custom button screens use Garmin's
+[Personality UI input hints](https://developer.garmin.com/connect-iq/personality-library/input-hints/),
+while menus and setup choices use Garmin's
+[native controls](https://developer.garmin.com/connect-iq/core-topics/native-controls/).
+Boolean settings use Garmin's
+[ToggleMenuItem](https://developer.garmin.com/connect-iq/api-docs/Toybox/WatchUi/ToggleMenuItem.html).
 
 ## Development
 

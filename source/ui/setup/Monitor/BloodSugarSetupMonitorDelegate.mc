@@ -27,60 +27,23 @@ import Toybox.Application;
 import Toybox.System;
 import Toybox.Lang;
 
-class BloodSugarSetupMonitorDelegate extends WatchUi.BehaviorDelegate {
-    private var _view as BloodSugarSetupMonitorView;
-    private var _select as Number;
-    private var _bloodMonitors as Array<String>;
-
+class BloodSugarSetupMonitorDelegate extends WatchUi.PickerDelegate {
     public function initialize(view as BloodSugarSetupMonitorView) {
-        BehaviorDelegate.initialize();
-        _view = view;
-        _select = 0;
-        _bloodMonitors = BloodSugarStore.getBloodMonitors();
-        updateView();
+        PickerDelegate.initialize();
     }
 
-    private function updateView() as Void {
-        _view.setEntry(_select, _bloodMonitors);
-    }
-
-    public function onPreviousPage() as Boolean {
-        if (_bloodMonitors.size() == 0) {
-            return false;
-        }
-
-        _select -= 1;
-
-        if (_select < 0) {
-            _select = _bloodMonitors.size() - 1;
-        }
-
-        updateView();
-        return true;
-    }
-
-    public function onNextPage() as Boolean {
-        if (_bloodMonitors.size() == 0) {
-            return false;
-        }
-
-        _select += 1;
-
-        if (_select >= _bloodMonitors.size()) {
-            _select = 0;
-        }
-
-        updateView();
-        return true;
-    }
-
-    public function onBack() as Boolean {
+    public function onCancel() as Boolean {
         WatchUi.popView(WatchUi.SLIDE_LEFT);
         return true;
     }
 
-    public function onSelect() as Boolean {
-        var monitorId = BloodSugarStore.getBloodMonitorIdAt(_select);
+    public function onAccept(values as Array) as Boolean {
+        var selected = values[0];
+        if (!(selected instanceof Number)) {
+            return false;
+        }
+
+        var monitorId = BloodSugarStore.getBloodMonitorIdAt(selected as Number);
         if (monitorId == BloodSugarStore.MONITOR_NONE) {
             return false;
         }

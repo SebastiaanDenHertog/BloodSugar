@@ -45,11 +45,6 @@ class BloodSugarInfoDelegate extends WatchUi.BehaviorDelegate {
         updateView();
     }
 
-    public function onSelect() as Boolean {
-        updateView();
-        return true;
-    }
-
     public function onBack() as Boolean {
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         return true;

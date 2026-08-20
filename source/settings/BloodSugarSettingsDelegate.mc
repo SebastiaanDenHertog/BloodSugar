@@ -22,387 +22,431 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.WatchUi;
-import Toybox.Application;
+import Toybox.Graphics;
 import Toybox.Lang;
+import Toybox.WatchUi;
 
-class BloodSugarSettingsDelegate extends WatchUi.BehaviorDelegate {
-    const ZONE_ITEM_COUNT = 4;
+module BloodSugarThresholdKind {
+    const DANGER_LOW = 0;
+    const LOW = 1;
+    const HIGH = 2;
+    const DANGER_HIGH = 3;
+    const NOTIFICATION_LOW = 4;
+    const NOTIFICATION_HIGH = 5;
+}
 
-    const ZONE_DANGER_LOW = 0;
-    const ZONE_LOW = 1;
-    const ZONE_HIGH = 2;
-    const ZONE_DANGER_HIGH = 3;
-
-    const MODE_MAIN = 0;
-    const MODE_ZONES = 1;
-
-    /*
-     * GENERAL
-     */
-    const INDEX_UNIT = 0;
-    const INDEX_ZONES = 1;
-    const INDEX_CONTEXT = 2;
-    const INDEX_CONFIRM = 3;
-
-    /*
-     * MONITOR
-     */
-    const INDEX_MONITOR = 4;
-
-    /*
-     * NOTIFICATIONS
-     */
-    const INDEX_NOTIFICATIONS = 5;
-    const INDEX_NOTIFICATION_LOW = 6;
-    const INDEX_NOTIFICATION_HIGH = 7;
-
-    /*
-     * DANGER
-     */
-    const INDEX_CLEAR = 8;
-    const MAIN_ITEM_COUNT = 9;
-
+class BloodSugarSettingsDelegate extends WatchUi.Menu2InputDelegate {
     private var _view as BloodSugarSettingsView;
-    private var _mode as Number;
-    private var _selected as Number;
-    private var _zoneSelected as Number;
-    private var _editing as Boolean;
-    private var _status as String;
-    private var _savedMode as Number;
-    private var _savedIndex as Number;
-    private var _state as SettingsState;
 
     public function initialize(view as BloodSugarSettingsView) {
-        BehaviorDelegate.initialize();
+        Menu2InputDelegate.initialize();
         _view = view;
-        _mode = MODE_MAIN;
-        _selected = INDEX_UNIT;
-        _zoneSelected = ZONE_DANGER_LOW;
-        _editing = false;
-        _status = "";
-        _savedMode = -1;
-        _savedIndex = -1;
-        _state = new SettingsState();
-        updateView();
     }
 
-    public function onPreviousPage() as Boolean {
-        _status = "";
-
-        if (_editing) {
-            clearSavedState();
-            changeEditedValue(1);
-            markSaved(_mode, _mode == MODE_ZONES ? _zoneSelected : _selected);
-            updateView();
-            return true;
-        }
-        clearSavedState();
-        if (_mode == MODE_ZONES) {
-            if (_zoneSelected > 0) {
-                _zoneSelected -= 1;
-            }
-        } else {
-            if (_selected > 0) {
-                _selected -= 1;
-            }
-        }
-        updateView();
-        return true;
-    }
-
-    private function markSaved(mode as Number, index as Number) as Void {
-        _savedMode = mode;
-        _savedIndex = index;
-        _status = "Saved";
-    }
-
-    private function clearSavedState() as Void {
-        _savedMode = -1;
-        _savedIndex = -1;
-
-        if (_status.equals("Saved")) {
-            _status = "";
-        }
-    }
-
-    public function onNextPage() as Boolean {
-        _status = "";
-
-        if (_editing) {
-            clearSavedState();
-            changeEditedValue(-1);
-            markSaved(_mode, _mode == MODE_ZONES ? _zoneSelected : _selected);
-            updateView();
-            return true;
-        }
-
-        clearSavedState();
-        if (_mode == MODE_ZONES) {
-            if (_zoneSelected < ZONE_ITEM_COUNT - 1) {
-                _zoneSelected += 1;
-            }
-        } else {
-            if (_selected < MAIN_ITEM_COUNT - 1) {
-                _selected += 1;
-            }
-        }
-
-        updateView();
-        return true;
-    }
-
-    public function onSelect() as Boolean {
-        _status = "";
-
-        if (_editing) {
-            _editing = false;
-            updateView();
-            return true;
-        }
-
-        if (_mode == MODE_ZONES) {
-            _editing = true;
-            updateView();
-            return true;
-        }
-
-        if (_selected == INDEX_UNIT) {
-            BloodSugarStore.setUseMgdl(!BloodSugarStore.getUseMgdl());
-            markSaved(MODE_MAIN, INDEX_UNIT);
-            updateView();
-            return true;
-        }
-
-        if (_selected == INDEX_ZONES) {
-            _mode = MODE_ZONES;
-            _zoneSelected = ZONE_DANGER_LOW;
-            clearSavedState();
-            updateView();
-            return true;
-        }
-
-        if (_selected == INDEX_MONITOR) {
-            clearSavedState();
-            openMonitorSetup();
-            return true;
-        }
-
-        if (_selected == INDEX_NOTIFICATIONS) {
-            BloodSugarStore.setNotificationsEnabled(
-                !BloodSugarStore.getNotificationsEnabled()
+    public function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :unit && item instanceof WatchUi.ToggleMenuItem) {
+            BloodSugarStore.setUseMgdl(
+                (item as WatchUi.ToggleMenuItem).isEnabled()
             );
-            markSaved(MODE_MAIN, INDEX_NOTIFICATIONS);
-            updateView();
-            return true;
+            _view.refresh();
+            return;
         }
-
-        if (
-            _selected == INDEX_NOTIFICATION_LOW ||
-            _selected == INDEX_NOTIFICATION_HIGH ||
-            _selected == INDEX_CONTEXT
-        ) {
-            _editing = true;
-            updateView();
-            return true;
-        }
-
-        if (_selected == INDEX_CONFIRM) {
+        if (id == :confirm && item instanceof WatchUi.ToggleMenuItem) {
             BloodSugarStore.setConfirmBeforeSave(
-                !BloodSugarStore.getConfirmBeforeSave()
+                (item as WatchUi.ToggleMenuItem).isEnabled()
             );
-            markSaved(MODE_MAIN, INDEX_CONFIRM);
-            updateView();
-            return true;
+            return;
         }
-
-        if (_selected == INDEX_CLEAR) {
+        if (id == :notifications && item instanceof WatchUi.ToggleMenuItem) {
+            BloodSugarStore.setNotificationsEnabled(
+                (item as WatchUi.ToggleMenuItem).isEnabled()
+            );
+            return;
+        }
+        if (id == :zones) {
+            var zonesView = new BloodSugarZonesView();
+            WatchUi.pushView(
+                zonesView,
+                new BloodSugarZonesDelegate(),
+                WatchUi.SLIDE_LEFT
+            );
+            return;
+        }
+        if (id == :context) {
+            openContextPicker();
+            return;
+        }
+        if (id == :monitor) {
+            var monitorView = new BloodSugarSetupMonitorView();
+            WatchUi.pushView(
+                monitorView,
+                new BloodSugarSetupMonitorDelegate(monitorView),
+                WatchUi.SLIDE_LEFT
+            );
+            return;
+        }
+        if (id == :notificationLow) {
+            openThresholdPicker(BloodSugarThresholdKind.NOTIFICATION_LOW);
+            return;
+        }
+        if (id == :notificationHigh) {
+            openThresholdPicker(BloodSugarThresholdKind.NOTIFICATION_HIGH);
+            return;
+        }
+        if (id == :clear) {
             var confirmation = new WatchUi.Confirmation("Delete all history?");
-            clearSavedState();
             WatchUi.pushView(
                 confirmation,
                 new BloodSugarClearConfirmationDelegate(self),
                 WatchUi.SLIDE_IMMEDIATE
             );
-
-            return true;
         }
-
-        return false;
     }
 
-    public function onBack() as Boolean {
-        if (_editing) {
-            _editing = false;
-            updateView();
-            return true;
-        }
-        if (_mode == MODE_ZONES) {
-            _mode = MODE_MAIN;
-            updateView();
-            return true;
-        }
+    public function onBack() as Void {
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
-        return true;
-    }
-
-    public function onMenu() as Boolean {
-        return onBack();
     }
 
     public function handleClearResponse(confirm as Boolean) as Void {
-        if (confirm) {
-            if (BloodSugarStore.clear()) {
-                _status = "History deleted";
-            } else {
-                _status = "Could not delete history";
-            }
+        if (!confirm) {
+            return;
         }
-        updateView();
+        if (BloodSugarStore.clear()) {
+            _view.setClearStatus("History deleted");
+        } else {
+            _view.setClearStatus("Could not delete history");
+        }
     }
 
-    private function changeEditedValue(direction as Number) as Void {
-        if (_mode == MODE_ZONES) {
-            adjustZoneThreshold(_zoneSelected, direction);
-            return;
+    private function openContextPicker() as Void {
+        var labels = [] as Array<String>;
+        for (
+            var index = 0;
+            index < BloodSugarStore.getContextCount();
+            index++
+        ) {
+            labels.add(BloodSugarStore.getContextLabel(index));
         }
-        if (_selected == INDEX_NOTIFICATION_LOW) {
-            adjustNotificationLow(direction);
-            return;
+        var picker = new BloodSugarSelectionPicker(
+            "Default context",
+            labels,
+            BloodSugarStore.getDefaultContextIndex()
+        );
+        WatchUi.pushView(
+            picker,
+            new BloodSugarContextPickerDelegate(),
+            WatchUi.SLIDE_UP
+        );
+    }
+
+    private function openThresholdPicker(kind as Number) as Void {
+        var range = BloodSugarThresholdRange.get(kind);
+        var picker = new BloodSugarThresholdPicker(
+            range.title,
+            range.minimum,
+            range.maximum,
+            range.current,
+            range.useMgdl
+        );
+        WatchUi.pushView(
+            picker,
+            new BloodSugarThresholdPickerDelegate(kind, range.useMgdl),
+            WatchUi.SLIDE_UP
+        );
+    }
+}
+
+class BloodSugarZonesDelegate extends WatchUi.Menu2InputDelegate {
+    public function initialize() {
+        Menu2InputDelegate.initialize();
+    }
+
+    public function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        var kind = BloodSugarThresholdKind.DANGER_LOW;
+        if (id == :low) {
+            kind = BloodSugarThresholdKind.LOW;
+        } else if (id == :high) {
+            kind = BloodSugarThresholdKind.HIGH;
+        } else if (id == :dangerHigh) {
+            kind = BloodSugarThresholdKind.DANGER_HIGH;
         }
-        if (_selected == INDEX_NOTIFICATION_HIGH) {
-            adjustNotificationHigh(direction);
-            return;
-        }
-        if (_selected == INDEX_CONTEXT) {
-            BloodSugarStore.setDefaultContextIndex(
-                BloodSugarStore.getDefaultContextIndex() + direction
+
+        var range = BloodSugarThresholdRange.get(kind);
+        var picker = new BloodSugarThresholdPicker(
+            range.title,
+            range.minimum,
+            range.maximum,
+            range.current,
+            range.useMgdl
+        );
+        WatchUi.pushView(
+            picker,
+            new BloodSugarThresholdPickerDelegate(kind, range.useMgdl),
+            WatchUi.SLIDE_UP
+        );
+    }
+}
+
+class BloodSugarThresholdRange {
+    public var title as String;
+    public var minimum as Number;
+    public var maximum as Number;
+    public var current as Number;
+    public var useMgdl as Boolean;
+
+    public function initialize(
+        titleText as String,
+        minimumValue as Number,
+        maximumValue as Number,
+        currentValue as Number,
+        useMgdlValue as Boolean
+    ) {
+        title = titleText;
+        minimum = minimumValue;
+        maximum = maximumValue;
+        current = currentValue;
+        useMgdl = useMgdlValue;
+    }
+
+    public static function get(kind as Number) as BloodSugarThresholdRange {
+        var useMgdl = BloodSugarStore.getUseMgdl();
+        var step = 1;
+        var maximum = toScaled(50.0f, useMgdl);
+        var minimum = step;
+        var current = step;
+        var title = "Threshold";
+
+        if (kind == BloodSugarThresholdKind.DANGER_LOW) {
+            title = "Danger low";
+            current = toScaled(BloodSugarStore.getDangerLowMmol(), useMgdl);
+            maximum = toScaled(BloodSugarStore.getLowMmol(), useMgdl) - step;
+        } else if (kind == BloodSugarThresholdKind.LOW) {
+            title = "Low limit";
+            minimum = toScaled(
+                BloodSugarStore.getDangerLowMmol(),
+                useMgdl
+            ) + step;
+            current = toScaled(BloodSugarStore.getLowMmol(), useMgdl);
+            maximum = toScaled(BloodSugarStore.getHighMmol(), useMgdl) - step;
+        } else if (kind == BloodSugarThresholdKind.HIGH) {
+            title = "High limit";
+            minimum = toScaled(BloodSugarStore.getLowMmol(), useMgdl) + step;
+            current = toScaled(BloodSugarStore.getHighMmol(), useMgdl);
+            maximum = toScaled(
+                BloodSugarStore.getDangerHighMmol(),
+                useMgdl
+            ) - step;
+        } else if (kind == BloodSugarThresholdKind.DANGER_HIGH) {
+            title = "Danger high";
+            minimum = toScaled(BloodSugarStore.getHighMmol(), useMgdl) + step;
+            current = toScaled(
+                BloodSugarStore.getDangerHighMmol(),
+                useMgdl
+            );
+        } else if (kind == BloodSugarThresholdKind.NOTIFICATION_LOW) {
+            title = "Low notification";
+            current = toScaled(
+                BloodSugarStore.getNotificationLowMmol(),
+                useMgdl
+            );
+            maximum = toScaled(
+                BloodSugarStore.getNotificationHighMmol(),
+                useMgdl
+            ) - step;
+        } else {
+            title = "High notification";
+            minimum = toScaled(
+                BloodSugarStore.getNotificationLowMmol(),
+                useMgdl
+            ) + step;
+            current = toScaled(
+                BloodSugarStore.getNotificationHighMmol(),
+                useMgdl
             );
         }
+
+        if (maximum < minimum) {
+            maximum = minimum;
+        }
+        if (current < minimum) {
+            current = minimum;
+        } else if (current > maximum) {
+            current = maximum;
+        }
+        return new BloodSugarThresholdRange(
+            title,
+            minimum,
+            maximum,
+            current,
+            useMgdl
+        );
     }
 
-    private function adjustZoneThreshold(
-        selectedIndex as Number,
-        direction as Number
-    ) as Void {
-        var zones = _state.zones;
-        BloodSugarStore.fillBloodSugarZones(zones);
-        var step = getThresholdStepMmol();
-        var value = zones[selectedIndex].toFloat() + step * direction;
-        if (selectedIndex == ZONE_DANGER_LOW) {
-            if (value < step) {
-                value = step;
-            }
-            if (value >= zones[ZONE_LOW].toFloat()) {
-                value = zones[ZONE_LOW].toFloat() - step;
-            }
+    public static function toScaled(
+        valueMmol as Float,
+        useMgdl as Boolean
+    ) as Number {
+        if (useMgdl) {
+            return (BloodSugarStore.MollToMgdl(valueMmol) + 0.5f).toNumber();
+        }
+        return (valueMmol * 10.0f + 0.5f).toNumber();
+    }
+
+    public static function fromScaled(
+        value as Number,
+        useMgdl as Boolean
+    ) as Float {
+        if (useMgdl) {
+            return BloodSugarStore.MgdlToMoll(value.toFloat());
+        }
+        return value.toFloat() / 10.0f;
+    }
+}
+
+class BloodSugarThresholdPickerFactory extends WatchUi.PickerFactory {
+    private var _minimum as Number;
+    private var _maximum as Number;
+    private var _useMgdl as Boolean;
+
+    public function initialize(
+        minimum as Number,
+        maximum as Number,
+        useMgdl as Boolean
+    ) {
+        PickerFactory.initialize();
+        _minimum = minimum;
+        _maximum = maximum;
+        _useMgdl = useMgdl;
+    }
+
+    public function getSize() as Number {
+        return _maximum - _minimum + 1;
+    }
+
+    public function getValue(index as Number) as Object? {
+        return _minimum + index;
+    }
+
+    public function getDrawable(
+        index as Number,
+        selected as Boolean
+    ) as WatchUi.Drawable? {
+        var value = _minimum + index;
+        var label = _useMgdl
+            ? value.format("%d") + " mg/dL"
+            : (value.toFloat() / 10.0f).format("%.1f") + " mmol/L";
+        return new WatchUi.Text({
+            :text => label,
+            :color => Graphics.COLOR_WHITE,
+            :font => Graphics.FONT_SMALL,
+            :locX => WatchUi.LAYOUT_HALIGN_CENTER,
+            :locY => WatchUi.LAYOUT_VALIGN_CENTER,
+        });
+    }
+}
+
+class BloodSugarThresholdPicker extends WatchUi.Picker {
+    public function initialize(
+        titleText as String,
+        minimum as Number,
+        maximum as Number,
+        current as Number,
+        useMgdl as Boolean
+    ) {
+        var title = new WatchUi.Text({
+            :text => titleText,
+            :color => Graphics.COLOR_WHITE,
+            :font => Graphics.FONT_XTINY,
+            :locX => WatchUi.LAYOUT_HALIGN_CENTER,
+            :locY => WatchUi.LAYOUT_VALIGN_BOTTOM,
+        });
+        var factory = new BloodSugarThresholdPickerFactory(
+            minimum,
+            maximum,
+            useMgdl
+        );
+        Picker.initialize({
+            :title => title,
+            :pattern => [factory],
+            :defaults => [current - minimum],
+        });
+    }
+
+    public function onUpdate(dc as Graphics.Dc) as Void {
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+        dc.clear();
+        Picker.onUpdate(dc);
+    }
+}
+
+class BloodSugarThresholdPickerDelegate extends WatchUi.PickerDelegate {
+    private var _kind as Number;
+    private var _useMgdl as Boolean;
+
+    public function initialize(kind as Number, useMgdl as Boolean) {
+        PickerDelegate.initialize();
+        _kind = kind;
+        _useMgdl = useMgdl;
+    }
+
+    public function onAccept(values as Array) as Boolean {
+        var selected = values[0];
+        if (!(selected instanceof Number)) {
+            return false;
+        }
+        var value = BloodSugarThresholdRange.fromScaled(
+            selected as Number,
+            _useMgdl
+        );
+        if (_kind == BloodSugarThresholdKind.DANGER_LOW) {
             BloodSugarStore.setDangerLowMmol(value);
-            return;
-        }
-
-        if (selectedIndex == ZONE_LOW) {
-            if (value <= zones[ZONE_DANGER_LOW].toFloat()) {
-                value = zones[ZONE_DANGER_LOW].toFloat() + step;
-            }
-            if (value >= zones[ZONE_HIGH].toFloat()) {
-                value = zones[ZONE_HIGH].toFloat() - step;
-            }
+        } else if (_kind == BloodSugarThresholdKind.LOW) {
             BloodSugarStore.setLowMmol(value);
-            return;
-        }
-        if (selectedIndex == ZONE_HIGH) {
-            if (value <= zones[ZONE_LOW].toFloat()) {
-                value = zones[ZONE_LOW].toFloat() + step;
-            }
-            if (value >= zones[ZONE_DANGER_HIGH].toFloat()) {
-                value = zones[ZONE_DANGER_HIGH].toFloat() - step;
-            }
+        } else if (_kind == BloodSugarThresholdKind.HIGH) {
             BloodSugarStore.setHighMmol(value);
-            return;
+        } else if (_kind == BloodSugarThresholdKind.DANGER_HIGH) {
+            BloodSugarStore.setDangerHighMmol(value);
+        } else if (_kind == BloodSugarThresholdKind.NOTIFICATION_LOW) {
+            BloodSugarStore.setNotificationLowMmol(value);
+        } else {
+            BloodSugarStore.setNotificationHighMmol(value);
         }
-        if (value <= zones[ZONE_HIGH].toFloat()) {
-            value = zones[ZONE_HIGH].toFloat() + step;
-        }
-        if (value > 50.0f) {
-            value = 50.0f;
-        }
-
-        BloodSugarStore.setDangerHighMmol(value);
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
     }
 
-    private function adjustNotificationLow(direction as Number) as Void {
-        var step = getThresholdStepMmol();
-        var low = BloodSugarStore.getNotificationLowMmol() + step * direction;
-        var high = BloodSugarStore.getNotificationHighMmol();
-        if (low < step) {
-            low = step;
-        }
+    public function onCancel() as Boolean {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
+    }
+}
 
-        if (low >= high) {
-            low = high - step;
-        }
-
-        BloodSugarStore.setNotificationLowMmol(low);
+class BloodSugarContextPickerDelegate extends WatchUi.PickerDelegate {
+    public function initialize() {
+        PickerDelegate.initialize();
     }
 
-    private function adjustNotificationHigh(direction as Number) as Void {
-        var step = getThresholdStepMmol();
-        var low = BloodSugarStore.getNotificationLowMmol();
-        var high = BloodSugarStore.getNotificationHighMmol() + step * direction;
-        if (high <= low) {
-            high = low + step;
+    public function onAccept(values as Array) as Boolean {
+        var selected = values[0];
+        if (!(selected instanceof Number)) {
+            return false;
         }
-        if (high > 50.0f) {
-            high = 50.0f;
-        }
-        BloodSugarStore.setNotificationHighMmol(high);
+        BloodSugarStore.setDefaultContextIndex(selected as Number);
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
     }
 
-    private function getThresholdStepMmol() as Float {
-        if (BloodSugarStore.getUseMgdl()) {
-            return BloodSugarStore.MgdlToMoll(1.0f);
-        }
-        return 0.1f;
-    }
-
-    private function openMonitorSetup() as Void {
-        var monitorView = new BloodSugarSetupMonitorView();
-        var monitorDelegate = new BloodSugarSetupMonitorDelegate(monitorView);
-        WatchUi.pushView(monitorView, monitorDelegate, WatchUi.SLIDE_LEFT);
-    }
-
-    private function wrapIndex(index as Number, itemCount as Number) as Number {
-        while (index < 0) {
-            index += itemCount;
-        }
-        while (index >= itemCount) {
-            index -= itemCount;
-        }
-        return index;
-    }
-
-    private function updateView() as Void {
-        var state = _state;
-        state.mode = _mode;
-        state.selected = _selected;
-        state.zoneSelected = _zoneSelected;
-        state.editing = _editing;
-        state.useMgdl = BloodSugarStore.getUseMgdl();
-        BloodSugarStore.fillBloodSugarZones(state.zones);
-        state.notificationsEnabled = BloodSugarStore.getNotificationsEnabled();
-        state.notificationLowMmol = BloodSugarStore.getNotificationLowMmol();
-        state.notificationHighMmol = BloodSugarStore.getNotificationHighMmol();
-        state.contextIndex = BloodSugarStore.getDefaultContextIndex();
-        state.confirmBeforeSave = BloodSugarStore.getConfirmBeforeSave();
-        state.status = _status;
-        state.savedMode = _savedMode;
-        state.savedIndex = _savedIndex;
-        _view.setState(state);
+    public function onCancel() as Boolean {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
     }
 }
 
 class BloodSugarClearConfirmationDelegate extends WatchUi.ConfirmationDelegate {
     private var _parent as BloodSugarSettingsDelegate;
+
     public function initialize(parent as BloodSugarSettingsDelegate) {
         ConfirmationDelegate.initialize();
         _parent = parent;

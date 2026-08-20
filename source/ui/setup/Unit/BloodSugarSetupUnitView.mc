@@ -22,66 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.Graphics;
-import Toybox.Lang;
-import Toybox.WatchUi;
-
-class BloodSugarSetupUnitView extends WatchUi.View {
-    private var _useMgdl as Boolean;
-    private var _useBloodMonitor as Number;
-    private var _stage as Number;
-
+class BloodSugarSetupUnitView extends BloodSugarSelectionPicker {
     public function initialize() {
-        View.initialize();
-        _useMgdl = BloodSugarStore.getUseMgdl();
-        _useBloodMonitor = 0;
-        _stage = 0;
-    }
-
-    public function onLayout(dc as Graphics.Dc) as Void {
-        setLayout(Rez.Layouts.BloodSugarSetupUnitLayout(dc));
-    }
-
-    private function setLabel(id as String, value as String) as Void {
-        var drawable = findDrawableById(id);
-
-        if (drawable instanceof WatchUi.Text) {
-            (drawable as WatchUi.Text).setText(value);
-        }
-    }
-
-    public function setEntry(
-        useMgdl as Boolean,
-        stage as Number,
-        useBloodMonitor as Number
-    ) as Void {
-        _useMgdl = useMgdl;
-        _stage = stage;
-        _useBloodMonitor = useBloodMonitor;
-        WatchUi.requestUpdate();
-    }
-
-    public function onUpdate(dc as Graphics.Dc) as Void {
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-        dc.clear();
-
-        setLabel("unitTitle", "Setup");
-
-        if (_stage == 0) {
-            setLabel("unitPrompt", "Choose your display unit");
-
-            setLabel("unitValue", BloodSugarStore.getUnitText(_useMgdl));
-        } else {
-            setLabel("unitPrompt", "Connect a blood monitor?");
-
-            setLabel(
-                "unitValue",
-                BloodSugarStore.getBloodMonitorText(_useBloodMonitor)
-            );
-        }
-
-        View.onUpdate(dc);
-
-        SafeText.drawBottomWithPadding(dc, "UP/DOWN change\nSELECT save", 14);
+        var defaultIndex = BloodSugarStore.getUseMgdl() ? 1 : 0;
+        BloodSugarSelectionPicker.initialize(
+            "Choose your display unit",
+            ["mmol/L", "mg/dL"],
+            defaultIndex
+        );
     }
 }
