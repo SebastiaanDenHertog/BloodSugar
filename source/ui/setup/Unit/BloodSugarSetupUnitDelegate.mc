@@ -26,8 +26,11 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 class BloodSugarSetupUnitDelegate extends WatchUi.PickerDelegate {
+    private var _view as BloodSugarSetupUnitView;
+
     public function initialize(view as BloodSugarSetupUnitView) {
         PickerDelegate.initialize();
+        _view = view;
     }
 
     public function onAccept(values as Array) as Boolean {
@@ -37,15 +40,22 @@ class BloodSugarSetupUnitDelegate extends WatchUi.PickerDelegate {
         }
 
         BloodSugarStore.setUseMgdl((selected as Number) == 1);
-        var confirmation = new WatchUi.Confirmation(
-            "Connect a blood monitor?"
-        );
+        var confirmation = new WatchUi.Confirmation("Connect a blood monitor?");
         WatchUi.pushView(
             confirmation,
-            new BloodSugarMonitorConfirmationDelegate(),
+            new BloodSugarMonitorConfirmationDelegate(_view),
             WatchUi.SLIDE_UP
         );
         return true;
+    }
+
+    public function onBack() {
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_UP
+        );
     }
 
     public function onCancel() as Boolean {
@@ -56,31 +66,31 @@ class BloodSugarSetupUnitDelegate extends WatchUi.PickerDelegate {
 class BloodSugarMonitorConfirmationDelegate
     extends WatchUi.ConfirmationDelegate
 {
-    public function initialize() {
+    private var _view as BloodSugarSetupUnitView;
+
+    public function initialize(view as BloodSugarSetupUnitView) {
         ConfirmationDelegate.initialize();
+        _view = view;
     }
 
     public function onResponse(response as WatchUi.Confirm) as Boolean {
         if (response == WatchUi.CONFIRM_YES) {
-            var monitorView = new BloodSugarSetupMonitorView();
-            WatchUi.switchToView(
-                monitorView,
-                new BloodSugarSetupMonitorDelegate(monitorView),
-                WatchUi.SLIDE_UP
-            );
+            _view.setMonitorChoice(true);
             return true;
         }
 
         if (response == WatchUi.CONFIRM_NO) {
-            BloodSugarStore.setBloodMonitor(BloodSugarStore.MONITOR_NONE);
-            BloodSugarStore.setSetupDone(true);
-            var homeView = new BloodSugarHomeView();
-            WatchUi.switchToView(
-                homeView,
-                new BloodSugarHomeDelegate(homeView),
-                WatchUi.SLIDE_UP
-            );
+            _view.setMonitorChoice(false);
         }
         return true;
+    }
+
+    public function onBack() {
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_UP
+        );
     }
 }
