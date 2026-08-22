@@ -92,7 +92,8 @@ module BloodSugarStore {
 
     const MONITOR_NONE = 0;
     const MONITOR_ABBOTT = 1;
-    const MONITOR_BLE = 2;
+    const MONITOR_DEXCOM = 2;
+    const MONITOR_BLE = 3;
 
     var _historyBytes = null;
     var _historyNeedsRepair = false as Boolean;
@@ -358,8 +359,7 @@ module BloodSugarStore {
 
     function configureHistoryProfileForForeground() as Void {
         var totalMemory = System.getSystemStats().totalMemory;
-        var useCompactProfile =
-            totalMemory <= COMPACT_PROFILE_MEMORY_LIMIT;
+        var useCompactProfile = totalMemory <= COMPACT_PROFILE_MEMORY_LIMIT;
         _compactHistoryProfileCache = useCompactProfile;
 
         try {
@@ -1010,6 +1010,8 @@ module BloodSugarStore {
 
             case MONITOR_ABBOTT:
                 return "Abbott FreeStyle";
+            case MONITOR_DEXCOM:
+                return "Dexcom";
 
             case MONITOR_BLE:
                 return "Bluetooth LE";
@@ -1617,7 +1619,7 @@ module BloodSugarStore {
     }
 
     public function getBloodMonitors() as Array<String> {
-        var monitors = ["Abbott FreeStyle"] as Array<String>;
+        var monitors = ["Abbott FreeStyle", "Dexcom"] as Array<String>;
 
         if (isBleSupported()) {
             monitors.add("Bluetooth LE");
@@ -1630,8 +1632,11 @@ module BloodSugarStore {
         if (index == 0) {
             return MONITOR_ABBOTT;
         }
+        if (index == 1) {
+            return MONITOR_DEXCOM;
+        }
 
-        if (index == 1 && isBleSupported()) {
+        if (index == 2 && isBleSupported()) {
             return MONITOR_BLE;
         }
 

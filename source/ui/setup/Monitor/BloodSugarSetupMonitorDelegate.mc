@@ -48,12 +48,15 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.PickerDelegate {
             return false;
         }
 
-        if (monitorId == BloodSugarStore.MONITOR_ABBOTT) {
+        if (
+            monitorId == BloodSugarStore.MONITOR_ABBOTT ||
+            monitorId == BloodSugarStore.MONITOR_DEXCOM
+        ) {
             BloodSugarStore.setBloodMonitor(monitorId);
-            var apiView = new BloodSugarSetupApiView();
+            var apiView = new BloodSugarSetupApiView(monitorId);
             WatchUi.pushView(
                 apiView,
-                new BloodSugarSetupApiDelegate(apiView),
+                new BloodSugarSetupApiDelegate(apiView, monitorId),
                 WatchUi.SLIDE_LEFT
             );
             return true;

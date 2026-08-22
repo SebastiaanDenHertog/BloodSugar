@@ -34,11 +34,15 @@ class BloodSugarSetupMonitorView extends BloodSugarSelectionPicker {
     }
 
     private function getDefaultIndex() as Number {
+        var monitorId = BloodSugarStore.getBloodMonitor();
+        if (monitorId == BloodSugarStore.MONITOR_DEXCOM) {
+            return 1;
+        }
         if (
-            BloodSugarStore.getBloodMonitor() == BloodSugarStore.MONITOR_BLE &&
+            monitorId == BloodSugarStore.MONITOR_BLE &&
             BloodSugarStore.isBleSupported()
         ) {
-            return 1;
+            return 2;
         }
         return 0;
     }

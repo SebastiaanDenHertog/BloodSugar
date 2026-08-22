@@ -38,12 +38,17 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private var _password as String;
     private var _status as String;
     private var _busy as Boolean;
+    private var _monitorId as Number;
 
-    private var _apiClient as AbbottFreeStyleApi?;
+    private var _apiClient as AbbottFreeStyleApi or DexcomApi or Null;
 
-    public function initialize(view as BloodSugarSetupApiView) {
+    public function initialize(
+        view as BloodSugarSetupApiView,
+        monitorId as Number
+    ) {
         Menu2InputDelegate.initialize();
         _view = view;
+        _monitorId = monitorId;
         _username = BloodSugarStore.getUsername();
         _password = BloodSugarStore.getPassword();
         _status = "";
@@ -81,7 +86,12 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
     private function openKeyboard(field as Number) as Void {
         var passwordMode = field == FIELD_PASSWORD;
-        var title = passwordMode ? "Password" : "Username";
+        var title;
+        if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
+            title = passwordMode ? "Client secret" : "Client ID";
+        } else {
+            title = passwordMode ? "Password" : "Username";
+        }
         var initialText = passwordMode ? _password : _username;
         var allowSpace = passwordMode;
         if (!System.getDeviceSettings().isTouchScreen) {
@@ -136,28 +146,58 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private function connect() as Void {
         if (_username.length() == 0) {
             _view.focusItem(FIELD_USERNAME);
-            _status = "Enter your username";
+            _status = _monitorId == BloodSugarStore.MONITOR_DEXCOM
+                ? "Enter your client ID"
+                : "Enter your username";
             updateView();
             return;
         }
 
         if (_password.length() == 0) {
             _view.focusItem(FIELD_PASSWORD);
-            _status = "Enter your password";
+            _status = _monitorId == BloodSugarStore.MONITOR_DEXCOM
+                ? "Enter your client secret"
+                : "Enter your password";
             updateView();
             return;
         }
-        _busy = true;
-        _status = "Connecting...";
+        if (_monitorId == BloodSugarStore.MONITOR_ABBOTT) {
+            startAbbottConnection();
+            return;
+        }
+        if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
+            startDexcomConnection();
+            return;
+        }
+
+        _status = "Unsupported account provider";
         updateView();
+    }
+
+    private function startAbbottConnection() as Void {
+        startConnecting();
         var client = new AbbottFreeStyleApi(_username, _password);
         _apiClient = client;
         client.read(self.onApiReadComplete);
     }
 
+    private function startDexcomConnection() as Void {
+        startConnecting();
+        var client = new DexcomApi(_username, _password);
+        _apiClient = client;
+        client.read(self.onApiReadComplete);
+    }
+
+    private function startConnecting() as Void {
+        _busy = true;
+        _status = "Connecting to " + getProviderName() + "...";
+        updateView();
+    }
+
     private function onApiReadComplete(
         success as Boolean,
-        currentReading,
+        latestReadingTime as Number,
+        latestValueMmol,
         addedCount as Number,
         errorMessage as String
     ) as Void {
@@ -180,9 +220,12 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         BloodSugarStore.setSetupDone(true);
         (Application.getApp() as BloodSugarApp).updateBackgroundSync();
         if (addedCount > 0) {
-            _status = "Connected: " + addedCount + " readings added";
+            _status = getProviderName()
+                + ": "
+                + addedCount
+                + " readings added";
         } else {
-            _status = "Connected successfully";
+            _status = getProviderName() + " connected";
         }
         _apiClient = null;
         updateView();
@@ -208,12 +251,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         return errorMessage;
     }
 
+    private function getProviderName() as String {
+        return BloodSugarStore.getBloodMonitorText(_monitorId);
+    }
+
     private function updateView() as Void {
-        _view.setState(
-            _username,
-            _password.length(),
-            _status,
-            _busy
-        );
+        _view.setState(_username, _password.length(), _status, _busy);
     }
 }

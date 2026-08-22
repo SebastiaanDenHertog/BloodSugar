@@ -27,28 +27,34 @@ import Toybox.WatchUi;
 import Toybox.Lang;
 
 class BloodSugarSetupApiView extends WatchUi.Menu2 {
+    private var _providerName as String;
     private var _usernameItem as WatchUi.MenuItem;
     private var _passwordItem as WatchUi.MenuItem;
     private var _connectItem as WatchUi.MenuItem;
 
-    public function initialize() {
-        Menu2.initialize({ :title => "Account credentials" });
+    public function initialize(monitorId as Number) {
+        _providerName = BloodSugarStore.getBloodMonitorText(monitorId);
+        Menu2.initialize({:title => _providerName + " account"});
+
+        var isDexcom = monitorId == BloodSugarStore.MONITOR_DEXCOM;
+        var usernameLabel = isDexcom ? "Client ID" : "Username";
+        var passwordLabel = isDexcom ? "Client secret" : "Password";
 
         _usernameItem = new WatchUi.MenuItem(
-            "Username",
-            "Enter username",
+            usernameLabel,
+            "Enter " + usernameLabel.toLower(),
             :username,
             {}
         );
         _passwordItem = new WatchUi.MenuItem(
-            "Password",
-            "Enter password",
+            passwordLabel,
+            "Enter " + passwordLabel.toLower(),
             :password,
             {}
         );
         _connectItem = new WatchUi.MenuItem(
             "Connect",
-            "Test and save account",
+            "Test and save " + _providerName,
             :connect,
             {}
         );
@@ -68,7 +74,7 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
         _passwordItem.setSubLabel(getPasswordDisplay(passwordLength));
         _connectItem.setLabel(busy ? "Connecting..." : "Connect");
         _connectItem.setSubLabel(
-            status.length() > 0 ? status : "Test and save account"
+            status.length() > 0 ? status : "Test and save " + _providerName
         );
 
         updateItem(_usernameItem, 0);

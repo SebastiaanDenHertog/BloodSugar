@@ -31,6 +31,7 @@ import Toybox.System;
 import Toybox.Time.Gregorian;
 
 import BloodSugarStore;
+import api;
 
 class AbbottFreeStyleApi {
     const DEFAULT_SERVER = "https://api-us.libreview.io";
@@ -132,8 +133,8 @@ class AbbottFreeStyleApi {
         }
 
         var root = response as Lang.Dictionary;
-        var status = getNumber(root, "status", -1);
-        var data = getObject(root, "data");
+        var status = api.getNumber(root, "status", -1);
+        var data = api.getObject(root, "data");
 
         if (status == 2) {
             fail(
@@ -148,8 +149,8 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        if (getBoolean(data, "redirect", false)) {
-            var region = getString(data, "region", "");
+        if (api.getBoolean(data, "redirect", false)) {
+            var region = api.getString(data, "region", "");
 
             if (region.length() == 0) {
                 fail("Regional redirect did not contain a region");
@@ -167,10 +168,10 @@ class AbbottFreeStyleApi {
          */
         if (status == 4 || data.hasKey("step")) {
             var stepName = "unknown";
-            var step = getObject(data, "step");
+            var step = api.getObject(data, "step");
 
             if (step != null) {
-                var componentName = getString(step, "componentName", "");
+                var componentName = api.getString(step, "componentName", "");
 
                 if (componentName.length() > 0) {
                     stepName = componentName;
@@ -191,16 +192,16 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var authTicket = getObject(data, "authTicket");
-        var user = getObject(data, "user");
+        var authTicket = api.getObject(data, "authTicket");
+        var user = api.getObject(data, "user");
 
         if (authTicket == null || user == null) {
             fail("Successful login did not contain authentication data");
             return;
         }
 
-        var token = getString(authTicket, "token", "");
-        var userId = getString(user, "id", "");
+        var token = api.getString(authTicket, "token", "");
+        var userId = api.getString(user, "id", "");
 
         if (token.length() == 0) {
             fail("Login response did not contain an auth token");
@@ -259,21 +260,21 @@ class AbbottFreeStyleApi {
         }
 
         var root = response as Lang.Dictionary;
-        var status = getNumber(root, "status", -1);
+        var status = api.getNumber(root, "status", -1);
 
         if (status != 0) {
             fail("Country response status: " + status.toString());
             return;
         }
 
-        var data = getObject(root, "data");
+        var data = api.getObject(root, "data");
 
         if (data == null) {
             fail("Country response did not contain data");
             return;
         }
 
-        var regionalMap = getObject(data, "regionalMap");
+        var regionalMap = api.getObject(data, "regionalMap");
 
         if (regionalMap == null) {
             fail("Country response did not contain a regional map");
@@ -281,7 +282,7 @@ class AbbottFreeStyleApi {
         }
 
         var region = _redirectRegion as String;
-        var regionDefinition = getObject(regionalMap, region.toLower());
+        var regionDefinition = api.getObject(regionalMap, region.toLower());
 
         if (regionDefinition == null) {
             fail(
@@ -294,7 +295,7 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var lslApi = getString(regionDefinition, "lslApi", "");
+        var lslApi = api.getString(regionDefinition, "lslApi", "");
 
         if (lslApi.length() == 0) {
             fail("Region '" + region + "' did not contain an API URL");
@@ -359,7 +360,7 @@ class AbbottFreeStyleApi {
 
         var root = response as Lang.Dictionary;
 
-        var status = getNumber(root, "status", -1);
+        var status = api.getNumber(root, "status", -1);
 
         if (status != 0) {
             fail("Connections response status: " + status.toString());
@@ -368,7 +369,7 @@ class AbbottFreeStyleApi {
         }
 
         updateTicket(root);
-        var connections = getArray(root, "data");
+        var connections = api.getArray(root, "data");
 
         if (connections == null || connections.size() == 0) {
             fail("This LibreLinkUp account does not follow a patient.");
@@ -388,7 +389,7 @@ class AbbottFreeStyleApi {
     private function processCurrentReading(
         connection as Lang.Dictionary
     ) as Void {
-        var currentReading = getObject(connection, "glucoseMeasurement");
+        var currentReading = api.getObject(connection, "glucoseMeasurement");
 
         if (currentReading == null) {
             complete(0, 0.0, 0);
@@ -396,13 +397,13 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var factoryTimestamp = getString(
+        var factoryTimestamp = api.getString(
             currentReading,
             "FactoryTimestamp",
             ""
         );
 
-        var valueMgdl = getNumber(currentReading, "ValueInMgPerDl", 0);
+        var valueMgdl = api.getNumber(currentReading, "ValueInMgPerDl", 0);
 
         if (factoryTimestamp.length() == 0 || valueMgdl <= 0) {
             complete(0, 0.0, 0);
@@ -550,13 +551,13 @@ class AbbottFreeStyleApi {
     }
 
     private function updateTicket(root as Lang.Dictionary) as Void {
-        var ticket = getObject(root, "ticket");
+        var ticket = api.getObject(root, "ticket");
 
         if (ticket == null) {
             return;
         }
 
-        var token = getString(ticket, "token", "");
+        var token = api.getString(ticket, "token", "");
 
         if (token.length() > 0) {
             _jwtToken = token;
@@ -604,92 +605,6 @@ class AbbottFreeStyleApi {
             }) as String;
 
         return hex.toLower();
-    }
-
-    private function getValue(dictionary as Lang.Dictionary, key as String) {
-        if (dictionary.hasKey(key) && dictionary[key] != null) {
-            return dictionary[key];
-        }
-
-        return null;
-    }
-
-    private function getString(
-        dictionary as Lang.Dictionary,
-        key as String,
-        fallback as String
-    ) as String {
-        var value = getValue(dictionary, key);
-
-        if (value == null) {
-            return fallback;
-        }
-
-        return value.toString();
-    }
-
-    private function getNumber(
-        dictionary as Lang.Dictionary,
-        key as String,
-        fallback as Number
-    ) as Number {
-        var value = getValue(dictionary, key);
-
-        if (value == null) {
-            return fallback;
-        }
-
-        var numberValue = value.toNumber();
-
-        if (numberValue == null) {
-            return fallback;
-        }
-
-        return numberValue;
-    }
-
-    private function getBoolean(
-        dictionary as Lang.Dictionary,
-        key as String,
-        fallback as Boolean
-    ) as Boolean {
-        var value = getValue(dictionary, key);
-
-        if (value == true) {
-            return true;
-        }
-
-        if (value == false) {
-            return false;
-        }
-
-        return fallback;
-    }
-
-    private function getObject(
-        dictionary as Lang.Dictionary,
-        key as String
-    ) as Lang.Dictionary? {
-        var value = getValue(dictionary, key);
-
-        if (value instanceof Lang.Dictionary) {
-            return value as Lang.Dictionary;
-        }
-
-        return null;
-    }
-
-    private function getArray(
-        dictionary as Lang.Dictionary,
-        key as String
-    ) as Lang.Array? {
-        var value = getValue(dictionary, key);
-
-        if (value instanceof Lang.Array) {
-            return value as Lang.Array;
-        }
-
-        return null;
     }
 
     private function retryAuthentication(reason as String) as Void {

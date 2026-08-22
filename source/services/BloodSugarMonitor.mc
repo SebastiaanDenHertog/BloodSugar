@@ -26,6 +26,7 @@ SOFTWARE.
 module BloodSugarMonitor {
     const NONE = 0;
     const ABBOTT_FREE_STYLE = 1;
+    const DEXCOM = 2;
 
     const BACKGROUND_INTERVAL_SECONDS = 5 * 60;
 }
