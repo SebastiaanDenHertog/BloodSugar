@@ -279,7 +279,7 @@ class BloodSugarKeyboardView extends WatchUi.View {
 
     private function getDisplayText() as String {
         if (_text.length() == 0) {
-            return _passwordMode ? "Enter password" : "Enter username";
+            return _passwordMode ? "Enter" : "Enter";
         }
 
         if (_passwordMode) {

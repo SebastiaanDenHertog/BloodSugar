@@ -22,19 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import Toybox.System;
 import Toybox.Communications;
 import Toybox.Cryptography;
 import Toybox.Lang;
 import Toybox.PersistedContent;
 import Toybox.StringUtil;
-import Toybox.System;
 import Toybox.Time.Gregorian;
 
 import BloodSugarStore;
 import api;
 
 class DexcomApi {
-    const US_SERVER = "https://api.dexcom.com";
+    const US_SERVER = "https://sandbox-api.dexcom.com"; //"https://api.dexcom.com";
     const EU_SERVER = "https://api.dexcom.eu";
     const JP_SERVER = "https://api.dexcom.jp";
     const LOGIN_PATH = "/oauth2/login";
