@@ -79,7 +79,10 @@ class DeviceManager {
         }
     }
 
-    public function procCharWrite(characteristic, status) as Void {
+    public function procCharWrite(
+        characteristic as BluetoothLowEnergy.Characteristic,
+        status as BluetoothLowEnergy.Status
+    ) as Void {
         System.println(
             "Proc Write: (" +
                 characteristic.getUuid().toString() +

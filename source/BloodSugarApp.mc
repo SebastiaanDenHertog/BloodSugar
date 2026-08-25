@@ -30,17 +30,13 @@ import Toybox.System;
 import Toybox.Time;
 import Toybox.WatchUi;
 
+(:background)
 class BloodSugarApp extends Application.AppBase {
-    private const BACKGROUND_INTERVAL_SECONDS = 5 * 60;
-
     private var _profileManager as ProfileManager?;
     private var _bleDelegate as BloodSugarServiceBleDelegate?;
     private var _deviceManager as DeviceManager?;
 
     private var _syncManager as BloodSugarSyncManager?;
-
-    private var _abbottStarted = false;
-    private var _bleStarted = false;
 
     public function initialize() {
         AppBase.initialize();
@@ -189,12 +185,6 @@ class BloodSugarApp extends Application.AppBase {
             System.println("Could not stop BLE scan: " + error.toString());
         }
 
-        try {
-            BluetoothLowEnergy.setDelegate(null);
-        } catch (error) {
-            System.println("Could not release BLE delegate");
-        }
-
         _deviceManager = null;
         _bleDelegate = null;
         _profileManager = null;
@@ -216,7 +206,7 @@ class BloodSugarApp extends Application.AppBase {
         return _syncManager as BloodSugarSyncManager;
     }
 
-    public function syncNow(completion) as Boolean {
+    public function syncNow(completion as BloodSugarSyncCallback) as Boolean {
         return getSyncManager().sync(completion);
     }
 }

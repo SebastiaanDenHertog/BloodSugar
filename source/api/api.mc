@@ -25,7 +25,10 @@ SOFTWARE.
 import Toybox.Lang;
 
 module api {
-    function getValue(dictionary as Lang.Dictionary, key as String) {
+    function getValue(
+        dictionary as Lang.Dictionary,
+        key as String
+    ) as Object? {
         if (dictionary.hasKey(key) && dictionary[key] != null) {
             return dictionary[key];
         }

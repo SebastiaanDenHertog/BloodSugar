@@ -29,9 +29,12 @@ class BloodSugarDeleteReadingConfirmationDelegate
     extends WatchUi.ConfirmationDelegate
 {
     private var _parent as BloodSugarDelegate;
-    private var _timestamp;
+    private var _timestamp as Number?;
 
-    public function initialize(parent as BloodSugarDelegate, timestamp) {
+    public function initialize(
+        parent as BloodSugarDelegate,
+        timestamp as Number?
+    ) {
         ConfirmationDelegate.initialize();
 
         _parent = parent;

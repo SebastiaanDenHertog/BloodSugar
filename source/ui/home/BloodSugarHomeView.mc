@@ -28,7 +28,7 @@ import Toybox.Time;
 import Toybox.WatchUi;
 
 class BloodSugarHomeView extends WatchUi.View {
-    private var _reading;
+    private var _reading as BloodSugarReading.Record?;
     private var _useMgdl as Boolean;
 
     public function initialize() {

@@ -27,7 +27,7 @@ import Toybox.Lang;
 (:background)
 class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
     private var _api as AbbottFreeStyleApi?;
-    private var _completion;
+    private var _completion as BloodSugarSyncCallback?;
 
     public function initialize() {
         BloodSugarSyncProvider.initialize();
@@ -47,7 +47,7 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
         );
     }
 
-    public function sync(completion) as Void {
+    public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
         var username = BloodSugarStore.getUsername();
         var password = BloodSugarStore.getPassword();
@@ -60,13 +60,13 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
 
         _api = new AbbottFreeStyleApi(username, password);
 
-        (_api as AbbottFreeStyleApi).read(self.onApiReadComplete);
+        (_api as AbbottFreeStyleApi).read(method(:onApiReadComplete));
     }
 
     public function onApiReadComplete(
         success as Boolean,
         latestReadingTime as Number,
-        latestValueMmol,
+        latestValueMmol as Float,
         addedCount as Number,
         errorMessage as String
     ) as Void {

@@ -72,7 +72,7 @@ class BloodSugarCharacterPickerFactory extends WatchUi.PickerFactory {
         return _characters.find(character);
     }
 
-    public function isDone(value) as Boolean {
+    public function isDone(value as Object?) as Boolean {
         return value == DONE;
     }
 }
@@ -165,7 +165,7 @@ class BloodSugarCharacterPicker extends WatchUi.Picker {
         return _text;
     }
 
-    public function isDone(value) as Boolean {
+    public function isDone(value as Object?) as Boolean {
         return _factory.isDone(value);
     }
 

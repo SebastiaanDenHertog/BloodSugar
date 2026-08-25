@@ -86,7 +86,7 @@ class DexcomPollingManager {
     public function onReadComplete(
         success as Boolean,
         latestReadingTime as Number,
-        latestValueMmol,
+        latestValueMmol as Float,
         addedCount as Number,
         errorMessage as String
     ) as Void {

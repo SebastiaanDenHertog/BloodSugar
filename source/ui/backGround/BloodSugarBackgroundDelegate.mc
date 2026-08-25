@@ -45,7 +45,7 @@ class BloodSugarBackgroundDelegate extends System.ServiceDelegate {
         _syncManager = new BloodSugarSyncManager();
 
         var started = (_syncManager as BloodSugarSyncManager).sync(
-            self.onSyncComplete
+            method(:onSyncComplete)
         );
 
         if (!started) {

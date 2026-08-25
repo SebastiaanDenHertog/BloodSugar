@@ -27,9 +27,7 @@ import Toybox.Lang;
 (:background)
 class BloodSugarSyncManager {
     private var _provider as BloodSugarSyncProvider?;
-
-    private var _completion;
-
+    private var _completion as BloodSugarSyncCallback?;
     private var _syncing as Boolean;
 
     public function initialize() {
@@ -42,7 +40,7 @@ class BloodSugarSyncManager {
         return _syncing;
     }
 
-    public function sync(completion) as Boolean {
+    public function sync(completion as BloodSugarSyncCallback) as Boolean {
         if (_syncing) {
             return false;
         }
@@ -64,7 +62,7 @@ class BloodSugarSyncManager {
         _completion = completion;
         _syncing = true;
 
-        provider.sync(self.onProviderSyncComplete);
+        provider.sync(method(:onProviderSyncComplete));
 
         return true;
     }

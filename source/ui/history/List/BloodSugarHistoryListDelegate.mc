@@ -96,7 +96,7 @@ class BloodSugarHistoryListDelegate extends WatchUi.BehaviorDelegate {
         _parentView.setBloodSugarSelect(_select);
     }
 
-    public function editSelect(selectedTime) as Void {
+    public function editSelect(selectedTime as Number?) as Void {
         if (selectedTime == null) {
             return;
         }

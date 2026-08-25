@@ -34,7 +34,7 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
 
     public function initialize(monitorId as Number) {
         _providerName = BloodSugarStore.getBloodMonitorText(monitorId);
-        Menu2.initialize({:title => _providerName + " account"});
+        Menu2.initialize({ :title => _providerName + " account" });
 
         var isDexcom = monitorId == BloodSugarStore.MONITOR_DEXCOM;
         var usernameLabel = isDexcom ? "Client ID" : "Username";
@@ -88,14 +88,14 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
 
     private function getUsernameDisplay(username as String) as String {
         if (username.length() == 0) {
-            return "Enter username";
+            return "Enter";
         }
         return shorten(username, 24);
     }
 
     private function getPasswordDisplay(passwordLength as Number) as String {
         if (passwordLength == 0) {
-            return "Enter password";
+            return "Enter";
         }
 
         var visibleLength = passwordLength;

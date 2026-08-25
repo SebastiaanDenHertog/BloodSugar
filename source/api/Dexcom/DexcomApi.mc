@@ -53,7 +53,7 @@ class DexcomApi {
     private var _state as Number;
     private var _authenticationRetried as Boolean;
     private var _cancelled as Boolean;
-    private var _completion;
+    private var _completion as BloodSugarApiReadCallback?;
 
     public function initialize(id as String, secret as String) {
         _client_id = id;
@@ -69,7 +69,7 @@ class DexcomApi {
         _cancelled = false;
     }
 
-    public function read(completion) as Void {
+    public function read(completion as BloodSugarApiReadCallback) as Void {
         if (_state != STATE_IDLE) {
             return;
         }
@@ -142,16 +142,18 @@ class DexcomApi {
         }
     }
 
-    public function loadConnections() {}
+    public function loadConnections() as Void {}
 
-    private function createHeaders(authenticated as Boolean) {
+    private function createHeaders(
+        authenticated as Boolean
+    ) as Dictionary<String, String> {
         var headers = {
             "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
             "Accept" => "application/json",
             "cache-control" => "no-cache",
             "product" => "llu.android",
             "version" => CLIENT_VERSION,
-        };
+        } as Dictionary<String, String>;
 
         if (authenticated && _bearerToken != null) {
             headers["Authorization"] = "Bearer " + (_bearerToken as String);

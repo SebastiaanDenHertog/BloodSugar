@@ -146,18 +146,20 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private function connect() as Void {
         if (_username.length() == 0) {
             _view.focusItem(FIELD_USERNAME);
-            _status = _monitorId == BloodSugarStore.MONITOR_DEXCOM
-                ? "Enter your client ID"
-                : "Enter your username";
+            _status =
+                _monitorId == BloodSugarStore.MONITOR_DEXCOM
+                    ? "Enter your client ID"
+                    : "Enter your username";
             updateView();
             return;
         }
 
         if (_password.length() == 0) {
             _view.focusItem(FIELD_PASSWORD);
-            _status = _monitorId == BloodSugarStore.MONITOR_DEXCOM
-                ? "Enter your client secret"
-                : "Enter your password";
+            _status =
+                _monitorId == BloodSugarStore.MONITOR_DEXCOM
+                    ? "Enter your client secret"
+                    : "Enter your password";
             updateView();
             return;
         }
@@ -178,14 +180,14 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         startConnecting();
         var client = new AbbottFreeStyleApi(_username, _password);
         _apiClient = client;
-        client.read(self.onApiReadComplete);
+        client.read(method(:onApiReadComplete));
     }
 
     private function startDexcomConnection() as Void {
         startConnecting();
         var client = new DexcomApi(_username, _password);
         _apiClient = client;
-        client.read(self.onApiReadComplete);
+        client.read(method(:onApiReadComplete));
     }
 
     private function startConnecting() as Void {
@@ -197,7 +199,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private function onApiReadComplete(
         success as Boolean,
         latestReadingTime as Number,
-        latestValueMmol,
+        latestValueMmol as Float,
         addedCount as Number,
         errorMessage as String
     ) as Void {
@@ -220,10 +222,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         BloodSugarStore.setSetupDone(true);
         (Application.getApp() as BloodSugarApp).updateBackgroundSync();
         if (addedCount > 0) {
-            _status = getProviderName()
-                + ": "
-                + addedCount
-                + " readings added";
+            _status = getProviderName() + ": " + addedCount + " readings added";
         } else {
             _status = getProviderName() + " connected";
         }

@@ -26,6 +26,14 @@ import Toybox.BluetoothLowEnergy;
 import Toybox.System;
 import Toybox.Lang;
 
+typedef BloodSugarBleProfile as {
+    :uuid as BluetoothLowEnergy.Uuid,
+    :characteristics as Array<{
+        :uuid as BluetoothLowEnergy.Uuid,
+        :descriptors as Array<BluetoothLowEnergy.Uuid>
+    }>
+};
+
 class ProfileManager {
     public const BloodSugar_SERVICE_UUID = BluetoothLowEnergy.longToUuid(
         0xef6805009b354933l,
@@ -60,7 +68,7 @@ class ProfileManager {
         }
     }
 
-    private function createProfile() {
+    private function createProfile() as BloodSugarBleProfile {
         return {
             :uuid => BloodSugar_SERVICE_UUID,
 

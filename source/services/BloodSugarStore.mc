@@ -70,21 +70,21 @@ module BloodSugarStore {
     const PROP_CONFIRM_SAVE = "confirmBeforeSave";
 
     // cached items:
-    var _useMgdlCache = null;
-    var _confirmBeforeSaveCache = null;
-    var _defaultContextIndexCache = null;
-    var _bloodMonitorCache = null;
-    var _notificationsEnabledCache = null;
+    var _useMgdlCache as Boolean? = null;
+    var _confirmBeforeSaveCache as Boolean? = null;
+    var _defaultContextIndexCache as Number? = null;
+    var _bloodMonitorCache as Number? = null;
+    var _notificationsEnabledCache as Boolean? = null;
 
-    var _dangerLowMmolCache = null;
-    var _lowMmolCache = null;
-    var _highMmolCache = null;
-    var _dangerHighMmolCache = null;
-    var _notificationLowMmolCache = null;
-    var _notificationHighMmolCache = null;
+    var _dangerLowMmolCache as Float? = null;
+    var _lowMmolCache as Float? = null;
+    var _highMmolCache as Float? = null;
+    var _dangerHighMmolCache as Float? = null;
+    var _notificationLowMmolCache as Float? = null;
+    var _notificationHighMmolCache as Float? = null;
 
-    var _bleSupportedCache = null;
-    var _compactHistoryProfileCache = null;
+    var _bleSupportedCache as Boolean? = null;
+    var _compactHistoryProfileCache as Boolean? = null;
 
     const NOTIFICATION_NONE = 0;
     const NOTIFICATION_LOW = 1;
@@ -95,11 +95,11 @@ module BloodSugarStore {
     const MONITOR_DEXCOM = 2;
     const MONITOR_BLE = 3;
 
-    var _historyBytes = null;
-    var _historyNeedsRepair = false as Boolean;
-    var _historyWritable = true;
+    var _historyBytes as Lang.ByteArray? = null;
+    var _historyNeedsRepair as Boolean = false;
+    var _historyWritable as Boolean = true;
 
-    function load() {
+    function load() as Lang.ByteArray {
         if (_historyBytes != null) {
             return _historyBytes;
         }
@@ -276,7 +276,7 @@ module BloodSugarStore {
         return BloodSugarReading.getPackedCount(value as Lang.ByteArray);
     }
 
-    function getReadingAt(index as Number) {
+    function getReadingAt(index as Number) as BloodSugarReading.Record? {
         var value = load();
 
         if (!(value instanceof Lang.ByteArray)) {
@@ -631,10 +631,10 @@ module BloodSugarStore {
         return compacted;
     }
 
-    function getHistory() {
+    function getHistory() as Array<BloodSugarReading.Record> {
         var count = getHistoryCount();
 
-        var history = [] as Array;
+        var history = [] as Array<BloodSugarReading.Record>;
 
         for (var index = 0; index < count; index += 1) {
             var reading = getReadingAt(index);
@@ -647,7 +647,9 @@ module BloodSugarStore {
         return history;
     }
 
-    function getPartOfHistory(items as Number) {
+    function getPartOfHistory(
+        items as Number
+    ) as Array<BloodSugarReading.Record>? {
         var count = getHistoryCount();
 
         if (count == 0 || items <= 0) {
@@ -658,7 +660,7 @@ module BloodSugarStore {
             items = count;
         }
 
-        var history = [] as Array;
+        var history = [] as Array<BloodSugarReading.Record>;
         var startIndex = count - items;
         for (var index = startIndex; index < count; index += 1) {
             var reading = getReadingAt(index);
@@ -671,7 +673,7 @@ module BloodSugarStore {
         return history;
     }
 
-    function getLatestReading() as Array or Dictionary or Null {
+    function getLatestReading() as BloodSugarReading.Record? {
         var count = getHistoryCount();
         if (count == 0) {
             return null;
@@ -748,7 +750,9 @@ module BloodSugarStore {
         }
     }
 
-    function getReadingByTime(bloodSugarValueTime) {
+    function getReadingByTime(
+        bloodSugarValueTime as Number?
+    ) as BloodSugarReading.Record? {
         if (bloodSugarValueTime == null) {
             return null;
         }
@@ -773,7 +777,7 @@ module BloodSugarStore {
     }
 
     function updateReadingByTime(
-        originalTime,
+        originalTime as Number?,
         valueMmol as Float,
         context as String
     ) as Boolean {
@@ -1034,7 +1038,7 @@ module BloodSugarStore {
         _useMgdlCache = useMgdl;
     }
 
-    function getCachedRangeValue(propertyKey as String) {
+    function getCachedRangeValue(propertyKey as String) as Float? {
         if (propertyKey.equals(PROP_DANGER_LOW)) {
             return _dangerLowMmolCache;
         }
@@ -1485,7 +1489,7 @@ module BloodSugarStore {
         return _bleSupportedCache as Boolean;
     }
 
-    function addReadingsBatch(readings) as Number {
+    function addReadingsBatch(readings as Object?) as Number {
         if (!(readings instanceof Array)) {
             return -1;
         }
@@ -1763,7 +1767,7 @@ module BloodSugarStore {
         return NOTIFICATION_NONE;
     }
 
-    function deleteReadingByTime(originalTime) as Boolean {
+    function deleteReadingByTime(originalTime as Number?) as Boolean {
         if (originalTime == null) {
             return false;
         }

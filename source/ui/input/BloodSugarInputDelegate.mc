@@ -36,15 +36,19 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
     private var _contextIndex as Number;
     private var _message as String;
 
-    private var _editingTime;
+    private var _editingTime as Number?;
     private var _isEditing as Boolean;
     private var _canDeleteReading as Boolean;
 
-    public function initialize(view as BloodSugarView, bloodSugarValueTime) {
+    public function initialize(
+        view as BloodSugarView,
+        bloodSugarValueTime as Number?
+    ) {
         BehaviorDelegate.initialize();
 
         _parentView = view;
         _stage = 0;
+        _bloodSugarMmol = 5.5f;
         _useMgdl = BloodSugarStore.getUseMgdl();
         _contextIndex = BloodSugarStore.getDefaultContextIndex();
         _message = "";
@@ -250,22 +254,12 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         );
     }
 
-    private function isManualReading(reading) as Boolean {
-        if (!(reading instanceof Array)) {
-            return false;
-        }
-
-        if (reading.size() <= BloodSugarReading.SOURCE) {
-            return false;
-        }
-
-        if (reading[BloodSugarReading.SOURCE] == null) {
-            return false;
-        }
-
-        return reading[BloodSugarReading.SOURCE]
-            .toString()
-            .equals(BloodSugarReading.SOURCE_MANUAL);
+    private function isManualReading(
+        reading as BloodSugarReading.Record
+    ) as Boolean {
+        return reading[BloodSugarReading.SOURCE].equals(
+            BloodSugarReading.SOURCE_MANUAL
+        );
     }
 
     private function showDeleteConfirmation() as Void {
@@ -278,7 +272,7 @@ class BloodSugarDelegate extends WatchUi.BehaviorDelegate {
         WatchUi.pushView(confirmation, delegate, WatchUi.SLIDE_IMMEDIATE);
     }
 
-    public function handleDeleteReading(timestamp) as Void {
+    public function handleDeleteReading(timestamp as Number?) as Void {
         if (!_isEditing || _editingTime == null || timestamp == null) {
             _message = "Reading changed";
             updateView();

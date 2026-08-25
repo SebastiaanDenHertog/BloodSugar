@@ -36,7 +36,7 @@ class BloodSugarSyncProvider {
         return false;
     }
 
-    public function sync(completion) as Void {
+    public function sync(completion as BloodSugarSyncCallback) as Void {
         var result = new BloodSugarSyncResult(getMonitorId());
         result.errorMessage = "Sync provider not implemented";
         completion.invoke(result);

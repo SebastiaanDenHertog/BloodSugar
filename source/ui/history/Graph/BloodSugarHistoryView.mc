@@ -37,9 +37,9 @@ class BloodSugarHistoryView extends WatchUi.View {
     const ZONE_HIGH = 2;
     const ZONE_DANGER_HIGH = 3;
 
-    private var _bloodSugar;
-    private var _time;
-    private var _zones;
+    private var _bloodSugar as Array<Float>;
+    private var _time as Array<Number>;
+    private var _zones as Array<Float>;
     private var _unit as String;
     private var _selected as Number;
 
@@ -78,9 +78,9 @@ class BloodSugarHistoryView extends WatchUi.View {
     }
 
     public function setBloodSugarHistory(
-        bloodSugar,
-        time,
-        zones,
+        bloodSugar as Array<Float>,
+        time as Array<Number>,
+        zones as Array<Float>,
         unit as String
     ) as Void {
         _bloodSugar = bloodSugar;

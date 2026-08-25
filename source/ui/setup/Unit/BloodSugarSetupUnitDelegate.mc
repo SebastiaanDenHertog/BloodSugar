@@ -49,7 +49,7 @@ class BloodSugarSetupUnitDelegate extends WatchUi.PickerDelegate {
         return true;
     }
 
-    public function onBack() {
+    public function onBack() as Void {
         var homeView = new BloodSugarHomeView();
         WatchUi.switchToView(
             homeView,
@@ -85,7 +85,7 @@ class BloodSugarMonitorConfirmationDelegate
         return true;
     }
 
-    public function onBack() {
+    public function onBack() as Void {
         var homeView = new BloodSugarHomeView();
         WatchUi.switchToView(
             homeView,

@@ -54,7 +54,7 @@ class AbbottFreeStyleApi {
     private var _redirectRegion as String?;
 
     private var _state as Number;
-    private var _completion;
+    private var _completion as BloodSugarApiReadCallback?;
     private var _authenticationRetried as Boolean;
     private var _cancelled as Boolean;
 
@@ -73,7 +73,7 @@ class AbbottFreeStyleApi {
         _cancelled = false;
     }
 
-    public function read(completion) as Void {
+    public function read(completion as BloodSugarApiReadCallback) as Void {
         if (_state != STATE_IDLE) {
             return;
         }
@@ -564,14 +564,16 @@ class AbbottFreeStyleApi {
         }
     }
 
-    private function createHeaders(authenticated as Boolean) {
+    private function createHeaders(
+        authenticated as Boolean
+    ) as Dictionary<String, String> {
         var headers = {
             "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
             "Accept" => "application/json",
             "cache-control" => "no-cache",
             "product" => "llu.android",
             "version" => CLIENT_VERSION,
-        };
+        } as Dictionary<String, String>;
 
         if (authenticated && _jwtToken != null && _accountIdHash != null) {
             headers["Authorization"] = "Bearer " + (_jwtToken as String);
@@ -630,7 +632,7 @@ class AbbottFreeStyleApi {
 
     private function complete(
         latestTimestamp as Number,
-        latestValueMmol,
+        latestValueMmol as Float,
         addedCount as Number
     ) as Void {
         var completion = _completion;

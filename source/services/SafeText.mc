@@ -31,7 +31,7 @@ module SafeText {
     const FONT_COUNT = 5;
     const ELLIPSIS = "...";
 
-    var _isRectangleCache = null;
+    var _isRectangleCache as Boolean? = null;
 
     function isRectangleScreen() as Boolean {
         if (_isRectangleCache == null) {
@@ -209,7 +209,7 @@ module SafeText {
     /*
      * Draw text safely near the top of the screen.
      */
-    function drawTop(dc as Dc, text as String) {
+    function drawTop(dc as Dc, text as String) as Void {
         drawTopWithPadding(dc, text, 10);
     }
 
@@ -223,7 +223,7 @@ module SafeText {
         dc as Dc,
         text as String,
         paddingPercent as Number
-    ) {
+    ) as Void {
         var screenHeight = dc.getHeight() as Number;
 
         var topPadding = (screenHeight * paddingPercent) / 100;
@@ -234,7 +234,7 @@ module SafeText {
     /*
      * Draw text safely near the bottom of the screen.
      */
-    function drawBottom(dc as Dc, text as String) {
+    function drawBottom(dc as Dc, text as String) as Void {
         drawBottomWithPadding(dc, text, 10);
     }
 
@@ -248,7 +248,7 @@ module SafeText {
         dc as Dc,
         text as String,
         paddingPercent as Number
-    ) {
+    ) as Void {
         var screenHeight = dc.getHeight() as Number;
 
         var bottomPadding = (screenHeight * paddingPercent) / 100;

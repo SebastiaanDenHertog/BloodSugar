@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.Application.Storage;
 import Toybox.Lang;
 import Toybox.System;
 
@@ -77,7 +76,7 @@ module BloodSugarReading {
     const GLUCOSE_SCALE = 100.0f;
     const MAX_PACKED_GLUCOSE = 65535;
 
-    typedef Record as Array<Storage.ValueType>;
+    typedef Record as [Number, Float, String, String, Number];
 
     public function create(
         timestamp as Number,
@@ -103,7 +102,7 @@ module BloodSugarReading {
         return bytes;
     }
 
-    public function isPackedHistory(value) as Boolean {
+    public function isPackedHistory(value as Object?) as Boolean {
         if (!(value instanceof Lang.ByteArray)) {
             return false;
         }
@@ -275,7 +274,10 @@ module BloodSugarReading {
         return SOURCE_UNKNOWN;
     }
 
-    public function normalize(rawValue, historyIndex as Number) as Record? {
+    public function normalize(
+        rawValue as Object?,
+        historyIndex as Number
+    ) as Record? {
         if (!(rawValue instanceof Array)) {
             System.println(
                 "History[" +
@@ -359,7 +361,7 @@ module BloodSugarReading {
         return create(timestamp as Number, valueMmol as Float, source, context);
     }
 
-    public function isCurrent(rawValue) as Boolean {
+    public function isCurrent(rawValue as Object?) as Boolean {
         if (!(rawValue instanceof Array)) {
             return false;
         }
@@ -407,7 +409,7 @@ module BloodSugarReading {
         return reading[CONTEXT].toString();
     }
 
-    function toTimestamp(value) as Number? {
+    function toTimestamp(value as Object?) as Number? {
         if (value instanceof Number) {
             return value as Number;
         }
@@ -427,7 +429,7 @@ module BloodSugarReading {
         return null;
     }
 
-    function toFloatValue(value) as Float? {
+    function toFloatValue(value as Object?) as Float? {
         if (value instanceof Float) {
             return value as Float;
         }
@@ -447,7 +449,7 @@ module BloodSugarReading {
         return null;
     }
 
-    public function describeType(value) as String {
+    public function describeType(value as Object?) as String {
         if (value == null) {
             return "Null";
         }

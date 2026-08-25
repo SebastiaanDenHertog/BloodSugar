@@ -24,6 +24,18 @@ SOFTWARE.
 
 import Toybox.Lang;
 
+typedef BloodSugarSyncCallback as Method(
+    result as BloodSugarSyncResult
+) as Void;
+
+typedef BloodSugarApiReadCallback as Method(
+    success as Boolean,
+    latestReadingTime as Number,
+    latestValueMmol as Float,
+    addedCount as Number,
+    errorMessage as String
+) as Void;
+
 (:background)
 class BloodSugarSyncResult {
     var success as Boolean;

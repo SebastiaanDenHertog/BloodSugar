@@ -27,7 +27,7 @@ import Toybox.Lang;
 (:background)
 class DexcomSyncProvider extends BloodSugarSyncProvider {
     private var _api as DexcomApi?;
-    private var _completion;
+    private var _completion as BloodSugarSyncCallback?;
 
     public function initialize() {
         BloodSugarSyncProvider.initialize();
@@ -47,7 +47,7 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
         );
     }
 
-    public function sync(completion) as Void {
+    public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
         var username = BloodSugarStore.getUsername();
         var password = BloodSugarStore.getPassword();
@@ -60,13 +60,13 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
 
         _api = new DexcomApi(username, password);
 
-        (_api as DexcomApi).read(self.onApiReadComplete);
+        (_api as DexcomApi).read(method(:onApiReadComplete));
     }
 
     public function onApiReadComplete(
         success as Boolean,
         latestReadingTime as Number,
-        latestValueMmol,
+        latestValueMmol as Float,
         addedCount as Number,
         errorMessage as String
     ) as Void {
