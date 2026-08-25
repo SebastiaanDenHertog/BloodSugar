@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.System;
 import Toybox.Communications;
 import Toybox.Cryptography;
 import Toybox.Lang;
 import Toybox.PersistedContent;
 import Toybox.StringUtil;
+import Toybox.System;
 import Toybox.Time.Gregorian;
 
 import BloodSugarStore;
@@ -127,7 +127,7 @@ class DexcomApi {
             return;
         }
 
-        var root = response as Lang.Dictionary;
+        var root = response as ApiDictionary;
         var status = api.getNumber(root, "status", -1);
         var data = api.getObject(root, "data");
 
@@ -147,13 +147,14 @@ class DexcomApi {
     private function createHeaders(
         authenticated as Boolean
     ) as Dictionary<String, String> {
-        var headers = {
-            "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
-            "Accept" => "application/json",
-            "cache-control" => "no-cache",
-            "product" => "llu.android",
-            "version" => CLIENT_VERSION,
-        } as Dictionary<String, String>;
+        var headers =
+            ({
+                "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
+                "Accept" => "application/json",
+                "cache-control" => "no-cache",
+                "product" => "llu.android",
+                "version" => CLIENT_VERSION,
+            }) as Dictionary<String, String>;
 
         if (authenticated && _bearerToken != null) {
             headers["Authorization"] = "Bearer " + (_bearerToken as String);
