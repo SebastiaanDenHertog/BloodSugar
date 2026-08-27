@@ -25,7 +25,7 @@ SOFTWARE.
 import Toybox.Lang;
 import Toybox.System;
 
-(:glance)
+(:glance, :background)
 module BloodSugarReading {
     /*
      * Stored reading layout:
@@ -50,6 +50,7 @@ module BloodSugarReading {
 
     const SOURCE_MANUAL = "manual";
     const SOURCE_LIBRE_LINK_UP = "libre_link_up";
+    const SOURCE_DEXCOM = "dexcom";
 
     const DEFAULT_SOURCE = SOURCE_MANUAL;
     const DEFAULT_CONTEXT = "none";
@@ -71,12 +72,14 @@ module BloodSugarReading {
     const SOURCE_ID_LIBRE_LINK_UP = 1;
     const SOURCE_ID_BLE = 2;
     const SOURCE_ID_AGGREGATE = 3;
+    const SOURCE_ID_DEXCOM = 4;
     const SOURCE_ID_UNKNOWN = 15;
 
     const GLUCOSE_SCALE = 100.0f;
     const MAX_PACKED_GLUCOSE = 65535;
 
     typedef Record as [Number, Float, String, String, Number];
+    typedef IncomingRecord as [Number, Float, String, String];
 
     public function create(
         timestamp as Number,
@@ -251,6 +254,10 @@ module BloodSugarReading {
             return SOURCE_ID_AGGREGATE;
         }
 
+        if (source.equals(SOURCE_DEXCOM)) {
+            return SOURCE_ID_DEXCOM;
+        }
+
         return SOURCE_ID_UNKNOWN;
     }
 
@@ -271,6 +278,10 @@ module BloodSugarReading {
             return SOURCE_AGGREGATE;
         }
 
+        if (sourceId == SOURCE_ID_DEXCOM) {
+            return SOURCE_DEXCOM;
+        }
+
         return SOURCE_UNKNOWN;
     }
 
@@ -289,7 +300,7 @@ module BloodSugarReading {
             return null;
         }
 
-        var rawReading = rawValue as Array;
+        var rawReading = rawValue as Array<Object?>;
         var fieldCount = rawReading.size();
 
         System.println(
@@ -366,7 +377,7 @@ module BloodSugarReading {
             return false;
         }
 
-        var reading = rawValue as Array;
+        var reading = rawValue as Array<Object?>;
 
         if (reading.size() != FIELD_COUNT) {
             return false;
@@ -473,7 +484,7 @@ module BloodSugarReading {
             return "Number";
         }
 
-        if (value instanceof Long) {
+        if (value instanceof Lang.Long) {
             return "Long";
         }
 

@@ -33,6 +33,7 @@ import Toybox.Time.Gregorian;
 import BloodSugarStore;
 import api;
 
+(:background)
 class AbbottFreeStyleApi {
     const DEFAULT_SERVER = "https://api-us.libreview.io";
     const LOGIN_PATH = "/llu/auth/login";
@@ -56,13 +57,18 @@ class AbbottFreeStyleApi {
     private var _state as Number;
     private var _completion as BloodSugarApiReadCallback?;
     private var _authenticationRetried as Boolean;
+    private var _serverFallbackRetried as Boolean;
     private var _cancelled as Boolean;
 
     public function initialize(email as String, password as String) {
         _email = email;
         _password = password;
 
-        _baseUrl = DEFAULT_SERVER;
+        _baseUrl = BloodSugarStore.getApiServer(
+            BloodSugarMonitor.ABBOTT_FREE_STYLE,
+            _email,
+            DEFAULT_SERVER
+        );
         _jwtToken = null;
         _accountIdHash = null;
         _redirectRegion = null;
@@ -70,6 +76,7 @@ class AbbottFreeStyleApi {
         _state = STATE_IDLE;
         _completion = null;
         _authenticationRetried = false;
+        _serverFallbackRetried = false;
         _cancelled = false;
     }
 
@@ -80,6 +87,7 @@ class AbbottFreeStyleApi {
 
         _completion = completion;
         _authenticationRetried = false;
+        _serverFallbackRetried = false;
         _cancelled = false;
 
         if (_jwtToken == null || _accountIdHash == null) {
@@ -123,6 +131,17 @@ class AbbottFreeStyleApi {
         }
 
         if (responseCode != 200) {
+            /* A previously discovered regional endpoint may have changed. */
+            if (!_serverFallbackRetried && !_baseUrl.equals(DEFAULT_SERVER)) {
+                _serverFallbackRetried = true;
+                BloodSugarStore.clearApiServer(
+                    BloodSugarMonitor.ABBOTT_FREE_STYLE
+                );
+                _baseUrl = DEFAULT_SERVER;
+                login();
+                return;
+            }
+
             fail("Could not login: HTTP " + responseCode.toString());
             return;
         }
@@ -132,7 +151,7 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var root = response as Lang.Dictionary;
+        var root = response as ApiDictionary;
         var status = api.getNumber(root, "status", -1);
         var data = api.getObject(root, "data");
 
@@ -215,6 +234,11 @@ class AbbottFreeStyleApi {
 
         _jwtToken = token;
         _accountIdHash = sha256Hex(userId);
+        BloodSugarStore.saveApiServer(
+            BloodSugarMonitor.ABBOTT_FREE_STYLE,
+            _email,
+            _baseUrl
+        );
         loadConnections();
     }
 
@@ -259,7 +283,7 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var root = response as Lang.Dictionary;
+        var root = response as ApiDictionary;
         var status = api.getNumber(root, "status", -1);
 
         if (status != 0) {
@@ -305,6 +329,11 @@ class AbbottFreeStyleApi {
 
         _baseUrl = lslApi;
         _redirectRegion = null;
+        BloodSugarStore.saveApiServer(
+            BloodSugarMonitor.ABBOTT_FREE_STYLE,
+            _email,
+            _baseUrl
+        );
         login();
     }
 
@@ -358,7 +387,7 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var root = response as Lang.Dictionary;
+        var root = response as ApiDictionary;
 
         var status = api.getNumber(root, "status", -1);
 
@@ -383,11 +412,11 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        processCurrentReading(connections[0] as Lang.Dictionary);
+        processCurrentReading(connections[0] as ApiDictionary);
     }
 
     private function processCurrentReading(
-        connection as Lang.Dictionary
+        connection as ApiDictionary
     ) as Void {
         var currentReading = api.getObject(connection, "glucoseMeasurement");
 
@@ -420,7 +449,9 @@ class AbbottFreeStyleApi {
         }
 
         var valueMmol = BloodSugarStore.MgdlToMoll(valueMgdl.toFloat());
-        var readings = [[timestamp, valueMmol, "libre_link_up", "none"]];
+        var readings =
+            [[timestamp, valueMmol, "libre_link_up", "none"]] as
+            Array<BloodSugarReading.IncomingRecord>;
         var addedCount = BloodSugarStore.addReadingsBatch(readings);
 
         if (addedCount < 0) {
@@ -550,7 +581,7 @@ class AbbottFreeStyleApi {
         }
     }
 
-    private function updateTicket(root as Lang.Dictionary) as Void {
+    private function updateTicket(root as ApiDictionary) as Void {
         var ticket = api.getObject(root, "ticket");
 
         if (ticket == null) {
@@ -567,13 +598,14 @@ class AbbottFreeStyleApi {
     private function createHeaders(
         authenticated as Boolean
     ) as Dictionary<String, String> {
-        var headers = {
-            "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
-            "Accept" => "application/json",
-            "cache-control" => "no-cache",
-            "product" => "llu.android",
-            "version" => CLIENT_VERSION,
-        } as Dictionary<String, String>;
+        var headers =
+            ({
+                "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
+                "Accept" => "application/json",
+                "cache-control" => "no-cache",
+                "product" => "llu.android",
+                "version" => CLIENT_VERSION,
+            }) as Dictionary<String, String>;
 
         if (authenticated && _jwtToken != null && _accountIdHash != null) {
             headers["Authorization"] = "Bearer " + (_jwtToken as String);

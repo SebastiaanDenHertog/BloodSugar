@@ -25,6 +25,7 @@ SOFTWARE.
 import Toybox.Application;
 import Toybox.Application.Storage;
 import Toybox.System;
+import Toybox.Timer;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
@@ -32,6 +33,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     const FIELD_USERNAME = 0;
     const FIELD_PASSWORD = 1;
     const FIELD_CONNECT = 2;
+    const CONNECTED_DELAY_MS = 1500;
 
     private var _view as BloodSugarSetupApiView;
     private var _username as String;
@@ -39,6 +41,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private var _status as String;
     private var _busy as Boolean;
     private var _monitorId as Number;
+    private var _navigationTimer as Timer.Timer?;
 
     private var _apiClient as AbbottFreeStyleApi or DexcomApi or Null;
 
@@ -49,11 +52,12 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         Menu2InputDelegate.initialize();
         _view = view;
         _monitorId = monitorId;
-        _username = BloodSugarStore.getUsername();
-        _password = BloodSugarStore.getPassword();
+        _username = BloodSugarStore.getApiUsername(_monitorId);
+        _password = BloodSugarStore.getApiPassword(_monitorId);
         _status = "";
         _busy = false;
         _apiClient = null;
+        _navigationTimer = null;
         updateView();
     }
 
@@ -77,6 +81,17 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
     public function onBack() as Void {
         if (_busy) {
+            if (
+                _monitorId == BloodSugarStore.MONITOR_DEXCOM &&
+                _apiClient instanceof DexcomApi
+            ) {
+                (_apiClient as DexcomApi).cancel();
+                _apiClient = null;
+                _busy = false;
+                WatchUi.popView(WatchUi.SLIDE_RIGHT);
+                return;
+            }
+
             _status = "Wait for the current request";
             updateView();
             return;
@@ -85,22 +100,22 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function openKeyboard(field as Number) as Void {
-        var passwordMode = field == FIELD_PASSWORD;
+        var isPasswordField = field == FIELD_PASSWORD;
         var title;
         if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
-            title = passwordMode ? "Client secret" : "Client ID";
+            title = isPasswordField ? "Client secret" : "Client ID";
         } else {
-            title = passwordMode ? "Password" : "Username";
+            title = isPasswordField ? "Password" : "Username";
         }
-        var initialText = passwordMode ? _password : _username;
-        var allowSpace = passwordMode;
+        var initialText = isPasswordField ? _password : _username;
+        var allowSpace = isPasswordField;
         if (!System.getDeviceSettings().isTouchScreen) {
             var picker = new BloodSugarCharacterPicker(
                 initialText,
                 title,
                 96,
                 allowSpace,
-                passwordMode
+                false
             );
             WatchUi.pushView(
                 picker,
@@ -112,7 +127,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
         var keyboardView = new BloodSugarKeyboardView(
             initialText,
-            passwordMode,
+            false,
             title,
             96,
             allowSpace
@@ -143,7 +158,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         updateView();
     }
 
-    private function connect() as Void {
+    public function connect() as Void {
         if (_username.length() == 0) {
             _view.focusItem(FIELD_USERNAME);
             _status =
@@ -184,7 +199,26 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function startDexcomConnection() as Void {
-        startConnecting();
+        /*
+         * OAuth can finish after the watch app has been suspended. Persist the
+         * developer credentials before opening Garmin Connect so the callback
+         * can be resumed when the setup screen is opened again.
+         */
+        if (
+            !BloodSugarStore.saveApiCredentials(
+                _monitorId,
+                _username,
+                _password
+            )
+        ) {
+            _status = "Could not save Dexcom app credentials";
+            updateView();
+            return;
+        }
+
+        _busy = true;
+        _status = "Approve Dexcom sign-in on your phone";
+        updateView();
         var client = new DexcomApi(_username, _password);
         _apiClient = client;
         client.read(method(:onApiReadComplete));
@@ -196,7 +230,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         updateView();
     }
 
-    private function onApiReadComplete(
+    public function onApiReadComplete(
         success as Boolean,
         latestReadingTime as Number,
         latestValueMmol as Float,
@@ -211,7 +245,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
             updateView();
             return;
         }
-        var saved = BloodSugarStore.saveUsernamePassword(_username, _password);
+        var saved = BloodSugarStore.saveApiCredentials(
+            _monitorId,
+            _username,
+            _password
+        );
         if (!saved) {
             _status = "Connected, but login was not saved";
             _apiClient = null;
@@ -221,16 +259,61 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
         BloodSugarStore.setSetupDone(true);
         (Application.getApp() as BloodSugarApp).updateBackgroundSync();
+        _apiClient = null;
+        showConnectedStatus(addedCount);
+    }
+
+    private function showConnectedStatus(addedCount as Number) as Void {
+        _busy = true;
         if (addedCount > 0) {
             _status = getProviderName() + ": " + addedCount + " readings added";
         } else {
             _status = getProviderName() + " connected";
         }
-        _apiClient = null;
         updateView();
+
+        _navigationTimer = new Timer.Timer();
+        (_navigationTimer as Timer.Timer).start(
+            method(:onConnectedDelayElapsed),
+            CONNECTED_DELAY_MS,
+            false
+        );
+    }
+
+    public function onConnectedDelayElapsed() as Void {
+        _navigationTimer = null;
+        _busy = false;
+        showConnectedDestination();
+    }
+
+    private function showConnectedDestination() as Void {
+        if (BloodSugarStore.getHistoryCount() > 0) {
+            var historyView = new BloodSugarHistoryView();
+            WatchUi.switchToView(
+                historyView,
+                new BloodSugarSetupHistoryDelegate(historyView),
+                WatchUi.SLIDE_UP
+            );
+            return;
+        }
+
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_UP
+        );
     }
 
     private function getShortError(errorMessage as String) as String {
+        if (errorMessage.find("access was not approved") != null) {
+            return "Dexcom access was not approved";
+        }
+
+        if (errorMessage.find("authorization expired") != null) {
+            return "Reconnect your Dexcom account";
+        }
+
         if (errorMessage.find("Bad credentials") != null) {
             return "Incorrect username or password";
         }
@@ -255,6 +338,23 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function updateView() as Void {
-        _view.setState(_username, _password.length(), _status, _busy);
+        _view.setState(_username, _password, _status, _busy);
+    }
+}
+
+/* Back from history after setup should lead to Home, not the monitor picker. */
+class BloodSugarSetupHistoryDelegate extends BloodSugarHistoryDelegate {
+    public function initialize(view as BloodSugarHistoryView) {
+        BloodSugarHistoryDelegate.initialize(view);
+    }
+
+    public function onBack() as Boolean {
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_LEFT
+        );
+        return true;
     }
 }

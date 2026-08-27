@@ -24,9 +24,13 @@ SOFTWARE.
 
 import Toybox.Lang;
 
+typedef ApiDictionary as Lang.Dictionary<Object, Object?>;
+typedef ApiArray as Lang.Array<Object?>;
+
+(:background)
 module api {
     function getValue(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String
     ) as Object? {
         if (dictionary.hasKey(key) && dictionary[key] != null) {
@@ -37,7 +41,7 @@ module api {
     }
 
     function getString(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String,
         fallback as String
     ) as String {
@@ -51,27 +55,25 @@ module api {
     }
 
     function getNumber(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String,
         fallback as Number
     ) as Number {
         var value = getValue(dictionary, key);
 
-        if (value == null) {
-            return fallback;
+        if (value instanceof Number) {
+            return value as Number;
         }
 
-        var numberValue = value.toNumber();
-
-        if (numberValue == null) {
-            return fallback;
+        if (value instanceof Float) {
+            return (value as Float).toNumber();
         }
 
-        return numberValue;
+        return fallback;
     }
 
     function getBoolean(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String,
         fallback as Boolean
     ) as Boolean {
@@ -89,26 +91,26 @@ module api {
     }
 
     function getObject(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String
-    ) as Lang.Dictionary? {
+    ) as ApiDictionary? {
         var value = getValue(dictionary, key);
 
         if (value instanceof Lang.Dictionary) {
-            return value as Lang.Dictionary;
+            return value as ApiDictionary;
         }
 
         return null;
     }
 
     function getArray(
-        dictionary as Lang.Dictionary,
+        dictionary as ApiDictionary,
         key as String
-    ) as Lang.Array? {
+    ) as ApiArray? {
         var value = getValue(dictionary, key);
 
         if (value instanceof Lang.Array) {
-            return value as Lang.Array;
+            return value as ApiArray;
         }
 
         return null;

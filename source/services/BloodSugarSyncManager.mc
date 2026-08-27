@@ -67,7 +67,7 @@ class BloodSugarSyncManager {
         return true;
     }
 
-    private function onProviderSyncComplete(
+    public function onProviderSyncComplete(
         result as BloodSugarSyncResult
     ) as Void {
         if (
@@ -77,7 +77,6 @@ class BloodSugarSyncManager {
         ) {
             BloodSugarNotificationManager.processReadingAt(
                 result.latestValueMmol as Float,
-
                 result.latestReadingTime as Number
             );
         }

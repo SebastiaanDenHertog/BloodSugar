@@ -189,9 +189,9 @@ module BloodSugarNotificationManager {
 
     function getStoredNumber(key as String, defaultValue as Number) as Number {
         try {
-            var value = Storage.getValue(key);
+            var value = BloodSugarStore.readStorageValue(key);
 
-            if (value instanceof Number) {
+            if (value instanceof Lang.Number) {
                 return value as Number;
             }
         } catch (error) {
@@ -203,7 +203,7 @@ module BloodSugarNotificationManager {
 
     function saveNumber(key as String, value as Number) as Void {
         try {
-            Storage.setValue(key, value);
+            BloodSugarStore.writeStorageValue(key, value);
         } catch (error) {
             System.println("Could not save notification state");
         }

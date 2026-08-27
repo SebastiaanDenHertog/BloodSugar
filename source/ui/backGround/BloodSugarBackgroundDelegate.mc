@@ -43,7 +43,6 @@ class BloodSugarBackgroundDelegate extends System.ServiceDelegate {
         }
 
         _syncManager = new BloodSugarSyncManager();
-
         var started = (_syncManager as BloodSugarSyncManager).sync(
             method(:onSyncComplete)
         );
@@ -53,7 +52,7 @@ class BloodSugarBackgroundDelegate extends System.ServiceDelegate {
         }
     }
 
-    private function onSyncComplete(result as BloodSugarSyncResult) as Void {
+    public function onSyncComplete(result as BloodSugarSyncResult) as Void {
         Background.exit({
             "success" => result.success,
             "added" => result.addedCount,

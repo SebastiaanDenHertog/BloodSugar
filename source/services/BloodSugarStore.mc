@@ -28,7 +28,7 @@ import Toybox.Lang;
 import Toybox.System;
 import Toybox.Time;
 
-(:glance)
+(:glance,:background)
 module BloodSugarStore {
     const STANDARD_MAX_POINTS = 3200;
     const COMPACT_MAX_POINTS = 1500;
@@ -52,8 +52,21 @@ module BloodSugarStore {
     const PROP_COMPACT_HISTORY_PROFILE = "compactHistoryProfile";
     const STORAGE_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
-    const PROP_USERNAME = "username";
-    const PROP_PASSWORD = "password";
+
+    /* Provider-aware API storage uses keys such as api.1.server. */
+    const STORAGE_API_PREFIX = "api.";
+    const API_FIELD_USERNAME = "username";
+    const API_FIELD_PASSWORD = "password";
+    const API_FIELD_SERVER_OWNER = "serverOwner";
+    const API_FIELD_SERVER = "server";
+    const API_FIELD_TOKEN_OWNER = "tokenOwner";
+    const API_FIELD_TOKEN_SERVER = "tokenServer";
+    const API_FIELD_ACCESS_TOKEN = "accessToken";
+    const API_FIELD_REFRESH_TOKEN = "refreshToken";
+    const API_FIELD_TOKEN_EXPIRES_AT = "tokenExpiresAt";
+    const API_FIELD_AUTH_OWNER = "authorizationOwner";
+    const API_FIELD_AUTH_STATE = "authorizationState";
+
     const PROP_BLOOD_MONITOR_INDEX = "bloodMonitorIndex";
     const PROP_CUSTOM_CONTEXTS = "customContexts";
 
@@ -98,15 +111,35 @@ module BloodSugarStore {
     var _historyBytes as Lang.ByteArray? = null;
     var _historyNeedsRepair as Boolean = false;
     var _historyWritable as Boolean = true;
+    
+    (:typecheck(false))
+    function readStorageValue(key as String) as Object? {
+        return Storage.getValue(key);
+    }
+
+    (:typecheck(false))
+    function writeStorageValue(key as String, value as Object?) as Void {
+        Storage.setValue(key, value);
+    }
+
+    (:typecheck(false))
+    function readPropertyValue(key as String) as Object? {
+        return Properties.getValue(key);
+    }
+
+    (:typecheck(false))
+    function writePropertyValue(key as String, value as Object?) as Void {
+        Properties.setValue(key, value);
+    }
 
     function load() as Lang.ByteArray {
         if (_historyBytes != null) {
             return _historyBytes;
         }
-        var saved = null;
+        var saved;
 
         try {
-            saved = Storage.getValue(STORAGE_KEY);
+            saved = readStorageValue(STORAGE_KEY);
         } catch (error) {
             _historyBytes = BloodSugarReading.createPackedHistory(0);
             _historyWritable = false;
@@ -146,7 +179,7 @@ module BloodSugarStore {
         }
 
         if (saved instanceof Array) {
-            var migrated = migrateLegacyHistory(saved as Array);
+            var migrated = migrateLegacyHistory(saved as Array<Object?>);
             _historyBytes = migrated;
 
             _historyWritable = true;
@@ -170,7 +203,9 @@ module BloodSugarStore {
         _historyBytes = null;
     }
 
-    function migrateLegacyHistory(legacyHistory as Array) as Lang.ByteArray {
+    function migrateLegacyHistory(
+        legacyHistory as Array<Object?>
+    ) as Lang.ByteArray {
         var validCount = 0;
 
         for (var index = 0; index < legacyHistory.size(); index += 1) {
@@ -363,10 +398,7 @@ module BloodSugarStore {
         _compactHistoryProfileCache = useCompactProfile;
 
         try {
-            Properties.setValue(
-                PROP_COMPACT_HISTORY_PROFILE,
-                useCompactProfile
-            );
+            writePropertyValue(PROP_COMPACT_HISTORY_PROFILE, useCompactProfile);
         } catch (error) {
             System.println("Unable to save history memory profile");
         }
@@ -374,8 +406,8 @@ module BloodSugarStore {
 
     function usesCompactHistoryProfile() as Boolean {
         if (_compactHistoryProfileCache == null) {
-            _compactHistoryProfileCache =
-                Properties.getValue(PROP_COMPACT_HISTORY_PROFILE) != false;
+            var value = readPropertyValue(PROP_COMPACT_HISTORY_PROFILE);
+            _compactHistoryProfileCache = value != false;
         }
 
         return _compactHistoryProfileCache as Boolean;
@@ -740,7 +772,7 @@ module BloodSugarStore {
 
     function savePacked(bytes as Lang.ByteArray) as Boolean {
         try {
-            Storage.setValue(STORAGE_KEY, bytes);
+            writeStorageValue(STORAGE_KEY, bytes);
 
             return true;
         } catch (error) {
@@ -1026,14 +1058,15 @@ module BloodSugarStore {
 
     function getUseMgdl() as Boolean {
         if (_useMgdlCache == null) {
-            _useMgdlCache = Properties.getValue(PROP_USE_MGDL) == true;
+            var value = readPropertyValue(PROP_USE_MGDL);
+            _useMgdlCache = value == true;
         }
 
         return _useMgdlCache as Boolean;
     }
 
     function setUseMgdl(useMgdl as Boolean) as Void {
-        Properties.setValue(PROP_USE_MGDL, useMgdl);
+        writePropertyValue(PROP_USE_MGDL, useMgdl);
 
         _useMgdlCache = useMgdl;
     }
@@ -1110,12 +1143,14 @@ module BloodSugarStore {
             return cached as Float;
         }
 
-        var value = Properties.getValue(propertyKey);
+        var value = readPropertyValue(propertyKey);
 
         var result = MgdlToMoll(defaultMgdl);
 
-        if (value != null) {
-            result = MgdlToMoll(value.toFloat());
+        if (value instanceof Float) {
+            result = MgdlToMoll(value as Float);
+        } else if (value instanceof Number) {
+            result = MgdlToMoll((value as Number).toFloat());
         }
 
         setCachedRangeValue(propertyKey, result);
@@ -1127,7 +1162,7 @@ module BloodSugarStore {
         propertyKey as String,
         valueMmol as Float
     ) as Void {
-        Properties.setValue(propertyKey, MollToMgdl(valueMmol));
+        writePropertyValue(propertyKey, MollToMgdl(valueMmol));
 
         setCachedRangeValue(propertyKey, valueMmol);
     }
@@ -1220,7 +1255,7 @@ module BloodSugarStore {
     }
 
     function getSetupDone() as Boolean {
-        var value = Storage.getValue(STORAGE_SETUP_DONE);
+        var value = readStorageValue(STORAGE_SETUP_DONE);
 
         if (value instanceof Boolean) {
             return value as Boolean;
@@ -1231,7 +1266,7 @@ module BloodSugarStore {
 
     function setSetupDone(done as Boolean) as Void {
         try {
-            Storage.setValue(STORAGE_SETUP_DONE, done);
+            writeStorageValue(STORAGE_SETUP_DONE, done);
 
             System.println("Setup done saved: " + done);
         } catch (error) {
@@ -1241,15 +1276,15 @@ module BloodSugarStore {
 
     function getConfirmBeforeSave() as Boolean {
         if (_confirmBeforeSaveCache == null) {
-            _confirmBeforeSaveCache =
-                Properties.getValue(PROP_CONFIRM_SAVE) != false;
+            var value = readPropertyValue(PROP_CONFIRM_SAVE);
+            _confirmBeforeSaveCache = value != false;
         }
 
         return _confirmBeforeSaveCache as Boolean;
     }
 
     function setConfirmBeforeSave(confirm as Boolean) as Void {
-        Properties.setValue(PROP_CONFIRM_SAVE, confirm);
+        writePropertyValue(PROP_CONFIRM_SAVE, confirm);
         _confirmBeforeSaveCache = confirm;
     }
 
@@ -1258,16 +1293,18 @@ module BloodSugarStore {
             return _defaultContextIndexCache as Number;
         }
 
-        var value = Properties.getValue(PROP_DEFAULT_CONTEXT);
+        var value = readPropertyValue(PROP_DEFAULT_CONTEXT);
 
         var index = 0;
 
-        if (value != null) {
-            index = value.toNumber();
+        if (value instanceof Number) {
+            index = value as Number;
+        } else if (value instanceof Float) {
+            index = (value as Float).toNumber();
+        }
 
-            if (index < 0 || index >= getContextCount()) {
-                index = 0;
-            }
+        if (index < 0 || index >= getContextCount()) {
+            index = 0;
         }
 
         _defaultContextIndexCache = index;
@@ -1278,7 +1315,7 @@ module BloodSugarStore {
     function setDefaultContextIndex(index as Number) as Void {
         var normalizedIndex = normalizeContextIndex(index);
 
-        Properties.setValue(PROP_DEFAULT_CONTEXT, normalizedIndex);
+        writePropertyValue(PROP_DEFAULT_CONTEXT, normalizedIndex);
 
         _defaultContextIndexCache = normalizedIndex;
     }
@@ -1394,7 +1431,11 @@ module BloodSugarStore {
     }
 
     function getAppVersion() as String {
-        var value = Properties.getValue(PROP_APP_VERSION);
+        var value = readPropertyValue(PROP_APP_VERSION);
+
+        if (value == null) {
+            return "";
+        }
 
         return value.toString();
     }
@@ -1489,11 +1530,9 @@ module BloodSugarStore {
         return _bleSupportedCache as Boolean;
     }
 
-    function addReadingsBatch(readings as Object?) as Number {
-        if (!(readings instanceof Array)) {
-            return -1;
-        }
-
+    function addReadingsBatch(
+        readings as Array<BloodSugarReading.IncomingRecord>
+    ) as Number {
         var historyValue = load();
 
         if (!(historyValue instanceof Lang.ByteArray) || !_historyWritable) {
@@ -1512,24 +1551,10 @@ module BloodSugarStore {
 
         for (var index = 0; index < readings.size(); index += 1) {
             var incoming = readings[index];
-
-            if (!(incoming instanceof Array) || incoming.size() < 4) {
-                continue;
-            }
-
-            if (
-                incoming[0] == null ||
-                incoming[1] == null ||
-                incoming[2] == null ||
-                incoming[3] == null
-            ) {
-                continue;
-            }
-
-            var timestamp = incoming[0].toNumber();
-            var valueMmol = incoming[1].toFloat();
-            var source = incoming[2].toString();
-            var context = incoming[3].toString();
+            var timestamp = incoming[0];
+            var valueMmol = incoming[1];
+            var source = incoming[2];
+            var context = incoming[3];
 
             if (timestamp <= 0 || !BloodSugarReading.canPackValue(valueMmol)) {
                 continue;
@@ -1597,13 +1622,13 @@ module BloodSugarStore {
 
     function getCustomContextNames() as Array<String> {
         var names = [] as Array<String>;
-        var value = Properties.getValue(PROP_CUSTOM_CONTEXTS);
+        var value = readPropertyValue(PROP_CUSTOM_CONTEXTS);
 
         if (!(value instanceof Array)) {
             return names;
         }
 
-        var contexts = value as Array;
+        var contexts = value as Array<Object?>;
 
         for (var index = 0; index < contexts.size(); index += 1) {
             var context = contexts[index];
@@ -1612,7 +1637,8 @@ module BloodSugarStore {
                 continue;
             }
 
-            var name = (context as Dictionary)["name"];
+            var dictionary = context as Dictionary<Object, Object?>;
+            var name = dictionary["name"];
 
             if (name instanceof String && (name as String).length() > 0) {
                 names.add(name as String);
@@ -1648,7 +1674,7 @@ module BloodSugarStore {
     }
 
     public function setBloodMonitor(selected as Number) as Void {
-        Properties.setValue(PROP_BLOOD_MONITOR_INDEX, selected);
+        writePropertyValue(PROP_BLOOD_MONITOR_INDEX, selected);
 
         _bloodMonitorCache = selected;
     }
@@ -1658,7 +1684,7 @@ module BloodSugarStore {
             return _bloodMonitorCache as Number;
         }
 
-        var value = Properties.getValue(PROP_BLOOD_MONITOR_INDEX);
+        var value = readPropertyValue(PROP_BLOOD_MONITOR_INDEX);
         var selected = BloodSugarMonitor.NONE;
 
         if (value instanceof Number) {
@@ -1670,68 +1696,285 @@ module BloodSugarStore {
         return selected;
     }
 
-    public function getUsername() as String {
-        var value = Storage.getValue(PROP_USERNAME);
-
-        if (value instanceof String) {
-            return value as String;
-        }
-
-        return "";
+    function getApiUsername(monitorId as Number) as String {
+        var username = getApiStoredString(monitorId, API_FIELD_USERNAME);
+        return username == null ? "" : username as String;
     }
 
-    function getPassword() as String {
-        var value = Storage.getValue(PROP_PASSWORD);
-
-        if (value instanceof String) {
-            return value as String;
-        }
-
-        return "";
+    function getApiPassword(monitorId as Number) as String {
+        var password = getApiStoredString(monitorId, API_FIELD_PASSWORD);
+        return password == null ? "" : password as String;
     }
 
-    function saveUsernamePassword(
+    function saveApiCredentials(
+        monitorId as Number,
         username as String,
         password as String
     ) as Boolean {
         try {
-            Storage.setValue(PROP_USERNAME, username);
-
-            Storage.setValue(PROP_PASSWORD, password);
-
+            writeApiValue(monitorId, API_FIELD_USERNAME, username);
+            writeApiValue(monitorId, API_FIELD_PASSWORD, password);
             return true;
         } catch (error) {
             System.println(
-                "Could not save LibreLinkUp credentials: " + error.toString()
+                "Could not save API credentials: " + error.toString()
             );
-
             return false;
         }
     }
 
-    function clearUsernamePassword() as Void {
+    function clearApiCredentials(monitorId as Number) as Void {
         try {
-            Storage.deleteValue(PROP_USERNAME);
-
-            Storage.deleteValue(PROP_PASSWORD);
+            deleteApiValue(monitorId, API_FIELD_USERNAME);
+            deleteApiValue(monitorId, API_FIELD_PASSWORD);
         } catch (error) {
             System.println(
-                "Could not clear LibreLinkUp credentials: " + error.toString()
+                "Could not clear API credentials: " + error.toString()
             );
         }
     }
 
+    function getApiServer(
+        monitorId as Number,
+        owner as String,
+        fallback as String
+    ) as String {
+        var savedOwner = getApiStoredString(
+            monitorId,
+            API_FIELD_SERVER_OWNER
+        );
+        var savedServer = getApiStoredString(monitorId, API_FIELD_SERVER);
+
+        if (
+            savedOwner != null &&
+            savedServer != null &&
+            savedOwner.equals(owner)
+        ) {
+            return savedServer as String;
+        }
+
+        return fallback;
+    }
+
+    function saveApiServer(
+        monitorId as Number,
+        owner as String,
+        server as String
+    ) as Boolean {
+        try {
+            writeApiValue(monitorId, API_FIELD_SERVER_OWNER, owner);
+            writeApiValue(monitorId, API_FIELD_SERVER, server);
+            return true;
+        } catch (error) {
+            System.println("Could not save API server: " + error.toString());
+            return false;
+        }
+    }
+
+    function clearApiServer(monitorId as Number) as Void {
+        try {
+            deleteApiValue(monitorId, API_FIELD_SERVER_OWNER);
+            deleteApiValue(monitorId, API_FIELD_SERVER);
+        } catch (error) {
+            System.println("Could not clear API server: " + error.toString());
+        }
+    }
+
+    function getApiAccessToken(
+        monitorId as Number,
+        owner as String,
+        server as String
+    ) as String? {
+        if (!hasApiTokenOwner(monitorId, owner, server)) {
+            return null;
+        }
+
+        return getApiStoredString(monitorId, API_FIELD_ACCESS_TOKEN);
+    }
+
+    function getApiRefreshToken(
+        monitorId as Number,
+        owner as String,
+        server as String
+    ) as String? {
+        if (!hasApiTokenOwner(monitorId, owner, server)) {
+            return null;
+        }
+
+        return getApiStoredString(monitorId, API_FIELD_REFRESH_TOKEN);
+    }
+
+    function getApiTokenExpiresAt(
+        monitorId as Number,
+        owner as String,
+        server as String
+    ) as Number {
+        if (!hasApiTokenOwner(monitorId, owner, server)) {
+            return 0;
+        }
+
+        var value = readApiValue(monitorId, API_FIELD_TOKEN_EXPIRES_AT);
+        if (value instanceof Number) {
+            return value as Number;
+        }
+
+        return 0;
+    }
+
+    function saveApiTokens(
+        monitorId as Number,
+        owner as String,
+        server as String,
+        accessToken as String,
+        refreshToken as String,
+        expiresAt as Number
+    ) as Boolean {
+        try {
+            writeApiValue(monitorId, API_FIELD_SERVER_OWNER, owner);
+            writeApiValue(monitorId, API_FIELD_SERVER, server);
+            writeApiValue(monitorId, API_FIELD_TOKEN_OWNER, owner);
+            writeApiValue(monitorId, API_FIELD_TOKEN_SERVER, server);
+            writeApiValue(monitorId, API_FIELD_ACCESS_TOKEN, accessToken);
+            writeApiValue(monitorId, API_FIELD_REFRESH_TOKEN, refreshToken);
+            writeApiValue(
+                monitorId,
+                API_FIELD_TOKEN_EXPIRES_AT,
+                expiresAt
+            );
+            return true;
+        } catch (error) {
+            System.println("Could not save API tokens: " + error.toString());
+            return false;
+        }
+    }
+
+    function clearApiTokens(monitorId as Number) as Void {
+        try {
+            deleteApiValue(monitorId, API_FIELD_TOKEN_OWNER);
+            deleteApiValue(monitorId, API_FIELD_TOKEN_SERVER);
+            deleteApiValue(monitorId, API_FIELD_ACCESS_TOKEN);
+            deleteApiValue(monitorId, API_FIELD_REFRESH_TOKEN);
+            deleteApiValue(monitorId, API_FIELD_TOKEN_EXPIRES_AT);
+        } catch (error) {
+            System.println("Could not clear API tokens: " + error.toString());
+        }
+    }
+
+    function saveApiAuthorizationState(
+        monitorId as Number,
+        owner as String,
+        state as String
+    ) as Boolean {
+        try {
+            writeApiValue(monitorId, API_FIELD_AUTH_OWNER, owner);
+            writeApiValue(monitorId, API_FIELD_AUTH_STATE, state);
+            return true;
+        } catch (error) {
+            System.println(
+                "Could not save API authorization state: " + error.toString()
+            );
+            return false;
+        }
+    }
+
+    function getApiAuthorizationState(
+        monitorId as Number,
+        owner as String
+    ) as String {
+        var savedOwner = getApiStoredString(monitorId, API_FIELD_AUTH_OWNER);
+        var state = getApiStoredString(monitorId, API_FIELD_AUTH_STATE);
+
+        if (
+            savedOwner != null &&
+            state != null &&
+            savedOwner.equals(owner)
+        ) {
+            return state as String;
+        }
+
+        return "";
+    }
+
+    function clearApiAuthorizationState(monitorId as Number) as Void {
+        try {
+            deleteApiValue(monitorId, API_FIELD_AUTH_OWNER);
+            deleteApiValue(monitorId, API_FIELD_AUTH_STATE);
+        } catch (error) {
+            System.println(
+                "Could not clear API authorization state: " + error.toString()
+            );
+        }
+    }
+
+    function hasApiTokenOwner(
+        monitorId as Number,
+        owner as String,
+        server as String
+    ) as Boolean {
+        var savedOwner = getApiStoredString(monitorId, API_FIELD_TOKEN_OWNER);
+        var savedServer = getApiStoredString(
+            monitorId,
+            API_FIELD_TOKEN_SERVER
+        );
+
+        return (
+            savedOwner != null &&
+            savedServer != null &&
+            savedOwner.equals(owner) &&
+            savedServer.equals(server)
+        );
+    }
+
+    function getApiStorageKey(
+        monitorId as Number,
+        field as String
+    ) as String {
+        return STORAGE_API_PREFIX + monitorId.toString() + "." + field;
+    }
+
+    function readApiValue(monitorId as Number, field as String) as Object? {
+        return readStorageValue(getApiStorageKey(monitorId, field));
+    }
+
+    function getApiStoredString(
+        monitorId as Number,
+        field as String
+    ) as String? {
+        return getStoredString(getApiStorageKey(monitorId, field));
+    }
+
+    function writeApiValue(
+        monitorId as Number,
+        field as String,
+        value as Object
+    ) as Void {
+        writeStorageValue(getApiStorageKey(monitorId, field), value);
+    }
+
+    function deleteApiValue(monitorId as Number, field as String) as Void {
+        Storage.deleteValue(getApiStorageKey(monitorId, field));
+    }
+
+    function getStoredString(key as String) as String? {
+        var value = readStorageValue(key);
+        if (value instanceof String && (value as String).length() > 0) {
+            return value as String;
+        }
+
+        return null;
+    }
+
     function getNotificationsEnabled() as Boolean {
         if (_notificationsEnabledCache == null) {
-            _notificationsEnabledCache =
-                Properties.getValue(PROP_NOTIFICATIONS_ENABLED) != false;
+            var value = readPropertyValue(PROP_NOTIFICATIONS_ENABLED);
+            _notificationsEnabledCache = value != false;
         }
 
         return _notificationsEnabledCache as Boolean;
     }
 
     function setNotificationsEnabled(enabled as Boolean) as Void {
-        Properties.setValue(PROP_NOTIFICATIONS_ENABLED, enabled);
+        writePropertyValue(PROP_NOTIFICATIONS_ENABLED, enabled);
         _notificationsEnabledCache = enabled;
     }
 

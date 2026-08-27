@@ -41,20 +41,33 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
     }
 
     public function isConfigured() as Boolean {
+        var clientId = BloodSugarStore.getApiUsername(getMonitorId());
+        var clientSecret = BloodSugarStore.getApiPassword(getMonitorId());
+
+        if (clientId.length() == 0 || clientSecret.length() == 0) {
+            return false;
+        }
+        
         return (
-            BloodSugarStore.getUsername().length() > 0 &&
-            BloodSugarStore.getPassword().length() > 0
+            BloodSugarStore.getApiRefreshToken(
+                getMonitorId(),
+                clientId,
+                BloodSugarStore.getApiServer(
+                    getMonitorId(),
+                    clientId,
+                    DexcomApi.DEFAULT_SERVER
+                )
+            ) != null
         );
     }
 
     public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
-        var username = BloodSugarStore.getUsername();
-        var password = BloodSugarStore.getPassword();
+        var username = BloodSugarStore.getApiUsername(getMonitorId());
+        var password = BloodSugarStore.getApiPassword(getMonitorId());
 
         if (username.length() == 0 || password.length() == 0) {
             finishError("Dexcom account is not configured");
-
             return;
         }
 

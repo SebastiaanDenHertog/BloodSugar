@@ -35,7 +35,6 @@ class BloodSugarApp extends Application.AppBase {
     private var _profileManager as ProfileManager?;
     private var _bleDelegate as BloodSugarServiceBleDelegate?;
     private var _deviceManager as DeviceManager?;
-
     private var _syncManager as BloodSugarSyncManager?;
 
     public function initialize() {
@@ -98,15 +97,21 @@ class BloodSugarApp extends Application.AppBase {
     }
 
     public function updateBackgroundSync() as Void {
-        if (!(System has :ServiceDelegate)) {
+        if (
+            !(System has :ServiceDelegate) ||
+            !(Background has :getTemporalEventRegisteredTime) ||
+            !(Background has :registerForTemporalEvent) ||
+            !(Background has :deleteTemporalEvent)
+        ) {
             return;
         }
 
-        var shouldSync = BloodSugarMonitorRegistry.shouldUseBackgroundSync();
-        var isRegistered = Background.getTemporalEventRegisteredTime() != null;
+        try {
+            var shouldSync = BloodSugarMonitorRegistry.shouldUseBackgroundSync();
+            var isRegistered =
+                Background.getTemporalEventRegisteredTime() != null;
 
-        if (shouldSync && !isRegistered) {
-            try {
+            if (shouldSync && !isRegistered) {
                 Background.registerForTemporalEvent(
                     new Time.Duration(
                         BloodSugarMonitor.BACKGROUND_INTERVAL_SECONDS
@@ -114,20 +119,16 @@ class BloodSugarApp extends Application.AppBase {
                 );
 
                 System.println("Background glucose sync registered");
-            } catch (error) {
-                System.println("Could not register background sync");
+                return;
             }
 
-            return;
-        }
-        if (!shouldSync && isRegistered) {
-            try {
+            if (!shouldSync && isRegistered) {
                 Background.deleteTemporalEvent();
 
                 System.println("Background glucose sync removed");
-            } catch (error) {
-                System.println("Could not remove background sync");
             }
+        } catch (error) {
+            System.println("Could not update background sync: " + error.toString());
         }
     }
 
@@ -135,14 +136,15 @@ class BloodSugarApp extends Application.AppBase {
         if (!BloodSugarStore.getSetupDone()) {
             return false;
         }
-
+        var monitor_id = BloodSugarStore.getBloodMonitor() as Lang.Number;
         if (
-            BloodSugarStore.getBloodMonitor() != BloodSugarStore.MONITOR_ABBOTT
+            monitor_id != BloodSugarStore.MONITOR_ABBOTT &&
+            monitor_id != BloodSugarStore.MONITOR_DEXCOM
         ) {
             return false;
         }
-        var username = BloodSugarStore.getUsername();
-        var password = BloodSugarStore.getPassword();
+        var username = BloodSugarStore.getApiUsername(monitor_id);
+        var password = BloodSugarStore.getApiPassword(monitor_id);
         return username.length() > 0 && password.length() > 0;
     }
 

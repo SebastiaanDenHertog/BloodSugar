@@ -27,6 +27,7 @@ import Toybox.Timer;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
+(:background)
 class DexcomPollingManager {
     const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -68,8 +69,12 @@ class DexcomPollingManager {
             return;
         }
 
-        var username = BloodSugarStore.getUsername();
-        var password = BloodSugarStore.getPassword();
+        var username = BloodSugarStore.getApiUsername(
+            BloodSugarMonitor.DEXCOM
+        );
+        var password = BloodSugarStore.getApiPassword(
+            BloodSugarMonitor.DEXCOM
+        );
         if (username.length() == 0 || password.length() == 0) {
             return;
         }
@@ -93,7 +98,7 @@ class DexcomPollingManager {
         _requestRunning = false;
 
         if (!success) {
-            System.println("Abbott polling error: " + errorMessage);
+            System.println("Dexcom polling error: " + errorMessage);
             return;
         }
 

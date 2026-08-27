@@ -31,6 +31,10 @@ module BloodSugarMonitorRegistry {
             return new AbbottFreeStyleSyncProvider();
         }
 
+        if (monitorId == BloodSugarMonitor.DEXCOM) {
+            return new DexcomSyncProvider();
+        }
+
         return null;
     }
 
@@ -58,7 +62,10 @@ module BloodSugarMonitorRegistry {
         }
 
         var monitorId = BloodSugarStore.getBloodMonitor();
-        if (monitorId == BloodSugarMonitor.ABBOTT_FREE_STYLE) {
+        if (
+            monitorId == BloodSugarMonitor.ABBOTT_FREE_STYLE ||
+            monitorId == BloodSugarMonitor.DEXCOM
+        ) {
             return true;
         }
         return false;
