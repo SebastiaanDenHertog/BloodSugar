@@ -169,7 +169,7 @@ class BloodSugarKeyboardView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
         setLabel("keyboardTitle", _title);
-        setLabel("keyboardInput", getDisplayText());
+        setLabel("keyboardInput", "");
         setLabel("keyboardCounter", _text.length() + "/" + _maximumLength);
         View.onUpdate(dc);
         drawInputField(dc);
@@ -224,6 +224,25 @@ class BloodSugarKeyboardView extends WatchUi.View {
         var fieldY = (_height * 17) / 100;
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.drawRectangle(fieldX, fieldY, fieldWidth, fieldHeight);
+
+        var padding = 5;
+        var innerX = fieldX + padding;
+        var innerWidth = fieldWidth - padding * 2;
+        var font = Graphics.FONT_SMALL;
+        var displayText = getDisplayText();
+        var textWidth = dc.getTextWidthInPixels(displayText, font);
+        var textX = centerX;
+        var justification = Graphics.TEXT_JUSTIFY_CENTER;
+
+        if (textWidth > innerWidth) {
+            textX = innerX + innerWidth;
+            justification = Graphics.TEXT_JUSTIFY_RIGHT;
+        }
+
+        var textY = fieldY + (fieldHeight - dc.getFontHeight(font)) / 2;
+        dc.setClip(innerX, fieldY + 1, innerWidth, fieldHeight - 2);
+        dc.drawText(textX, textY, font, displayText, justification);
+        dc.clearClip();
     }
 
     private function drawKeyboard(dc as Graphics.Dc) as Void {
@@ -279,32 +298,18 @@ class BloodSugarKeyboardView extends WatchUi.View {
 
     private function getDisplayText() as String {
         if (_text.length() == 0) {
-            return _passwordMode ? "Enter" : "Enter";
+            return "Enter";
         }
 
         if (_passwordMode) {
-            var visibleLength = _text.length();
-            if (visibleLength > 24) {
-                visibleLength = 24;
-            }
             var masked = "";
-            for (var index = 0; index < visibleLength; index++) {
+            for (var index = 0; index < _text.length(); index++) {
                 masked += "*";
-            }
-            if (_text.length() > visibleLength) {
-                masked += "+";
             }
             return masked;
         }
 
-        if (_text.length() <= 24) {
-            return _text;
-        }
-        var tail = _text.substring(_text.length() - 21, _text.length());
-        if (tail == null) {
-            return _text;
-        }
-        return "..." + tail;
+        return _text;
     }
 
     private function getKeyLabel(key as String) as String {

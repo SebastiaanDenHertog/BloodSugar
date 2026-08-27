@@ -136,6 +136,7 @@ class BloodSugarCharacterPicker extends WatchUi.Picker {
     public function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
+        _title.setText(getTitleTextForWidth(dc));
         Picker.onUpdate(dc);
     }
 
@@ -190,8 +191,37 @@ class BloodSugarCharacterPicker extends WatchUi.Picker {
         if (_text.length() <= 20) {
             return _text;
         }
-        var tail = _text.substring(_text.length() - 17, _text.length());
-        return tail == null ? _text : "..." + tail;
+        var tail = _text.substring(_text.length() - 20, _text.length());
+        return tail == null ? _text : tail;
+    }
+
+    private function getTitleTextForWidth(dc as Graphics.Dc) as String {
+        if (_text.length() == 0) {
+            return _emptyTitle;
+        }
+
+        var displayText = _text;
+        if (_passwordMode) {
+            displayText = "";
+            for (var index = 0; index < _text.length(); index++) {
+                displayText += "*";
+            }
+        }
+
+        var maximumWidth = (dc.getWidth() * 80) / 100;
+        var startIndex = 0;
+        while (
+            startIndex < displayText.length() - 1 &&
+            dc.getTextWidthInPixels(
+                displayText.substring(startIndex, displayText.length()),
+                Graphics.FONT_XTINY
+            ) > maximumWidth
+        ) {
+            startIndex += 1;
+        }
+
+        var visible = displayText.substring(startIndex, displayText.length());
+        return visible == null ? displayText : visible;
     }
 }
 

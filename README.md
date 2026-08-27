@@ -13,6 +13,33 @@ API level 3.0.0 is required because glucose history is stored as a packed
 `ByteArray`. This format uses substantially less persistent storage and runtime
 memory than keeping every reading as a nested array or dictionary.
 
+## Dexcom sign-in (developer testing)
+
+The Dexcom integration uses OAuth 2.0 through Garmin Connect Mobile. To test
+it:
+
+1. Create an app in the Dexcom developer portal and register
+   `http://localhost` as its redirect URI. The value must match exactly.
+2. In `source/api/Dexcom/Dexcom_Api.mc`, select the appropriate
+   `DEFAULT_SERVER`. It currently uses the EU/outside-US production server;
+   use `SANDBOX_SERVER` for Dexcom's simulated users.
+3. On the watch, select Dexcom and enter the developer app's client ID and
+   client secret. These are app credentials, not a Dexcom user's email and
+   password.
+4. Select Connect, open the Garmin Connect notification on the paired phone,
+   sign in to Dexcom, and approve access.
+
+The app validates the OAuth state, exchanges the one-minute authorization
+code, saves the access and refresh tokens, rotates the refresh token when
+needed, locates the newest available EGV using Dexcom's data-range endpoint,
+and loads the 15 minutes of readings leading up to it.
+
+This direct token exchange is suitable only for local/sandbox development.
+Dexcom requires production integrations to keep client secrets and user tokens
+on a server rather than distributing or storing them on a mobile or wearable
+client. A production release should proxy the code exchange, token refresh,
+and Dexcom data calls through an application backend.
+
 ## Memory efficiency
 
 - Glucose history is packed into a compact `ByteArray`.
