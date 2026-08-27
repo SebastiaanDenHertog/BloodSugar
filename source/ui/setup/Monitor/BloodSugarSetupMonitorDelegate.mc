@@ -37,6 +37,10 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.PickerDelegate {
         return true;
     }
 
+    public function onBack() as Boolean {
+        WatchUi.popView(WatchUi.SLIDE_LEFT);
+    }
+
     public function onAccept(values as Array) as Boolean {
         var selected = values[0];
         if (!(selected instanceof Number)) {
