@@ -66,12 +66,12 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
 
     public function setState(
         username as String,
-        passwordLength as Number,
+        password as String,
         status as String,
         busy as Boolean
     ) as Void {
         _usernameItem.setSubLabel(getUsernameDisplay(username));
-        _passwordItem.setSubLabel(getPasswordDisplay(passwordLength));
+        _passwordItem.setSubLabel(getPasswordDisplay(password));
         _connectItem.setLabel(busy ? "Connecting..." : "Connect");
         _connectItem.setSubLabel(
             status.length() > 0 ? status : "Test and save " + _providerName
@@ -93,24 +93,11 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
         return shorten(username, 24);
     }
 
-    private function getPasswordDisplay(passwordLength as Number) as String {
-        if (passwordLength == 0) {
+    private function getPasswordDisplay(password as String) as String {
+        if (password.length() == 0) {
             return "Enter";
         }
-
-        var visibleLength = passwordLength;
-        var masked = "";
-        if (visibleLength > 16) {
-            visibleLength = 16;
-        }
-
-        for (var index = 0; index < visibleLength; index++) {
-            masked += "*";
-        }
-        if (passwordLength > visibleLength) {
-            masked += "+";
-        }
-        return masked;
+        return shorten(password, 24);
     }
 
     private function shorten(
