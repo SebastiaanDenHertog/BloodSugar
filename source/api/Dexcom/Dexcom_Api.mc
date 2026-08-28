@@ -23,95 +23,84 @@ SOFTWARE.
 */
 
 import Toybox.Communications;
-import Toybox.Cryptography;
 import Toybox.Lang;
 import Toybox.PersistedContent;
-import Toybox.StringUtil;
 import Toybox.System;
-import Toybox.Time;
-import Toybox.Time.Gregorian;
 
 import BloodSugarStore;
 import api;
 
+/*
+ * Monkey C port of pydexcom's Dexcom Share request flow. This class mirrors its three calls:
+ * account authentication, session login, and latest glucose readings.
+ */
 (:background)
 class DexcomApi {
-    const SANDBOX_SERVER = "https://sandbox-api.dexcom.com";
-    const US_SERVER = "https://api.dexcom.com";
-    const EU_SERVER = "https://api.dexcom.eu";
-    const JP_SERVER = "https://api.dexcom.jp";
+    const US_SERVER = "https://share2.dexcom.com/ShareWebServices/Services/";
+    const OUS_SERVER =
+        "https://shareous1.dexcom.com/ShareWebServices/Services/";
+    const JP_SERVER = "https://share.dexcom.jp/ShareWebServices/Services/";
 
-    /*
-     * New Zealand and other non-US accounts use Dexcom's EU API. Change this
-     * to SANDBOX_SERVER while developing against Dexcom's simulated users.
-     */
-    const DEFAULT_SERVER = SANDBOX_SERVER;
+    const DEFAULT_SERVER = OUS_SERVER;
 
-    const AUTHORIZE_PATH = "/v3/oauth2/login";
-    const TOKEN_PATH = "/v3/oauth2/token";
-    const DATA_RANGE_PATH = "/v3/users/self/dataRange";
-    const EGVS_PATH = "/v3/users/self/egvs";
+    const STANDARD_APPLICATION_ID = "d89443d2-327c-4a6f-89e5-496bbb0317db";
+    const JP_APPLICATION_ID = "d8665ade-9673-4e27-9ff6-92db4ce13d13";
+    const DEFAULT_UUID = "00000000-0000-0000-0000-000000000000";
 
-    const REDIRECT_URI = "http://localhost";
-    const OAUTH_CODE_KEY = "dexcomCode";
-    const OAUTH_ERROR_KEY = "dexcomError";
-    const OAUTH_STATE_KEY = "dexcomState";
+    const AUTHENTICATE_PATH = "General/AuthenticatePublisherAccount";
+    const LOGIN_PATH = "General/LoginPublisherAccountById";
+    const READINGS_PATH = "Publisher/ReadPublisherLatestGlucoseValues";
 
     const STATE_IDLE = 0;
-    const STATE_AUTHORIZE = 1;
-    const STATE_TOKEN = 2;
-    const STATE_REFRESH = 3;
-    const STATE_DATA_RANGE = 4;
-    const STATE_EGVS = 5;
+    const STATE_AUTHENTICATE = 1;
+    const STATE_LOGIN = 2;
+    const STATE_READINGS = 3;
 
-    const TOKEN_EXPIRY_MARGIN_SECONDS = 60;
-    /* Three to four EGV records stay comfortably below Garmin's payload cap. */
-    const EGV_WINDOW_SECONDS = 15 * 60 * 24 * 30;
+    const READING_MINUTES = 30;
+    const READING_MAX_COUNT = 6;
 
-    private var _clientId as String;
-    private var _clientSecret as String;
+    private var _username as String;
+    private var _password as String;
     private var _baseUrl as String;
-
-    private var _bearerToken as String?;
-    private var _refreshToken as String?;
-    private var _accessTokenExpiresAt as Number;
-    private var _oauthState as String?;
-
+    private var _applicationId as String;
+    private var _accountId as String?;
+    private var _sessionId as String?;
     private var _state as Number;
     private var _authenticationRetried as Boolean;
     private var _cancelled as Boolean;
     private var _completion as BloodSugarApiReadCallback?;
 
-    public function initialize(id as String, secret as String) {
-        _clientId = id;
-        _clientSecret = secret;
-        _baseUrl = BloodSugarStore.getApiServer(
+    public function initialize(
+        username as String,
+        password as String,
+        server as String
+    ) {
+        _username = username;
+        _password = password;
+        _baseUrl = isShareServer(server) ? server : DEFAULT_SERVER;
+        _applicationId = _baseUrl.equals(JP_SERVER)
+            ? JP_APPLICATION_ID
+            : STANDARD_APPLICATION_ID;
+
+        _accountId = BloodSugarStore.getApiAccountId(
             BloodSugarMonitor.DEXCOM,
-            _clientId,
-            DEFAULT_SERVER
+            _username,
+            _baseUrl
+        );
+        _sessionId = BloodSugarStore.getApiSessionId(
+            BloodSugarMonitor.DEXCOM,
+            _username,
+            _baseUrl
         );
 
-        _bearerToken = BloodSugarStore.getApiAccessToken(
-            BloodSugarMonitor.DEXCOM,
-            _clientId,
-            _baseUrl
-        );
-        _refreshToken = BloodSugarStore.getApiRefreshToken(
-            BloodSugarMonitor.DEXCOM,
-            _clientId,
-            _baseUrl
-        );
-        _accessTokenExpiresAt = BloodSugarStore.getApiTokenExpiresAt(
-            BloodSugarMonitor.DEXCOM,
-            _clientId,
-            _baseUrl
-        );
-        _oauthState = null;
+        if (_accountId == null && isUuid(_username)) {
+            _accountId = _username;
+        }
 
         _state = STATE_IDLE;
-        _completion = null;
         _authenticationRetried = false;
         _cancelled = false;
+        _completion = null;
     }
 
     public function read(completion as BloodSugarApiReadCallback) as Void {
@@ -123,421 +112,180 @@ class DexcomApi {
         _authenticationRetried = false;
         _cancelled = false;
 
-        if (
-            _bearerToken != null &&
-            (_accessTokenExpiresAt == 0 ||
-                _accessTokenExpiresAt >
-                    Time.now().value() + TOKEN_EXPIRY_MARGIN_SECONDS)
-        ) {
-            loadDataRange();
+        if (_sessionId != null) {
+            loadReadings();
             return;
         }
-
-        if (_refreshToken != null) {
-            refreshAccessToken();
+        if (_accountId != null) {
+            login();
             return;
         }
-
-        authorize();
+        authenticate();
     }
 
-    private function authorize() as Void {
-        _state = STATE_AUTHORIZE;
-        var savedState = BloodSugarStore.getApiAuthorizationState(
-            BloodSugarMonitor.DEXCOM,
-            _clientId
-        );
-        if (savedState.length() > 0) {
-            _oauthState = savedState;
-        } else {
-            _oauthState = createOAuthState();
-
-            if (
-                !BloodSugarStore.saveApiAuthorizationState(
-                    BloodSugarMonitor.DEXCOM,
-                    _clientId,
-                    _oauthState as String
-                )
-            ) {
-                fail("Could not save Dexcom sign-in state");
-                return;
-            }
-        }
-
-        Communications.registerForOAuthMessages(method(:onOAuthMessage));
-
-        /* Registration can synchronously deliver a response cached by Garmin. */
-        if (_state != STATE_AUTHORIZE || _cancelled) {
-            return;
-        }
-
+    private function authenticate() as Void {
+        _state = STATE_AUTHENTICATE;
         var params =
             ({
-                "client_id" => _clientId,
-                "redirect_uri" => REDIRECT_URI,
-                "response_type" => "code",
-                "scope" => "offline_access",
-                "state" => _oauthState as String,
-            }) as Dictionary<String, String>;
-
-        try {
-            Communications.makeOAuthRequest(
-                _baseUrl + AUTHORIZE_PATH,
-                params,
-                REDIRECT_URI,
-                Communications.OAUTH_RESULT_TYPE_URL,
-                {
-                    "code" => OAUTH_CODE_KEY,
-                    "error" => OAUTH_ERROR_KEY,
-                    "state" => OAUTH_STATE_KEY,
-                }
-            );
-        } catch (error) {
-            fail("Could not start Dexcom sign-in. Check the phone connection.");
-        }
-    }
-
-    public function onOAuthMessage(
-        message as Communications.OAuthMessage
-    ) as Void {
-        if (_cancelled || _state != STATE_AUTHORIZE) {
-            return;
-        }
-
-        if (!(message.data instanceof Lang.Dictionary)) {
-            fail("Dexcom sign-in returned no result");
-            return;
-        }
-
-        var result = message.data as ApiDictionary;
-        var returnedState = api.getString(result, OAUTH_STATE_KEY, "");
-        var expectedState = BloodSugarStore.getApiAuthorizationState(
-            BloodSugarMonitor.DEXCOM,
-            _clientId
-        );
-
-        if (
-            expectedState.length() == 0 ||
-            returnedState.length() == 0 ||
-            !returnedState.equals(expectedState)
-        ) {
-            fail("Dexcom sign-in state did not match. Please try again.");
-            return;
-        }
-
-        BloodSugarStore.clearApiAuthorizationState(BloodSugarMonitor.DEXCOM);
-        _oauthState = null;
-
-        var oauthError = api.getString(result, OAUTH_ERROR_KEY, "");
-        if (oauthError.length() > 0) {
-            if (oauthError.equals("access_denied")) {
-                fail("Dexcom access was not approved");
-            } else {
-                fail("Dexcom sign-in failed: " + oauthError);
-            }
-            return;
-        }
-
-        var authorizationCode = api.getString(result, OAUTH_CODE_KEY, "");
-        if (authorizationCode.length() == 0) {
-            fail("Dexcom sign-in did not return an authorization code");
-            return;
-        }
-
-        exchangeAuthorizationCode(authorizationCode);
-    }
-
-    private function exchangeAuthorizationCode(code as String) as Void {
-        _state = STATE_TOKEN;
-
-        var params =
-            ({
-                "client_id" => _clientId,
-                "client_secret" => _clientSecret,
-                "code" => code,
-                "grant_type" => "authorization_code",
-                "redirect_uri" => REDIRECT_URI,
+                "accountName" => _username,
+                "password" => _password,
+                "applicationId" => _applicationId,
             }) as Dictionary<Object, Object>;
 
-        var options = {
-            :method => Communications.HTTP_REQUEST_METHOD_POST,
-            :headers => ({
-                "Content-Type"
-                =>
-                Communications.REQUEST_CONTENT_TYPE_URL_ENCODED,
-                "Accept" => "application/json",
-            }) as Dictionary<String, String>,
-            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-        };
-
         Communications.makeWebRequest(
-            _baseUrl + TOKEN_PATH,
+            _baseUrl + AUTHENTICATE_PATH,
             params,
-            options,
-            method(:onTokenResponse)
+            createPostOptions(),
+            method(:onAuthenticateResponse)
         );
     }
 
-    private function refreshAccessToken() as Void {
-        if (_refreshToken == null) {
-            fail("Dexcom authorization is missing. Reconnect your account.");
-            return;
-        }
-
-        _state = STATE_REFRESH;
-
-        var params =
-            ({
-                "client_id" => _clientId,
-                "client_secret" => _clientSecret,
-                "refresh_token" => _refreshToken as String,
-                "grant_type" => "refresh_token",
-            }) as Dictionary<Object, Object>;
-
-        var options = {
-            :method => Communications.HTTP_REQUEST_METHOD_POST,
-            :headers => ({
-                "Content-Type"
-                =>
-                Communications.REQUEST_CONTENT_TYPE_URL_ENCODED,
-                "Accept" => "application/json",
-            }) as Dictionary<String, String>,
-            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-        };
-
-        Communications.makeWebRequest(
-            _baseUrl + TOKEN_PATH,
-            params,
-            options,
-            method(:onTokenResponse)
-        );
-    }
-
-    public function onTokenResponse(
+    public function onAuthenticateResponse(
         responseCode as Number,
         response as
-            Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
+            Lang.Array or
+                Lang.Dictionary or
+                Lang.String or
+                PersistedContent.Iterator or
+                Null
     ) as Void {
         if (_cancelled) {
             return;
         }
-
         if (responseCode != 200) {
-            var action =
-                _state == STATE_REFRESH ? "refresh authorization" : "sign in";
-            if (_state == STATE_REFRESH) {
-                clearTokens();
-            }
-            fail(
-                "Could not " +
-                    action +
-                    " with Dexcom: HTTP " +
-                    responseCode.toString()
-            );
+            fail(getRequestError("sign in", responseCode, response));
+            return;
+        }
+        if (!(response instanceof Lang.String) || !isUuid(response as String)) {
+            fail("Dexcom Share did not return a valid account ID");
             return;
         }
 
-        if (!(response instanceof Lang.Dictionary)) {
-            fail("Dexcom token response was not a JSON object");
+        _accountId = response as String;
+        login();
+    }
+
+    private function login() as Void {
+        if (_accountId == null) {
+            fail("Dexcom Share account ID is missing");
             return;
         }
 
-        var root = response as ApiDictionary;
-        var accessToken = api.getString(root, "access_token", "");
-        var refreshToken = api.getString(root, "refresh_token", "");
-        var expiresIn = api.getNumber(root, "expires_in", 0);
+        _state = STATE_LOGIN;
+        var params =
+            ({
+                "accountId" => _accountId as String,
+                "password" => _password,
+                "applicationId" => _applicationId,
+            }) as Dictionary<Object, Object>;
 
-        if (accessToken.length() == 0) {
-            fail("Dexcom token response did not contain an access token");
+        Communications.makeWebRequest(
+            _baseUrl + LOGIN_PATH,
+            params,
+            createPostOptions(),
+            method(:onLoginResponse)
+        );
+    }
+
+    public function onLoginResponse(
+        responseCode as Number,
+        response as
+            Lang.Array or
+                Lang.Dictionary or
+                Lang.String or
+                PersistedContent.Iterator or
+                Null
+    ) as Void {
+        if (_cancelled) {
+            return;
+        }
+        if (responseCode != 200) {
+            fail(getRequestError("create a session", responseCode, response));
+            return;
+        }
+        if (!(response instanceof Lang.String) || !isUuid(response as String)) {
+            fail("Dexcom Share did not return a valid session ID");
             return;
         }
 
-        if (refreshToken.length() == 0 && _refreshToken != null) {
-            refreshToken = _refreshToken as String;
-        }
-
-        if (refreshToken.length() == 0) {
-            fail("Dexcom token response did not contain a refresh token");
-            return;
-        }
-
-        var expiresAt = 0;
-        if (expiresIn > 0) {
-            expiresAt = Time.now().value() + expiresIn;
-        }
-
+        _sessionId = response as String;
         if (
-            !BloodSugarStore.saveApiTokens(
+            !BloodSugarStore.saveApiSession(
                 BloodSugarMonitor.DEXCOM,
-                _clientId,
+                _username,
                 _baseUrl,
-                accessToken,
-                refreshToken,
-                expiresAt
+                _accountId as String,
+                _sessionId as String
             )
         ) {
-            fail("Dexcom signed in, but its tokens could not be saved");
+            fail("Dexcom connected, but its session could not be saved");
             return;
         }
-
-        _bearerToken = accessToken;
-        _refreshToken = refreshToken;
-        _accessTokenExpiresAt = expiresAt;
-        loadDataRange();
+        loadReadings();
     }
 
-    private function loadDataRange() as Void {
-        if (_bearerToken == null) {
-            fail("Dexcom access token is missing");
+    private function loadReadings() as Void {
+        if (_sessionId == null) {
+            fail("Dexcom Share session is missing");
             return;
         }
 
-        _state = STATE_DATA_RANGE;
-
-        var options = {
-            :method => Communications.HTTP_REQUEST_METHOD_GET,
-            :headers => ({
-                "Accept" => "application/json",
-                "Authorization" => "Bearer " + (_bearerToken as String),
-            }) as Dictionary<String, String>,
-            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-        };
+        _state = STATE_READINGS;
+        var url =
+            _baseUrl +
+            READINGS_PATH +
+            "?sessionId=" +
+            (_sessionId as String) +
+            "&minutes=" +
+            READING_MINUTES.toString() +
+            "&maxCount=" +
+            READING_MAX_COUNT.toString();
 
         Communications.makeWebRequest(
-            _baseUrl + DATA_RANGE_PATH,
-            null,
-            options,
-            method(:onDataRangeResponse)
+            url,
+            ({}) as Dictionary<Object, Object>,
+            createPostOptions(),
+            method(:onReadingsResponse)
         );
     }
 
-    public function onDataRangeResponse(
+    public function onReadingsResponse(
         responseCode as Number,
         response as
-            Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
+            Lang.Array or
+                Lang.Dictionary or
+                Lang.String or
+                PersistedContent.Iterator or
+                Null
     ) as Void {
         if (_cancelled) {
             return;
         }
 
-        if (responseCode == 401) {
-            if (!_authenticationRetried && _refreshToken != null) {
+        if (responseCode != 200) {
+            if (!_authenticationRetried && isSessionError(response)) {
                 _authenticationRetried = true;
-                refreshAccessToken();
+                _sessionId = null;
+                BloodSugarStore.clearApiSession(BloodSugarMonitor.DEXCOM);
+                if (_accountId != null) {
+                    login();
+                } else {
+                    authenticate();
+                }
                 return;
             }
 
-            clearTokens();
-            fail("Dexcom authorization expired. Reconnect your account.");
+            fail(getRequestError("load readings", responseCode, response));
             return;
         }
 
-        if (responseCode != 200) {
-            fail(
-                "Could not load Dexcom data range: " +
-                    getResponseCodeText(responseCode)
-            );
+        if (!(response instanceof Lang.Array)) {
+            fail("Dexcom Share readings response was not a JSON array");
             return;
         }
 
-        if (!(response instanceof Lang.Dictionary)) {
-            fail("Dexcom data-range response was not a JSON object");
-            return;
-        }
-
-        var root = response as ApiDictionary;
-        var egvs = api.getObject(root, "egvs");
-        if (egvs == null) {
-            complete(0, 0.0, 0);
-            return;
-        }
-
-        var end = api.getObject(egvs, "end");
-        if (end == null) {
-            complete(0, 0.0, 0);
-            return;
-        }
-
-        var latestTimeText = api.getString(end, "systemTime", "");
-        var latestTime = parseIso8601(latestTimeText);
-        if (latestTime == null) {
-            fail("Dexcom data range did not contain a valid EGV end time");
-            return;
-        }
-
-        /* The end of an EGV query is exclusive, so include one extra second. */
-        var queryEnd = (latestTime as Number) + 1;
-        loadEgvs(queryEnd - EGV_WINDOW_SECONDS, queryEnd);
-    }
-
-    private function loadEgvs(startTime as Number, endTime as Number) as Void {
-        if (_bearerToken == null) {
-            fail("Dexcom access token is missing");
-            return;
-        }
-
-        _state = STATE_EGVS;
-        System.println(formatUtc(startTime));
-        System.println(formatUtc(endTime));
-        var params =
-            ({
-                "startDate" => formatUtc(startTime),
-                "endDate" => formatUtc(endTime),
-            }) as Dictionary<Object, Object>;
-
-        var options = {
-            :method => Communications.HTTP_REQUEST_METHOD_GET,
-            :headers => ({
-                "Accept" => "application/json",
-                "Authorization" => "Bearer " + (_bearerToken as String),
-            }) as Dictionary<String, String>,
-            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-        };
-        Communications.makeWebRequest(
-            _baseUrl + EGVS_PATH,
-            params,
-            options,
-            method(:onEgvsResponse)
-        );
-    }
-
-    public function onEgvsResponse(
-        responseCode as Number,
-        response as
-            Lang.Dictionary or Lang.String or PersistedContent.Iterator or Null
-    ) as Void {
-        if (_cancelled) {
-            return;
-        }
-
-        if (responseCode == 401) {
-            if (!_authenticationRetried && _refreshToken != null) {
-                _authenticationRetried = true;
-                refreshAccessToken();
-                return;
-            }
-
-            clearTokens();
-            fail("Dexcom authorization expired. Reconnect your account.");
-            return;
-        }
-
-        if (responseCode != 200) {
-            fail(
-                "Could not load Dexcom readings: " +
-                    getResponseCodeText(responseCode)
-            );
-            return;
-        }
-
-        if (!(response instanceof Lang.Dictionary)) {
-            fail("Dexcom readings response was not a JSON object");
-            return;
-        }
-
-        var root = response as ApiDictionary;
-        var records = api.getArray(root, "records");
-        if (records == null || records.size() == 0) {
+        var records = response as ApiArray;
+        if (records.size() == 0) {
             complete(0, 0.0, 0);
             return;
         }
@@ -552,9 +300,12 @@ class DexcomApi {
             }
 
             var record = records[index] as ApiDictionary;
-            var timestampText = api.getString(record, "systemTime", "");
-            var valueMgdl = api.getNumber(record, "value", 0);
-            var timestamp = parseIso8601(timestampText);
+            var valueMgdl = api.getNumber(record, "Value", 0);
+            var timestampText = api.getString(record, "DT", "");
+            if (timestampText.length() == 0) {
+                timestampText = api.getString(record, "WT", "");
+            }
+            var timestamp = parseShareTimestamp(timestampText);
 
             if (timestamp == null || valueMgdl <= 0) {
                 continue;
@@ -565,7 +316,7 @@ class DexcomApi {
                 timestamp as Number,
                 valueMmol,
                 BloodSugarReading.SOURCE_DEXCOM,
-                "none",
+                BloodSugarReading.DEFAULT_CONTEXT,
             ]);
 
             if ((timestamp as Number) > latestTimestamp) {
@@ -581,147 +332,123 @@ class DexcomApi {
 
         var addedCount = BloodSugarStore.addReadingsBatch(readings);
         if (addedCount < 0) {
-            fail("Dexcom readings were received but could not be stored");
+            fail("Dexcom Share readings could not be stored");
             return;
         }
-
         complete(latestTimestamp, latestValueMmol, addedCount);
     }
 
-    private function createOAuthState() as String {
-        var bytes = Cryptography.randomBytes(16);
+    private function createPostOptions() as Dictionary {
+        return {
+            :method => Communications.HTTP_REQUEST_METHOD_POST,
+            :headers => ({
+                "Accept" => "application/json",
+                "Accept-Encoding" => "application/json",
+                "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON,
+            }) as Dictionary<String, String>,
+            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+        };
+    }
+
+    private function parseShareTimestamp(value as String) as Number? {
+        var open = value.find("Date(");
+        var close = value.find(")");
+        if (open == null || close == null || close <= open + 5) {
+            return null;
+        }
+
+        var raw = value.substring((open as Number) + 5, close as Number);
+        var offset = raw.find("+");
+        var minus = raw.find("-");
+        if (offset == null || (minus != null && minus < offset)) {
+            offset = minus;
+        }
+        if (offset != null) {
+            raw = raw.substring(0, offset as Number);
+        }
+        if (raw.length() < 10) {
+            return null;
+        }
+
+        /* Share timestamps are milliseconds; epoch seconds fit in Number. */
+        if (raw.length() > 10) {
+            raw = raw.substring(0, raw.length() - 3);
+        }
+        return raw.toNumber();
+    }
+
+    private function isUuid(value as String) as Boolean {
         return (
-            StringUtil.convertEncodedString(bytes, {
-                :fromRepresentation => StringUtil.REPRESENTATION_BYTE_ARRAY,
-                :toRepresentation => StringUtil.REPRESENTATION_STRING_HEX,
-            }) as String
+            value.length() == 36 &&
+            value.substring(8, 9).equals("-") &&
+            value.substring(13, 14).equals("-") &&
+            value.substring(18, 19).equals("-") &&
+            value.substring(23, 24).equals("-") &&
+            !value.equals(DEFAULT_UUID)
         );
     }
 
-    private function formatUtc(timestamp as Number) as String {
-        var info = Gregorian.utcInfo(
-            new Time.Moment(timestamp),
-            Time.FORMAT_SHORT
-        );
-
+    private function isShareServer(server as String) as Boolean {
         return (
-            info.year.format("%04d") +
-            "-" +
-            info.month.format("%02d") +
-            "-" +
-            info.day.format("%02d") +
-            "T" +
-            info.hour.format("%02d") +
-            ":" +
-            info.min.format("%02d") +
-            ":" +
-            info.sec.format("%02d")
+            server.equals(US_SERVER) ||
+            server.equals(OUS_SERVER) ||
+            server.equals(JP_SERVER)
         );
     }
 
-    private function parseIso8601(value as String) as Number? {
-        if (value.length() < 19) {
-            return null;
+    private function isSessionError(response as Object?) as Boolean {
+        if (!(response instanceof Lang.Dictionary)) {
+            return false;
         }
-
-        if (
-            !value.substring(4, 5).equals("-") ||
-            !value.substring(7, 8).equals("-") ||
-            !value.substring(10, 11).equals("T") ||
-            !value.substring(13, 14).equals(":") ||
-            !value.substring(16, 17).equals(":")
-        ) {
-            return null;
-        }
-
-        var year = value.substring(0, 4).toNumber();
-        var month = value.substring(5, 7).toNumber();
-        var day = value.substring(8, 10).toNumber();
-        var hour = value.substring(11, 13).toNumber();
-        var minute = value.substring(14, 16).toNumber();
-        var second = value.substring(17, 19).toNumber();
-
-        if (
-            year == null ||
-            month == null ||
-            day == null ||
-            hour == null ||
-            minute == null ||
-            second == null
-        ) {
-            return null;
-        }
-
-        var timestamp;
-        try {
-            timestamp = Gregorian.moment({
-                :year => year as Number,
-                :month => month as Number,
-                :day => day as Number,
-                :hour => hour as Number,
-                :minute => minute as Number,
-                :second => second as Number,
-            }).value();
-        } catch (error) {
-            return null;
-        }
-
-        var suffix = value.substring(19, value.length());
-        var plusPosition = suffix.find("+");
-        var minusPosition = suffix.find("-");
-        var offsetPosition = plusPosition;
-        var offsetDirection = -1;
-
-        if (offsetPosition == null && minusPosition != null) {
-            offsetPosition = minusPosition;
-            offsetDirection = 1;
-        }
-
-        if (offsetPosition == null) {
-            return timestamp;
-        }
-
-        var offsetText = suffix.substring(
-            (offsetPosition as Number) + 1,
-            suffix.length()
+        var code = api.getString(response as ApiDictionary, "Code", "");
+        return (
+            code.equals("SessionIdNotFound") || code.equals("SessionNotValid")
         );
-        var colon = offsetText.find(":");
-        if (colon == null || colon < 1 || colon + 2 >= offsetText.length()) {
-            return null;
-        }
-
-        var offsetHour = offsetText.substring(0, colon as Number).toNumber();
-        var offsetMinute = offsetText
-            .substring((colon as Number) + 1, (colon as Number) + 3)
-            .toNumber();
-
-        if (offsetHour == null || offsetMinute == null) {
-            return null;
-        }
-
-        var offsetSeconds =
-            ((offsetHour as Number) * 60 + (offsetMinute as Number)) * 60;
-
-        return timestamp + offsetDirection * offsetSeconds;
     }
 
-    private function clearTokens() as Void {
-        _bearerToken = null;
-        _refreshToken = null;
-        _accessTokenExpiresAt = 0;
-        BloodSugarStore.clearApiTokens(BloodSugarMonitor.DEXCOM);
-    }
+    private function getRequestError(
+        action as String,
+        responseCode as Number,
+        response as Object?
+    ) as String {
+        if (response instanceof Lang.Dictionary) {
+            var error = response as ApiDictionary;
+            var code = api.getString(error, "Code", "");
+            var message = api.getString(error, "Message", "");
+            if (
+                code.equals("AccountPasswordInvalid") ||
+                (code.equals("SSO_InternalError") &&
+                    message.find("Cannot Authenticate") != null) ||
+                (code.equals("InvalidArgument") &&
+                    (message.find("accountName") != null ||
+                        message.find("password") != null))
+            ) {
+                return "Incorrect Dexcom username or password";
+            }
+            if (code.equals("SSO_AuthenticateMaxAttemptsExceeded")) {
+                return "Too many Dexcom sign-in attempts. Try again later.";
+            }
 
-    private function getResponseCodeText(responseCode as Number) as String {
+            if (code.length() > 0) {
+                return "Dexcom Share " + code;
+            }
+            if (message.length() > 0) {
+                return message;
+            }
+        }
+
         if (responseCode == Communications.NETWORK_RESPONSE_TOO_LARGE) {
-            return "response was too large for the watch";
+            return "Dexcom Share response was too large for the watch";
         }
-
         if (responseCode < 0) {
-            return "Garmin network error " + responseCode.toString();
+            return "Dexcom Garmin network error " + responseCode.toString();
         }
-
-        return "HTTP " + responseCode.toString();
+        return (
+            "Could not " +
+            action +
+            " from Dexcom Share: HTTP " +
+            responseCode.toString()
+        );
     }
 
     public function cancel() as Void {

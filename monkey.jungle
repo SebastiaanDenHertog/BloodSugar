@@ -1,6 +1,9 @@
 project.manifest = manifest.xml
 
+base.sourcePath = source;tests
+
 base.resourcePath = resources
+base.excludeAnnotations = test
 
 round-208x208.resourcePath = $(base.resourcePath);resources-round-208x208
 round-218x218.resourcePath = $(base.resourcePath);resources-round-218x218

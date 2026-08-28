@@ -80,7 +80,12 @@ class DexcomPollingManager {
         }
 
         if (_client == null) {
-            _client = new DexcomApi(username, password);
+            var server = BloodSugarStore.getApiServer(
+                BloodSugarMonitor.DEXCOM,
+                username,
+                DexcomApi.DEFAULT_SERVER
+            );
+            _client = new DexcomApi(username, password, server);
         }
 
         _requestRunning = true;

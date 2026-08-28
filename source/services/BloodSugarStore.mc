@@ -59,13 +59,10 @@ module BloodSugarStore {
     const API_FIELD_PASSWORD = "password";
     const API_FIELD_SERVER_OWNER = "serverOwner";
     const API_FIELD_SERVER = "server";
-    const API_FIELD_TOKEN_OWNER = "tokenOwner";
-    const API_FIELD_TOKEN_SERVER = "tokenServer";
-    const API_FIELD_ACCESS_TOKEN = "accessToken";
-    const API_FIELD_REFRESH_TOKEN = "refreshToken";
-    const API_FIELD_TOKEN_EXPIRES_AT = "tokenExpiresAt";
-    const API_FIELD_AUTH_OWNER = "authorizationOwner";
-    const API_FIELD_AUTH_STATE = "authorizationState";
+    const API_FIELD_SESSION_OWNER = "sessionOwner";
+    const API_FIELD_SESSION_SERVER = "sessionServer";
+    const API_FIELD_ACCOUNT_ID = "accountId";
+    const API_FIELD_SESSION_ID = "sessionId";
 
     const PROP_BLOOD_MONITOR_INDEX = "bloodMonitorIndex";
     const PROP_CUSTOM_CONTEXTS = "customContexts";
@@ -1780,141 +1777,71 @@ module BloodSugarStore {
         }
     }
 
-    function getApiAccessToken(
+    function getApiAccountId(
         monitorId as Number,
         owner as String,
         server as String
     ) as String? {
-        if (!hasApiTokenOwner(monitorId, owner, server)) {
+        if (!hasApiSessionOwner(monitorId, owner, server)) {
             return null;
         }
 
-        return getApiStoredString(monitorId, API_FIELD_ACCESS_TOKEN);
+        return getApiStoredString(monitorId, API_FIELD_ACCOUNT_ID);
     }
 
-    function getApiRefreshToken(
+    function getApiSessionId(
         monitorId as Number,
         owner as String,
         server as String
     ) as String? {
-        if (!hasApiTokenOwner(monitorId, owner, server)) {
+        if (!hasApiSessionOwner(monitorId, owner, server)) {
             return null;
         }
 
-        return getApiStoredString(monitorId, API_FIELD_REFRESH_TOKEN);
+        return getApiStoredString(monitorId, API_FIELD_SESSION_ID);
     }
 
-    function getApiTokenExpiresAt(
-        monitorId as Number,
-        owner as String,
-        server as String
-    ) as Number {
-        if (!hasApiTokenOwner(monitorId, owner, server)) {
-            return 0;
-        }
-
-        var value = readApiValue(monitorId, API_FIELD_TOKEN_EXPIRES_AT);
-        if (value instanceof Number) {
-            return value as Number;
-        }
-
-        return 0;
-    }
-
-    function saveApiTokens(
+    function saveApiSession(
         monitorId as Number,
         owner as String,
         server as String,
-        accessToken as String,
-        refreshToken as String,
-        expiresAt as Number
+        accountId as String,
+        sessionId as String
     ) as Boolean {
         try {
             writeApiValue(monitorId, API_FIELD_SERVER_OWNER, owner);
             writeApiValue(monitorId, API_FIELD_SERVER, server);
-            writeApiValue(monitorId, API_FIELD_TOKEN_OWNER, owner);
-            writeApiValue(monitorId, API_FIELD_TOKEN_SERVER, server);
-            writeApiValue(monitorId, API_FIELD_ACCESS_TOKEN, accessToken);
-            writeApiValue(monitorId, API_FIELD_REFRESH_TOKEN, refreshToken);
-            writeApiValue(
-                monitorId,
-                API_FIELD_TOKEN_EXPIRES_AT,
-                expiresAt
-            );
+            writeApiValue(monitorId, API_FIELD_SESSION_OWNER, owner);
+            writeApiValue(monitorId, API_FIELD_SESSION_SERVER, server);
+            writeApiValue(monitorId, API_FIELD_ACCOUNT_ID, accountId);
+            writeApiValue(monitorId, API_FIELD_SESSION_ID, sessionId);
             return true;
         } catch (error) {
-            System.println("Could not save API tokens: " + error.toString());
+            System.println("Could not save API session: " + error.toString());
             return false;
         }
     }
 
-    function clearApiTokens(monitorId as Number) as Void {
+    function clearApiSession(monitorId as Number) as Void {
         try {
-            deleteApiValue(monitorId, API_FIELD_TOKEN_OWNER);
-            deleteApiValue(monitorId, API_FIELD_TOKEN_SERVER);
-            deleteApiValue(monitorId, API_FIELD_ACCESS_TOKEN);
-            deleteApiValue(monitorId, API_FIELD_REFRESH_TOKEN);
-            deleteApiValue(monitorId, API_FIELD_TOKEN_EXPIRES_AT);
+            deleteApiValue(monitorId, API_FIELD_SESSION_OWNER);
+            deleteApiValue(monitorId, API_FIELD_SESSION_SERVER);
+            deleteApiValue(monitorId, API_FIELD_ACCOUNT_ID);
+            deleteApiValue(monitorId, API_FIELD_SESSION_ID);
         } catch (error) {
-            System.println("Could not clear API tokens: " + error.toString());
+            System.println("Could not clear API session: " + error.toString());
         }
     }
 
-    function saveApiAuthorizationState(
-        monitorId as Number,
-        owner as String,
-        state as String
-    ) as Boolean {
-        try {
-            writeApiValue(monitorId, API_FIELD_AUTH_OWNER, owner);
-            writeApiValue(monitorId, API_FIELD_AUTH_STATE, state);
-            return true;
-        } catch (error) {
-            System.println(
-                "Could not save API authorization state: " + error.toString()
-            );
-            return false;
-        }
-    }
-
-    function getApiAuthorizationState(
-        monitorId as Number,
-        owner as String
-    ) as String {
-        var savedOwner = getApiStoredString(monitorId, API_FIELD_AUTH_OWNER);
-        var state = getApiStoredString(monitorId, API_FIELD_AUTH_STATE);
-
-        if (
-            savedOwner != null &&
-            state != null &&
-            savedOwner.equals(owner)
-        ) {
-            return state as String;
-        }
-
-        return "";
-    }
-
-    function clearApiAuthorizationState(monitorId as Number) as Void {
-        try {
-            deleteApiValue(monitorId, API_FIELD_AUTH_OWNER);
-            deleteApiValue(monitorId, API_FIELD_AUTH_STATE);
-        } catch (error) {
-            System.println(
-                "Could not clear API authorization state: " + error.toString()
-            );
-        }
-    }
-
-    function hasApiTokenOwner(
+    function hasApiSessionOwner(
         monitorId as Number,
         owner as String,
         server as String
     ) as Boolean {
-        var savedOwner = getApiStoredString(monitorId, API_FIELD_TOKEN_OWNER);
+        var savedOwner = getApiStoredString(monitorId, API_FIELD_SESSION_OWNER);
         var savedServer = getApiStoredString(
             monitorId,
-            API_FIELD_TOKEN_SERVER
+            API_FIELD_SESSION_SERVER
         );
 
         return (

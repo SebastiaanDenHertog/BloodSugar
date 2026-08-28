@@ -33,11 +33,15 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     const FIELD_USERNAME = 0;
     const FIELD_PASSWORD = 1;
     const FIELD_CONNECT = 2;
+    const DEXCOM_REGION_US = 0;
+    const DEXCOM_REGION_JP = 1;
+    const DEXCOM_REGION_OUS = 2;
     const CONNECTED_DELAY_MS = 1500;
 
     private var _view as BloodSugarSetupApiView;
     private var _username as String;
     private var _password as String;
+    private var _dexcomRegion as Number;
     private var _status as String;
     private var _busy as Boolean;
     private var _monitorId as Number;
@@ -54,6 +58,19 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         _monitorId = monitorId;
         _username = BloodSugarStore.getApiUsername(_monitorId);
         _password = BloodSugarStore.getApiPassword(_monitorId);
+        _dexcomRegion = DEXCOM_REGION_OUS;
+        if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
+            var savedServer = BloodSugarStore.getApiServer(
+                _monitorId,
+                _username,
+                DexcomApi.DEFAULT_SERVER
+            );
+            if (savedServer == DexcomApi.US_SERVER) {
+                _dexcomRegion = DEXCOM_REGION_US;
+            } else if (savedServer == DexcomApi.JP_SERVER) {
+                _dexcomRegion = DEXCOM_REGION_JP;
+            }
+        }
         _status = "";
         _busy = false;
         _apiClient = null;
@@ -72,6 +89,10 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         }
         if (id == :password) {
             openKeyboard(FIELD_PASSWORD);
+            return;
+        }
+        if (id == :region) {
+            openDexcomRegionPicker();
             return;
         }
         if (id == :connect) {
@@ -101,12 +122,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
     private function openKeyboard(field as Number) as Void {
         var isPasswordField = field == FIELD_PASSWORD;
-        var title;
-        if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
-            title = isPasswordField ? "Client secret" : "Client ID";
-        } else {
-            title = isPasswordField ? "Password" : "Username";
-        }
+        var title = isPasswordField ? "Password" : "Username";
         var initialText = isPasswordField ? _password : _username;
         var allowSpace = isPasswordField;
         if (!System.getDeviceSettings().isTouchScreen) {
@@ -161,20 +177,14 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     public function connect() as Void {
         if (_username.length() == 0) {
             _view.focusItem(FIELD_USERNAME);
-            _status =
-                _monitorId == BloodSugarStore.MONITOR_DEXCOM
-                    ? "Enter your client ID"
-                    : "Enter your username";
+            _status = "Enter your username";
             updateView();
             return;
         }
 
         if (_password.length() == 0) {
             _view.focusItem(FIELD_PASSWORD);
-            _status =
-                _monitorId == BloodSugarStore.MONITOR_DEXCOM
-                    ? "Enter your client secret"
-                    : "Enter your password";
+            _status = "Enter your password";
             updateView();
             return;
         }
@@ -199,29 +209,55 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function startDexcomConnection() as Void {
-        /*
-         * OAuth can finish after the watch app has been suspended. Persist the
-         * developer credentials before opening Garmin Connect so the callback
-         * can be resumed when the setup screen is opened again.
-         */
-        if (
-            !BloodSugarStore.saveApiCredentials(
-                _monitorId,
-                _username,
-                _password
-            )
-        ) {
-            _status = "Could not save Dexcom app credentials";
-            updateView();
-            return;
-        }
-
-        _busy = true;
-        _status = "Approve Dexcom sign-in on your phone";
-        updateView();
-        var client = new DexcomApi(_username, _password);
+        startConnecting();
+        var client = new DexcomApi(
+            _username,
+            _password,
+            getDexcomServer()
+        );
         _apiClient = client;
         client.read(method(:onApiReadComplete));
+    }
+
+    private function openDexcomRegionPicker() as Void {
+        var picker = new BloodSugarDexcomRegionPicker(getDexcomRegionIndex());
+        WatchUi.pushView(
+            picker,
+            new BloodSugarDexcomRegionDelegate(self),
+            WatchUi.SLIDE_UP
+        );
+    }
+
+    public function setDexcomRegion(index as Number) as Void {
+        _dexcomRegion = index >= DEXCOM_REGION_US && index <= DEXCOM_REGION_OUS
+            ? index
+            : DEXCOM_REGION_OUS;
+        _status = "";
+        updateView();
+    }
+
+    private function getDexcomRegionIndex() as Number {
+        return _dexcomRegion;
+    }
+
+    private function getDexcomRegionName() as String {
+        if (_dexcomRegion == DEXCOM_REGION_US) {
+            return "United States";
+        }
+        if (_dexcomRegion == DEXCOM_REGION_JP) {
+            return "Japan";
+        }
+        return "Everywhere else";
+    }
+
+    private function getDexcomServer() as String {
+        if (_dexcomRegion == DEXCOM_REGION_US) {
+            return DexcomApi.US_SERVER;
+        }
+        if (_dexcomRegion == DEXCOM_REGION_JP) {
+            return DexcomApi.JP_SERVER;
+        }
+        return DexcomApi.OUS_SERVER;
     }
 
     private function startConnecting() as Void {
@@ -306,15 +342,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function getShortError(errorMessage as String) as String {
-        if (errorMessage.find("access was not approved") != null) {
-            return "Dexcom access was not approved";
-        }
-
-        if (errorMessage.find("authorization expired") != null) {
-            return "Reconnect your Dexcom account";
-        }
-
         if (errorMessage.find("Bad credentials") != null) {
+            return "Incorrect username or password";
+        }
+
+        if (errorMessage.find("Incorrect Dexcom") != null) {
             return "Incorrect username or password";
         }
 
@@ -338,11 +370,16 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function updateView() as Void {
-        _view.setState(_username, _password, _status, _busy);
+        _view.setState(
+            _username,
+            _password,
+            getDexcomRegionName(),
+            _status,
+            _busy
+        );
     }
 }
 
-/* Back from history after setup should lead to Home, not the monitor picker. */
 class BloodSugarSetupHistoryDelegate extends BloodSugarHistoryDelegate {
     public function initialize(view as BloodSugarHistoryView) {
         BloodSugarHistoryDelegate.initialize(view);
@@ -355,6 +392,31 @@ class BloodSugarSetupHistoryDelegate extends BloodSugarHistoryDelegate {
             new BloodSugarHomeDelegate(homeView),
             WatchUi.SLIDE_LEFT
         );
+        return true;
+    }
+}
+
+class BloodSugarDexcomRegionDelegate extends WatchUi.PickerDelegate {
+    private var _parent as BloodSugarSetupApiDelegate;
+
+    public function initialize(parent as BloodSugarSetupApiDelegate) {
+        PickerDelegate.initialize();
+        _parent = parent;
+    }
+
+    public function onAccept(values as Array) as Boolean {
+        var selected = values[0];
+        if (!(selected instanceof Number)) {
+            return false;
+        }
+
+        _parent.setDexcomRegion(selected as Number);
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
+    }
+
+    public function onCancel() as Boolean {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
         return true;
     }
 }
