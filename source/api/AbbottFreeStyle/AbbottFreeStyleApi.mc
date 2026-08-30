@@ -30,7 +30,6 @@ import Toybox.StringUtil;
 import Toybox.System;
 import Toybox.Time.Gregorian;
 
-import BloodSugarStore;
 import api;
 
 (:background)
@@ -64,7 +63,7 @@ class AbbottFreeStyleApi {
         _email = email;
         _password = password;
 
-        _baseUrl = BloodSugarStore.getApiServer(
+        _baseUrl = BloodSugarApiStore.getServer(
             BloodSugarMonitor.ABBOTT_FREE_STYLE,
             _email,
             DEFAULT_SERVER
@@ -134,7 +133,7 @@ class AbbottFreeStyleApi {
             /* A previously discovered regional endpoint may have changed. */
             if (!_serverFallbackRetried && !_baseUrl.equals(DEFAULT_SERVER)) {
                 _serverFallbackRetried = true;
-                BloodSugarStore.clearApiServer(
+                BloodSugarApiStore.clearServer(
                     BloodSugarMonitor.ABBOTT_FREE_STYLE
                 );
                 _baseUrl = DEFAULT_SERVER;
@@ -234,7 +233,7 @@ class AbbottFreeStyleApi {
 
         _jwtToken = token;
         _accountIdHash = sha256Hex(userId);
-        BloodSugarStore.saveApiServer(
+        BloodSugarApiStore.saveServer(
             BloodSugarMonitor.ABBOTT_FREE_STYLE,
             _email,
             _baseUrl
@@ -329,7 +328,7 @@ class AbbottFreeStyleApi {
 
         _baseUrl = lslApi;
         _redirectRegion = null;
-        BloodSugarStore.saveApiServer(
+        BloodSugarApiStore.saveServer(
             BloodSugarMonitor.ABBOTT_FREE_STYLE,
             _email,
             _baseUrl
@@ -448,11 +447,15 @@ class AbbottFreeStyleApi {
             return;
         }
 
-        var valueMmol = BloodSugarStore.MgdlToMoll(valueMgdl.toFloat());
+        var valueMmol = BloodSugarSharedSettings.mgdlToMmol(
+            valueMgdl.toFloat()
+        );
         var readings =
             [[timestamp, valueMmol, "libre_link_up", "none"]] as
-            Array<BloodSugarReading.IncomingRecord>;
-        var addedCount = BloodSugarStore.addReadingsBatch(readings);
+            Array<BloodSugarPackedReading.IncomingRecord>;
+        var addedCount = BloodSugarBackgroundHistoryStore.addReadings(
+            readings
+        );
 
         if (addedCount < 0) {
             fail("Glucose data was received but could not be stored");

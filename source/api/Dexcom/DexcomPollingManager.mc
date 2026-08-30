@@ -27,7 +27,6 @@ import Toybox.Timer;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
-(:background)
 class DexcomPollingManager {
     const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -69,10 +68,10 @@ class DexcomPollingManager {
             return;
         }
 
-        var username = BloodSugarStore.getApiUsername(
+        var username = BloodSugarApiStore.getUsername(
             BloodSugarMonitor.DEXCOM
         );
-        var password = BloodSugarStore.getApiPassword(
+        var password = BloodSugarApiStore.getPassword(
             BloodSugarMonitor.DEXCOM
         );
         if (username.length() == 0 || password.length() == 0) {
@@ -80,7 +79,7 @@ class DexcomPollingManager {
         }
 
         if (_client == null) {
-            var server = BloodSugarStore.getApiServer(
+            var server = BloodSugarApiStore.getServer(
                 BloodSugarMonitor.DEXCOM,
                 username,
                 DexcomApi.DEFAULT_SERVER

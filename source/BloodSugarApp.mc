@@ -143,8 +143,8 @@ class BloodSugarApp extends Application.AppBase {
         ) {
             return false;
         }
-        var username = BloodSugarStore.getApiUsername(monitor_id);
-        var password = BloodSugarStore.getApiPassword(monitor_id);
+        var username = BloodSugarApiStore.getUsername(monitor_id);
+        var password = BloodSugarApiStore.getPassword(monitor_id);
         return username.length() > 0 && password.length() > 0;
     }
 

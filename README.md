@@ -38,6 +38,9 @@ instead if that storage model is not acceptable for the intended release.
 ## Memory efficiency
 
 - Glucose history is packed into a compact `ByteArray`.
+- API credentials and sessions are isolated in `BloodSugarApiStore`, while the
+  packed codec and small history reader/writer are shared without loading the
+  foreground `BloodSugarStore` or full `BloodSugarReading` model.
 - History retains five-minute readings for 7 days, hourly averages through day
   30, and six-hour averages through day 180.
 - The history is capped at 3,200 packed points (about 21.9 KiB at full capacity),

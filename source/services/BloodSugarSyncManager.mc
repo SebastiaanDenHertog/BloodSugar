@@ -48,7 +48,7 @@ class BloodSugarSyncManager {
         if (!BloodSugarMonitorRegistry.hasMonitorSelected()) {
             return false;
         }
-        var monitorId = BloodSugarStore.getBloodMonitor();
+        var monitorId = BloodSugarSharedSettings.getMonitor();
         var provider = BloodSugarMonitorRegistry.createProvider(monitorId);
         if (provider == null) {
             return false;

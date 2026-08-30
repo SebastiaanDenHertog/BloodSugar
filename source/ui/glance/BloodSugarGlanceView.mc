@@ -41,7 +41,7 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var historyCount = BloodSugarStore.getHistoryCount();
+        var historyCount = BloodSugarHistoryStorage.getCount();
         if (historyCount <= 0) {
             setNoData();
             GlanceView.onUpdate(dc);
@@ -49,20 +49,20 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         }
 
         var latestIndex = historyCount - 1;
-        var timestamp = BloodSugarStore.getReadingTimeAt(latestIndex);
-        var valueMmol = BloodSugarStore.getReadingValueMmolAt(latestIndex);
+        var timestamp = BloodSugarHistoryStorage.getTimeAt(latestIndex);
+        var valueMmol = BloodSugarHistoryStorage.getValueMmolAt(latestIndex);
         if (timestamp == null || valueMmol == null) {
             setNoData();
             GlanceView.onUpdate(dc);
             return;
         }
 
-        var useMgdl = BloodSugarStore.getUseMgdl();
-        var displayValue = BloodSugarStore.formatValue(
+        var useMgdl = BloodSugarSharedSettings.getUseMgdl();
+        var displayValue = BloodSugarSharedSettings.formatValue(
             valueMmol as Float,
             useMgdl
         );
-        var unit = BloodSugarStore.getUnitText(useMgdl);
+        var unit = BloodSugarSharedSettings.getUnitText(useMgdl);
         var status = getStatus(valueMmol as Float);
         var ageText = getReadingAge(timestamp as Number);
 
@@ -98,10 +98,10 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
     }
 
     private function getStatus(valueMmol as Float) as String {
-        if (valueMmol <= BloodSugarStore.getNotificationLowMmol()) {
+        if (valueMmol <= BloodSugarSharedSettings.getNotificationLowMmol()) {
             return "LOW";
         }
-        if (valueMmol >= BloodSugarStore.getNotificationHighMmol()) {
+        if (valueMmol >= BloodSugarSharedSettings.getNotificationHighMmol()) {
             return "HIGH";
         }
         return "In Range";
@@ -176,7 +176,7 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
     }
 
     private function getTrend() as Number {
-        var historyCount = BloodSugarStore.getHistoryCount();
+        var historyCount = BloodSugarHistoryStorage.getCount();
         if (historyCount <= 0) {
             return 0;
         }
@@ -189,7 +189,7 @@ class BloodSugarGlanceView extends WatchUi.GlanceView {
         }
 
         for (var i = firstIndex; i < historyCount; i++) {
-            var valueMmol = BloodSugarStore.getReadingValueMmolAt(i);
+            var valueMmol = BloodSugarHistoryStorage.getValueMmolAt(i);
             if (valueMmol == null) {
                 continue;
             }

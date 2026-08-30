@@ -103,4 +103,39 @@ function testApiCollectionHelpers(logger as Test.Logger) as Boolean {
     return true;
 }
 
+(:test)
+function testDexcomApiConstruction(logger as Test.Logger) as Boolean {
+    logger.debug("Checking Dexcom API construction");
+
+    var client = new DexcomApi(
+        "constructor-test@example.com",
+        "password",
+        DexcomApi.US_SERVER
+    );
+    client.cancel();
+
+    return true;
+}
+
+(:test)
+function testBackgroundHistoryBatchMerge(logger as Test.Logger) as Boolean {
+    logger.debug("Checking compact API history merge");
+
+    BloodSugarHistoryStorage.savePacked(
+        BloodSugarPackedReading.createHistory(0)
+    );
+    var readings = [
+        [1800000200, 6.2f, BloodSugarPackedReading.SOURCE_DEXCOM, "none"],
+        [1800000100, 5.1f, BloodSugarPackedReading.SOURCE_DEXCOM, "none"],
+    ] as Array<BloodSugarPackedReading.IncomingRecord>;
+
+    Test.assertEqual(2, BloodSugarBackgroundHistoryStore.addReadings(readings));
+    Test.assertEqual(2, BloodSugarHistoryStorage.getCount());
+    Test.assertEqual(1800000100, BloodSugarHistoryStorage.getTimeAt(0));
+    Test.assertEqual(1800000200, BloodSugarHistoryStorage.getTimeAt(1));
+    Test.assertEqual(0, BloodSugarBackgroundHistoryStore.addReadings(readings));
+
+    return true;
+}
+
 }

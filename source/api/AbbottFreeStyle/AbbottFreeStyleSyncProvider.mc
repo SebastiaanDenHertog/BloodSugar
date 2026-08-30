@@ -42,15 +42,15 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
 
     public function isConfigured() as Boolean {
         return (
-            BloodSugarStore.getApiUsername(getMonitorId()).length() > 0 &&
-            BloodSugarStore.getApiPassword(getMonitorId()).length() > 0
+            BloodSugarApiStore.getUsername(getMonitorId()).length() > 0 &&
+            BloodSugarApiStore.getPassword(getMonitorId()).length() > 0
         );
     }
 
     public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
-        var username = BloodSugarStore.getApiUsername(getMonitorId());
-        var password = BloodSugarStore.getApiPassword(getMonitorId());
+        var username = BloodSugarApiStore.getUsername(getMonitorId());
+        var password = BloodSugarApiStore.getPassword(getMonitorId());
 
         if (username.length() == 0 || password.length() == 0) {
             finishError("Abbott account is not configured");

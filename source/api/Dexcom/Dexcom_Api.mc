@@ -27,13 +27,8 @@ import Toybox.Lang;
 import Toybox.PersistedContent;
 import Toybox.System;
 
-import BloodSugarStore;
 import api;
 
-/*
- * Monkey C port of pydexcom's Dexcom Share request flow. This class mirrors its three calls:
- * account authentication, session login, and latest glucose readings.
- */
 (:background)
 class DexcomApi {
     const US_SERVER = "https://share2.dexcom.com/ShareWebServices/Services/";
@@ -82,12 +77,12 @@ class DexcomApi {
             ? JP_APPLICATION_ID
             : STANDARD_APPLICATION_ID;
 
-        _accountId = BloodSugarStore.getApiAccountId(
+        _accountId = BloodSugarApiStore.getAccountId(
             BloodSugarMonitor.DEXCOM,
             _username,
             _baseUrl
         );
-        _sessionId = BloodSugarStore.getApiSessionId(
+        _sessionId = BloodSugarApiStore.getSessionId(
             BloodSugarMonitor.DEXCOM,
             _username,
             _baseUrl
@@ -210,7 +205,7 @@ class DexcomApi {
 
         _sessionId = response as String;
         if (
-            !BloodSugarStore.saveApiSession(
+            !BloodSugarApiStore.saveSession(
                 BloodSugarMonitor.DEXCOM,
                 _username,
                 _baseUrl,
@@ -266,7 +261,7 @@ class DexcomApi {
             if (!_authenticationRetried && isSessionError(response)) {
                 _authenticationRetried = true;
                 _sessionId = null;
-                BloodSugarStore.clearApiSession(BloodSugarMonitor.DEXCOM);
+                BloodSugarApiStore.clearSession(BloodSugarMonitor.DEXCOM);
                 if (_accountId != null) {
                     login();
                 } else {
@@ -290,7 +285,7 @@ class DexcomApi {
             return;
         }
 
-        var readings = [] as Array<BloodSugarReading.IncomingRecord>;
+        var readings = [] as Array<BloodSugarPackedReading.IncomingRecord>;
         var latestTimestamp = 0;
         var latestValueMmol = 0.0f;
 
@@ -311,12 +306,14 @@ class DexcomApi {
                 continue;
             }
 
-            var valueMmol = BloodSugarStore.MgdlToMoll(valueMgdl.toFloat());
+            var valueMmol = BloodSugarSharedSettings.mgdlToMmol(
+                valueMgdl.toFloat()
+            );
             readings.add([
                 timestamp as Number,
                 valueMmol,
-                BloodSugarReading.SOURCE_DEXCOM,
-                BloodSugarReading.DEFAULT_CONTEXT,
+                BloodSugarPackedReading.SOURCE_DEXCOM,
+                BloodSugarPackedReading.DEFAULT_CONTEXT,
             ]);
 
             if ((timestamp as Number) > latestTimestamp) {
@@ -330,7 +327,9 @@ class DexcomApi {
             return;
         }
 
-        var addedCount = BloodSugarStore.addReadingsBatch(readings);
+        var addedCount = BloodSugarBackgroundHistoryStore.addReadings(
+            readings
+        );
         if (addedCount < 0) {
             fail("Dexcom Share readings could not be stored");
             return;

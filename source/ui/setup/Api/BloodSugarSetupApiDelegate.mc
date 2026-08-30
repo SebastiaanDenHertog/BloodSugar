@@ -56,11 +56,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         Menu2InputDelegate.initialize();
         _view = view;
         _monitorId = monitorId;
-        _username = BloodSugarStore.getApiUsername(_monitorId);
-        _password = BloodSugarStore.getApiPassword(_monitorId);
+        _username = BloodSugarApiStore.getUsername(_monitorId);
+        _password = BloodSugarApiStore.getPassword(_monitorId);
         _dexcomRegion = DEXCOM_REGION_OUS;
         if (_monitorId == BloodSugarStore.MONITOR_DEXCOM) {
-            var savedServer = BloodSugarStore.getApiServer(
+            var savedServer = BloodSugarApiStore.getServer(
                 _monitorId,
                 _username,
                 DexcomApi.DEFAULT_SERVER
@@ -210,11 +210,7 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
     private function startDexcomConnection() as Void {
         startConnecting();
-        var client = new DexcomApi(
-            _username,
-            _password,
-            getDexcomServer()
-        );
+        var client = new DexcomApi(_username, _password, getDexcomServer());
         _apiClient = client;
         client.read(method(:onApiReadComplete));
     }
@@ -229,9 +225,10 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     public function setDexcomRegion(index as Number) as Void {
-        _dexcomRegion = index >= DEXCOM_REGION_US && index <= DEXCOM_REGION_OUS
-            ? index
-            : DEXCOM_REGION_OUS;
+        _dexcomRegion =
+            index >= DEXCOM_REGION_US && index <= DEXCOM_REGION_OUS
+                ? index
+                : DEXCOM_REGION_OUS;
         _status = "";
         updateView();
     }
@@ -281,7 +278,8 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
             updateView();
             return;
         }
-        var saved = BloodSugarStore.saveApiCredentials(
+        BloodSugarStore.invalidateHistoryCache();
+        var saved = BloodSugarApiStore.saveCredentials(
             _monitorId,
             _username,
             _password

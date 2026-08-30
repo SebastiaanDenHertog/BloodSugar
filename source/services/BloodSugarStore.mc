@@ -22,13 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import Toybox.Application;
-import Toybox.Application.Storage;
 import Toybox.Lang;
 import Toybox.System;
 import Toybox.Time;
 
-(:glance,:background)
 module BloodSugarStore {
     const STANDARD_MAX_POINTS = 3200;
     const COMPACT_MAX_POINTS = 1500;
@@ -46,23 +43,11 @@ module BloodSugarStore {
 
     const RAW_BUCKET = -1;
 
-    const STORAGE_KEY = "BloodSugarHistory";
     const COMPACT_PROFILE_MEMORY_LIMIT = 128 * 1024;
     const PROP_APP_VERSION = "appVersion";
     const PROP_COMPACT_HISTORY_PROFILE = "compactHistoryProfile";
     const STORAGE_SETUP_DONE = "setupDone";
     const PROP_USE_MGDL = "useMgdl";
-
-    /* Provider-aware API storage uses keys such as api.1.server. */
-    const STORAGE_API_PREFIX = "api.";
-    const API_FIELD_USERNAME = "username";
-    const API_FIELD_PASSWORD = "password";
-    const API_FIELD_SERVER_OWNER = "serverOwner";
-    const API_FIELD_SERVER = "server";
-    const API_FIELD_SESSION_OWNER = "sessionOwner";
-    const API_FIELD_SESSION_SERVER = "sessionServer";
-    const API_FIELD_ACCOUNT_ID = "accountId";
-    const API_FIELD_SESSION_ID = "sessionId";
 
     const PROP_BLOOD_MONITOR_INDEX = "bloodMonitorIndex";
     const PROP_CUSTOM_CONTEXTS = "customContexts";
@@ -111,22 +96,22 @@ module BloodSugarStore {
     
     (:typecheck(false))
     function readStorageValue(key as String) as Object? {
-        return Storage.getValue(key);
+        return BloodSugarSharedStorage.readValue(key);
     }
 
     (:typecheck(false))
     function writeStorageValue(key as String, value as Object?) as Void {
-        Storage.setValue(key, value);
+        BloodSugarSharedStorage.writeValue(key, value);
     }
 
     (:typecheck(false))
     function readPropertyValue(key as String) as Object? {
-        return Properties.getValue(key);
+        return BloodSugarSharedStorage.readProperty(key);
     }
 
     (:typecheck(false))
     function writePropertyValue(key as String, value as Object?) as Void {
-        Properties.setValue(key, value);
+        BloodSugarSharedStorage.writeProperty(key, value);
     }
 
     function load() as Lang.ByteArray {
@@ -136,24 +121,24 @@ module BloodSugarStore {
         var saved;
 
         try {
-            saved = readStorageValue(STORAGE_KEY);
+            saved = BloodSugarHistoryStorage.readRaw();
         } catch (error) {
-            _historyBytes = BloodSugarReading.createPackedHistory(0);
+            _historyBytes = BloodSugarPackedReading.createHistory(0);
             _historyWritable = false;
             _historyNeedsRepair = false;
             return _historyBytes;
         }
         if (saved == null) {
-            _historyBytes = BloodSugarReading.createPackedHistory(0);
+            _historyBytes = BloodSugarPackedReading.createHistory(0);
             _historyWritable = true;
             _historyNeedsRepair = false;
             return _historyBytes;
         }
         if (saved instanceof Lang.ByteArray) {
             var bytes = saved as Lang.ByteArray;
-            if (!BloodSugarReading.isPackedHistory(bytes)) {
+            if (!BloodSugarPackedReading.isHistory(bytes)) {
                 System.println("Unsupported packed glucose history");
-                _historyBytes = BloodSugarReading.createPackedHistory(0);
+                _historyBytes = BloodSugarPackedReading.createHistory(0);
                 _historyWritable = false;
                 _historyNeedsRepair = false;
                 return _historyBytes;
@@ -190,7 +175,7 @@ module BloodSugarStore {
             return _historyBytes;
         }
 
-        _historyBytes = BloodSugarReading.createPackedHistory(0);
+        _historyBytes = BloodSugarPackedReading.createHistory(0);
         _historyWritable = false;
         _historyNeedsRepair = false;
         return _historyBytes;
@@ -198,6 +183,7 @@ module BloodSugarStore {
 
     function invalidateHistoryCache() as Void {
         _historyBytes = null;
+        BloodSugarHistoryStorage.invalidate();
     }
 
     function migrateLegacyHistory(
@@ -214,7 +200,7 @@ module BloodSugarStore {
             if (
                 normalized != null &&
                 normalized[BloodSugarReading.TIME].toNumber() > 0 &&
-                BloodSugarReading.canPackValue(
+                BloodSugarPackedReading.canPackValue(
                     normalized[BloodSugarReading.VALUE_MMOL].toFloat()
                 )
             ) {
@@ -229,7 +215,7 @@ module BloodSugarStore {
         }
 
         var skipValid = validCount - keepCount;
-        var packed = BloodSugarReading.createPackedHistory(keepCount);
+        var packed = BloodSugarPackedReading.createHistory(keepCount);
         var writeIndex = 0;
         for (
             var legacyIndex = 0;
@@ -244,7 +230,7 @@ module BloodSugarStore {
             if (
                 reading == null ||
                 reading[BloodSugarReading.TIME].toNumber() <= 0 ||
-                !BloodSugarReading.canPackValue(
+                !BloodSugarPackedReading.canPackValue(
                     reading[BloodSugarReading.VALUE_MMOL].toFloat()
                 )
             ) {
@@ -260,12 +246,12 @@ module BloodSugarStore {
             var context = reading[BloodSugarReading.CONTEXT].toString();
 
             if (
-                BloodSugarReading.writePackedRecord(
+                BloodSugarPackedReading.write(
                     packed,
                     writeIndex,
                     reading[BloodSugarReading.TIME].toNumber(),
                     reading[BloodSugarReading.VALUE_MMOL].toFloat(),
-                    BloodSugarReading.getSourceId(source),
+                    BloodSugarPackedReading.getSourceId(source),
                     getContextIndex(context)
                 )
             ) {
@@ -305,7 +291,7 @@ module BloodSugarStore {
         if (!(value instanceof Lang.ByteArray)) {
             return 0;
         }
-        return BloodSugarReading.getPackedCount(value as Lang.ByteArray);
+        return BloodSugarPackedReading.getCount(value as Lang.ByteArray);
     }
 
     function getReadingAt(index as Number) as BloodSugarReading.Record? {
@@ -316,21 +302,21 @@ module BloodSugarStore {
         }
 
         var bytes = value as Lang.ByteArray;
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
         if (index < 0 || index >= count) {
             return null;
         }
 
-        var contextId = BloodSugarReading.getPackedContextId(bytes, index);
+        var contextId = BloodSugarPackedReading.getContextIdAt(bytes, index);
         var context = "none";
         if (contextId >= 0 && contextId < getContextCount()) {
             context = getContextKey(contextId);
         }
         return BloodSugarReading.create(
-            BloodSugarReading.getPackedTime(bytes, index),
-            BloodSugarReading.getPackedValueMmol(bytes, index),
-            BloodSugarReading.getSourceFromId(
-                BloodSugarReading.getPackedSourceId(bytes, index)
+            BloodSugarPackedReading.getTime(bytes, index),
+            BloodSugarPackedReading.getValueMmol(bytes, index),
+            BloodSugarPackedReading.getSource(
+                BloodSugarPackedReading.getSourceIdAt(bytes, index)
             ),
             context
         );
@@ -344,13 +330,13 @@ module BloodSugarStore {
         }
 
         var bytes = value as Lang.ByteArray;
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
 
         if (index < 0 || index >= count) {
             return null;
         }
 
-        return BloodSugarReading.getPackedTime(bytes, index);
+        return BloodSugarPackedReading.getTime(bytes, index);
     }
 
     function getReadingValueMmolAt(index as Number) as Float? {
@@ -361,13 +347,13 @@ module BloodSugarStore {
         }
 
         var bytes = value as Lang.ByteArray;
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
 
         if (index < 0 || index >= count) {
             return null;
         }
 
-        return BloodSugarReading.getPackedValueMmol(bytes, index);
+        return BloodSugarPackedReading.getValueMmol(bytes, index);
     }
 
     function getRetentionBucketSize(
@@ -446,7 +432,7 @@ module BloodSugarStore {
         bytes as Lang.ByteArray,
         now as Number
     ) as Boolean {
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
         if (count > getMaximumHistoryPoints()) {
             return true;
         }
@@ -455,7 +441,7 @@ module BloodSugarStore {
         var activeBucket = -1;
 
         for (var index = 0; index < count; index += 1) {
-            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var timestamp = BloodSugarPackedReading.getTime(bytes, index);
             var bucketSize = getRetentionBucketSize(timestamp, now);
 
             if (bucketSize == 0) {
@@ -484,13 +470,13 @@ module BloodSugarStore {
         bytes as Lang.ByteArray,
         now as Number
     ) as Number {
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
         var outputCount = 0;
         var activeBucketSize = 0;
         var activeBucket = -1;
 
         for (var index = 0; index < count; index += 1) {
-            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var timestamp = BloodSugarPackedReading.getTime(bytes, index);
             var bucketSize = getRetentionBucketSize(timestamp, now);
 
             if (bucketSize == 0) {
@@ -525,11 +511,11 @@ module BloodSugarStore {
         contextId as Number
     ) as Void {
         if (sampleCount > 1) {
-            sourceId = BloodSugarReading.SOURCE_ID_AGGREGATE;
+            sourceId = BloodSugarPackedReading.SOURCE_ID_AGGREGATE;
             contextId = 0;
         }
 
-        BloodSugarReading.writePackedRecord(
+        BloodSugarPackedReading.write(
             destination,
             destinationIndex,
             timestamp,
@@ -556,7 +542,7 @@ module BloodSugarStore {
             outputCount = maximumPoints;
         }
 
-        var compacted = BloodSugarReading.createPackedHistory(outputCount);
+        var compacted = BloodSugarPackedReading.createHistory(outputCount);
         var destinationIndex = 0;
         var activeBucketSize = 0;
         var activeBucket = -1;
@@ -565,10 +551,10 @@ module BloodSugarStore {
         var lastTimestamp = 0;
         var firstSourceId = 0;
         var firstContextId = 0;
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
 
         for (var index = 0; index < count; index += 1) {
-            var timestamp = BloodSugarReading.getPackedTime(bytes, index);
+            var timestamp = BloodSugarPackedReading.getTime(bytes, index);
             var bucketSize = getRetentionBucketSize(timestamp, now);
 
             if (bucketSize == 0) {
@@ -609,7 +595,7 @@ module BloodSugarStore {
                 if (skipOutput > 0) {
                     skipOutput -= 1;
                 } else {
-                    BloodSugarReading.copyPackedRecord(
+                    BloodSugarPackedReading.copy(
                         bytes,
                         index,
                         compacted,
@@ -626,17 +612,17 @@ module BloodSugarStore {
             if (sampleCount == 0) {
                 activeBucketSize = bucketSize;
                 activeBucket = bucket;
-                firstSourceId = BloodSugarReading.getPackedSourceId(
+                firstSourceId = BloodSugarPackedReading.getSourceIdAt(
                     bytes,
                     index
                 );
-                firstContextId = BloodSugarReading.getPackedContextId(
+                firstContextId = BloodSugarPackedReading.getContextIdAt(
                     bytes,
                     index
                 );
             }
 
-            totalValue += BloodSugarReading.getPackedValueMmol(bytes, index);
+            totalValue += BloodSugarPackedReading.getValueMmol(bytes, index);
             sampleCount += 1;
             lastTimestamp = timestamp;
         }
@@ -715,7 +701,7 @@ module BloodSugarStore {
         inputSource as String,
         context as String
     ) as Boolean {
-        if (!BloodSugarReading.canPackValue(valueMmol)) {
+        if (!BloodSugarPackedReading.canPackValue(valueMmol)) {
             return false;
         }
 
@@ -737,7 +723,7 @@ module BloodSugarStore {
             now,
             valueMmol,
 
-            BloodSugarReading.getSourceId(inputSource),
+            BloodSugarPackedReading.getSourceId(inputSource),
 
             getContextIndex(context)
         );
@@ -768,15 +754,11 @@ module BloodSugarStore {
     }
 
     function savePacked(bytes as Lang.ByteArray) as Boolean {
-        try {
-            writeStorageValue(STORAGE_KEY, bytes);
-
+        if (BloodSugarHistoryStorage.savePacked(bytes)) {
             return true;
-        } catch (error) {
-            System.println("Could not save glucose history: " + error);
-
-            return false;
         }
+        System.println("Could not save glucose history");
+        return false;
     }
 
     function getReadingByTime(
@@ -812,7 +794,7 @@ module BloodSugarStore {
     ) as Boolean {
         if (
             originalTime == null ||
-            !BloodSugarReading.canPackValue(valueMmol)
+            !BloodSugarPackedReading.canPackValue(valueMmol)
         ) {
             return false;
         }
@@ -835,13 +817,13 @@ module BloodSugarStore {
             return false;
         }
 
-        var timestamp = BloodSugarReading.getPackedTime(bytes, index);
-        var oldValue = BloodSugarReading.getPackedValueMmol(bytes, index);
-        var sourceId = BloodSugarReading.getPackedSourceId(bytes, index);
-        var oldContextId = BloodSugarReading.getPackedContextId(bytes, index);
+        var timestamp = BloodSugarPackedReading.getTime(bytes, index);
+        var oldValue = BloodSugarPackedReading.getValueMmol(bytes, index);
+        var sourceId = BloodSugarPackedReading.getSourceIdAt(bytes, index);
+        var oldContextId = BloodSugarPackedReading.getContextIdAt(bytes, index);
 
         if (
-            !BloodSugarReading.writePackedRecord(
+            !BloodSugarPackedReading.write(
                 bytes,
                 index,
                 timestamp,
@@ -857,7 +839,7 @@ module BloodSugarStore {
             return true;
         }
 
-        BloodSugarReading.writePackedRecord(
+        BloodSugarPackedReading.write(
             bytes,
             index,
             timestamp,
@@ -872,7 +854,7 @@ module BloodSugarStore {
     function clear() as Boolean {
         var previousHistory = _historyBytes;
         var previousWritable = _historyWritable;
-        var empty = BloodSugarReading.createPackedHistory(0);
+        var empty = BloodSugarPackedReading.createHistory(0);
         _historyWritable = true;
 
         if (savePacked(empty)) {
@@ -890,10 +872,10 @@ module BloodSugarStore {
         bytes as Lang.ByteArray,
         timestamp as Number
     ) as Number {
-        var count = BloodSugarReading.getPackedCount(bytes);
+        var count = BloodSugarPackedReading.getCount(bytes);
 
         for (var index = 0; index < count; index += 1) {
-            var storedTime = BloodSugarReading.getPackedTime(bytes, index);
+            var storedTime = BloodSugarPackedReading.getTime(bytes, index);
 
             if (storedTime == timestamp) {
                 return index;
@@ -921,14 +903,14 @@ module BloodSugarStore {
         sourceId as Number,
         contextId as Number
     ) as Lang.ByteArray? {
-        if (timestamp <= 0 || !BloodSugarReading.canPackValue(valueMmol)) {
+        if (timestamp <= 0 || !BloodSugarPackedReading.canPackValue(valueMmol)) {
             return null;
         }
 
-        var currentCount = BloodSugarReading.getPackedCount(bytes);
+        var currentCount = BloodSugarPackedReading.getCount(bytes);
         var insertionIndex = currentCount;
         for (var index = 0; index < currentCount; index += 1) {
-            var storedTime = BloodSugarReading.getPackedTime(bytes, index);
+            var storedTime = BloodSugarPackedReading.getTime(bytes, index);
 
             if (storedTime == timestamp) {
                 return null;
@@ -949,7 +931,7 @@ module BloodSugarStore {
         if (candidateCount > maximumPoints) {
             candidateCount = maximumPoints;
         }
-        var candidate = BloodSugarReading.createPackedHistory(candidateCount);
+        var candidate = BloodSugarPackedReading.createHistory(candidateCount);
         var firstSourceIndex = 0;
         var destinationInsertionIndex = insertionIndex;
         if (currentCount >= maximumPoints) {
@@ -964,7 +946,7 @@ module BloodSugarStore {
             sourceIndex < insertionIndex;
             sourceIndex += 1
         ) {
-            BloodSugarReading.copyPackedRecord(
+            BloodSugarPackedReading.copy(
                 bytes,
                 sourceIndex,
                 candidate,
@@ -979,7 +961,7 @@ module BloodSugarStore {
         }
 
         if (
-            !BloodSugarReading.writePackedRecord(
+            !BloodSugarPackedReading.write(
                 candidate,
                 destinationIndex,
                 timestamp,
@@ -999,7 +981,7 @@ module BloodSugarStore {
             destinationIndex < candidateCount;
             sourceIndexAfter += 1
         ) {
-            BloodSugarReading.copyPackedRecord(
+            BloodSugarPackedReading.copy(
                 bytes,
                 sourceIndexAfter,
                 candidate,
@@ -1527,86 +1509,6 @@ module BloodSugarStore {
         return _bleSupportedCache as Boolean;
     }
 
-    function addReadingsBatch(
-        readings as Array<BloodSugarReading.IncomingRecord>
-    ) as Number {
-        var historyValue = load();
-
-        if (!(historyValue instanceof Lang.ByteArray) || !_historyWritable) {
-            return -1;
-        }
-
-        var now = Time.now().value();
-        var candidate = historyValue as Lang.ByteArray;
-        var compactedBeforeInsert = false;
-        if (historyNeedsCompaction(candidate, now)) {
-            candidate = compactPackedHistory(candidate, now);
-            compactedBeforeInsert = true;
-        }
-
-        var addedCount = 0;
-
-        for (var index = 0; index < readings.size(); index += 1) {
-            var incoming = readings[index];
-            var timestamp = incoming[0];
-            var valueMmol = incoming[1];
-            var source = incoming[2];
-            var context = incoming[3];
-
-            if (timestamp <= 0 || !BloodSugarReading.canPackValue(valueMmol)) {
-                continue;
-            }
-
-            if (timestamp < now - MAX_RETENTION_SECONDS) {
-                continue;
-            }
-
-            if (
-                BloodSugarReading.getPackedCount(candidate) >=
-                    getMaximumHistoryPoints() &&
-                historyNeedsCompaction(candidate, now)
-            ) {
-                candidate = compactPackedHistory(candidate, now);
-            }
-
-            var nextCandidate = insertPackedReadingSorted(
-                candidate,
-                timestamp,
-                valueMmol,
-                BloodSugarReading.getSourceId(source),
-                getContextIndex(context)
-            );
-
-            if (nextCandidate == null) {
-                continue;
-            }
-
-            candidate = nextCandidate as Lang.ByteArray;
-            addedCount += 1;
-        }
-
-        if (addedCount == 0) {
-            if (compactedBeforeInsert) {
-                if (!savePacked(candidate)) {
-                    return -1;
-                }
-                _historyBytes = candidate;
-            }
-            return 0;
-        }
-
-        if (historyNeedsCompaction(candidate, now)) {
-            candidate = compactPackedHistory(candidate, now);
-        }
-
-        if (!savePacked(candidate)) {
-            return -1;
-        }
-
-        _historyBytes = candidate;
-
-        return addedCount;
-    }
 
     function hasReadingByTime(timestamp as Number) as Boolean {
         var value = load();
@@ -1693,203 +1595,6 @@ module BloodSugarStore {
         return selected;
     }
 
-    function getApiUsername(monitorId as Number) as String {
-        var username = getApiStoredString(monitorId, API_FIELD_USERNAME);
-        return username == null ? "" : username as String;
-    }
-
-    function getApiPassword(monitorId as Number) as String {
-        var password = getApiStoredString(monitorId, API_FIELD_PASSWORD);
-        return password == null ? "" : password as String;
-    }
-
-    function saveApiCredentials(
-        monitorId as Number,
-        username as String,
-        password as String
-    ) as Boolean {
-        try {
-            writeApiValue(monitorId, API_FIELD_USERNAME, username);
-            writeApiValue(monitorId, API_FIELD_PASSWORD, password);
-            return true;
-        } catch (error) {
-            System.println(
-                "Could not save API credentials: " + error.toString()
-            );
-            return false;
-        }
-    }
-
-    function clearApiCredentials(monitorId as Number) as Void {
-        try {
-            deleteApiValue(monitorId, API_FIELD_USERNAME);
-            deleteApiValue(monitorId, API_FIELD_PASSWORD);
-        } catch (error) {
-            System.println(
-                "Could not clear API credentials: " + error.toString()
-            );
-        }
-    }
-
-    function getApiServer(
-        monitorId as Number,
-        owner as String,
-        fallback as String
-    ) as String {
-        var savedOwner = getApiStoredString(
-            monitorId,
-            API_FIELD_SERVER_OWNER
-        );
-        var savedServer = getApiStoredString(monitorId, API_FIELD_SERVER);
-
-        if (
-            savedOwner != null &&
-            savedServer != null &&
-            savedOwner.equals(owner)
-        ) {
-            return savedServer as String;
-        }
-
-        return fallback;
-    }
-
-    function saveApiServer(
-        monitorId as Number,
-        owner as String,
-        server as String
-    ) as Boolean {
-        try {
-            writeApiValue(monitorId, API_FIELD_SERVER_OWNER, owner);
-            writeApiValue(monitorId, API_FIELD_SERVER, server);
-            return true;
-        } catch (error) {
-            System.println("Could not save API server: " + error.toString());
-            return false;
-        }
-    }
-
-    function clearApiServer(monitorId as Number) as Void {
-        try {
-            deleteApiValue(monitorId, API_FIELD_SERVER_OWNER);
-            deleteApiValue(monitorId, API_FIELD_SERVER);
-        } catch (error) {
-            System.println("Could not clear API server: " + error.toString());
-        }
-    }
-
-    function getApiAccountId(
-        monitorId as Number,
-        owner as String,
-        server as String
-    ) as String? {
-        if (!hasApiSessionOwner(monitorId, owner, server)) {
-            return null;
-        }
-
-        return getApiStoredString(monitorId, API_FIELD_ACCOUNT_ID);
-    }
-
-    function getApiSessionId(
-        monitorId as Number,
-        owner as String,
-        server as String
-    ) as String? {
-        if (!hasApiSessionOwner(monitorId, owner, server)) {
-            return null;
-        }
-
-        return getApiStoredString(monitorId, API_FIELD_SESSION_ID);
-    }
-
-    function saveApiSession(
-        monitorId as Number,
-        owner as String,
-        server as String,
-        accountId as String,
-        sessionId as String
-    ) as Boolean {
-        try {
-            writeApiValue(monitorId, API_FIELD_SERVER_OWNER, owner);
-            writeApiValue(monitorId, API_FIELD_SERVER, server);
-            writeApiValue(monitorId, API_FIELD_SESSION_OWNER, owner);
-            writeApiValue(monitorId, API_FIELD_SESSION_SERVER, server);
-            writeApiValue(monitorId, API_FIELD_ACCOUNT_ID, accountId);
-            writeApiValue(monitorId, API_FIELD_SESSION_ID, sessionId);
-            return true;
-        } catch (error) {
-            System.println("Could not save API session: " + error.toString());
-            return false;
-        }
-    }
-
-    function clearApiSession(monitorId as Number) as Void {
-        try {
-            deleteApiValue(monitorId, API_FIELD_SESSION_OWNER);
-            deleteApiValue(monitorId, API_FIELD_SESSION_SERVER);
-            deleteApiValue(monitorId, API_FIELD_ACCOUNT_ID);
-            deleteApiValue(monitorId, API_FIELD_SESSION_ID);
-        } catch (error) {
-            System.println("Could not clear API session: " + error.toString());
-        }
-    }
-
-    function hasApiSessionOwner(
-        monitorId as Number,
-        owner as String,
-        server as String
-    ) as Boolean {
-        var savedOwner = getApiStoredString(monitorId, API_FIELD_SESSION_OWNER);
-        var savedServer = getApiStoredString(
-            monitorId,
-            API_FIELD_SESSION_SERVER
-        );
-
-        return (
-            savedOwner != null &&
-            savedServer != null &&
-            savedOwner.equals(owner) &&
-            savedServer.equals(server)
-        );
-    }
-
-    function getApiStorageKey(
-        monitorId as Number,
-        field as String
-    ) as String {
-        return STORAGE_API_PREFIX + monitorId.toString() + "." + field;
-    }
-
-    function readApiValue(monitorId as Number, field as String) as Object? {
-        return readStorageValue(getApiStorageKey(monitorId, field));
-    }
-
-    function getApiStoredString(
-        monitorId as Number,
-        field as String
-    ) as String? {
-        return getStoredString(getApiStorageKey(monitorId, field));
-    }
-
-    function writeApiValue(
-        monitorId as Number,
-        field as String,
-        value as Object
-    ) as Void {
-        writeStorageValue(getApiStorageKey(monitorId, field), value);
-    }
-
-    function deleteApiValue(monitorId as Number, field as String) as Void {
-        Storage.deleteValue(getApiStorageKey(monitorId, field));
-    }
-
-    function getStoredString(key as String) as String? {
-        var value = readStorageValue(key);
-        if (value instanceof String && (value as String).length() > 0) {
-            return value as String;
-        }
-
-        return null;
-    }
 
     function getNotificationsEnabled() as Boolean {
         if (_notificationsEnabledCache == null) {
@@ -1957,8 +1662,8 @@ module BloodSugarStore {
             return false;
         }
 
-        var count = BloodSugarReading.getPackedCount(bytes);
-        var candidate = BloodSugarReading.createPackedHistory(count - 1);
+        var count = BloodSugarPackedReading.getCount(bytes);
+        var candidate = BloodSugarPackedReading.createHistory(count - 1);
         var destinationIndex = 0;
 
         for (var sourceIndex = 0; sourceIndex < count; sourceIndex += 1) {
@@ -1966,7 +1671,7 @@ module BloodSugarStore {
                 continue;
             }
 
-            BloodSugarReading.copyPackedRecord(
+            BloodSugarPackedReading.copy(
                 bytes,
                 sourceIndex,
                 candidate,

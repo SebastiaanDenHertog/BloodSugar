@@ -63,7 +63,7 @@ module BloodSugarNotificationManager {
 
         saveNumber(STORAGE_LAST_READING_TIME, readingTimestamp);
 
-        if (!BloodSugarStore.getNotificationsEnabled()) {
+        if (!BloodSugarSharedSettings.getNotificationsEnabled()) {
             clearActiveAlert();
 
             return ALERT_NONE;
@@ -88,8 +88,8 @@ module BloodSugarNotificationManager {
     }
 
     public function getAlertType(valueMmol as Float) as Number {
-        var lowThreshold = BloodSugarStore.getNotificationLowMmol();
-        var highThreshold = BloodSugarStore.getNotificationHighMmol();
+        var lowThreshold = BloodSugarSharedSettings.getNotificationLowMmol();
+        var highThreshold = BloodSugarSharedSettings.getNotificationHighMmol();
 
         if (valueMmol <= lowThreshold) {
             return ALERT_LOW;
@@ -172,12 +172,12 @@ module BloodSugarNotificationManager {
     }
 
     function formatReading(valueMmol as Float) as String {
-        var useMgdl = BloodSugarStore.getUseMgdl();
+        var useMgdl = BloodSugarSharedSettings.getUseMgdl();
 
         return (
-            BloodSugarStore.formatValue(valueMmol, useMgdl) +
+            BloodSugarSharedSettings.formatValue(valueMmol, useMgdl) +
             " " +
-            BloodSugarStore.getUnitText(useMgdl)
+            BloodSugarSharedSettings.getUnitText(useMgdl)
         );
     }
 
@@ -189,7 +189,7 @@ module BloodSugarNotificationManager {
 
     function getStoredNumber(key as String, defaultValue as Number) as Number {
         try {
-            var value = BloodSugarStore.readStorageValue(key);
+            var value = BloodSugarSharedStorage.readValue(key);
 
             if (value instanceof Lang.Number) {
                 return value as Number;
@@ -203,7 +203,7 @@ module BloodSugarNotificationManager {
 
     function saveNumber(key as String, value as Number) as Void {
         try {
-            BloodSugarStore.writeStorageValue(key, value);
+            BloodSugarSharedStorage.writeValue(key, value);
         } catch (error) {
             System.println("Could not save notification state");
         }

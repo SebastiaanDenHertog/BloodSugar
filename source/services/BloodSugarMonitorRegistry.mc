@@ -39,7 +39,7 @@ module BloodSugarMonitorRegistry {
     }
 
     function hasMonitorSelected() as Boolean {
-        return BloodSugarStore.getBloodMonitor() != BloodSugarMonitor.NONE;
+        return BloodSugarSharedSettings.getMonitor() != BloodSugarMonitor.NONE;
     }
 
     function isSelectedMonitorConfigured() as Boolean {
@@ -47,7 +47,7 @@ module BloodSugarMonitorRegistry {
             return false;
         }
 
-        var provider = createProvider(BloodSugarStore.getBloodMonitor());
+        var provider = createProvider(BloodSugarSharedSettings.getMonitor());
 
         if (provider == null) {
             return false;
@@ -61,7 +61,7 @@ module BloodSugarMonitorRegistry {
             return false;
         }
 
-        var monitorId = BloodSugarStore.getBloodMonitor();
+        var monitorId = BloodSugarSharedSettings.getMonitor();
         if (
             monitorId == BloodSugarMonitor.ABBOTT_FREE_STYLE ||
             monitorId == BloodSugarMonitor.DEXCOM
@@ -72,7 +72,7 @@ module BloodSugarMonitorRegistry {
     }
 
     function shouldUseBackgroundSync() as Boolean {
-        if (!BloodSugarStore.getSetupDone()) {
+        if (!BloodSugarSharedSettings.getSetupDone()) {
             return false;
         }
 

@@ -27,7 +27,6 @@ import Toybox.Timer;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
-(:background)
 class AbbottFreeStylePollingManager {
     const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -69,10 +68,10 @@ class AbbottFreeStylePollingManager {
             return;
         }
 
-        var username = BloodSugarStore.getApiUsername(
+        var username = BloodSugarApiStore.getUsername(
             BloodSugarMonitor.ABBOTT_FREE_STYLE
         );
-        var password = BloodSugarStore.getApiPassword(
+        var password = BloodSugarApiStore.getPassword(
             BloodSugarMonitor.ABBOTT_FREE_STYLE
         );
         if (username.length() == 0 || password.length() == 0) {

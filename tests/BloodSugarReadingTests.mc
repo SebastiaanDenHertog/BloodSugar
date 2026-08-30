@@ -40,21 +40,21 @@ function testBloodSugarReadingCreate(logger as Test.Logger) as Boolean {
 function testBloodSugarPackedRoundTrip(logger as Test.Logger) as Boolean {
     logger.debug("Writing and reading packed history");
 
-    var bytes = BloodSugarReading.createPackedHistory(2);
-    var wroteFirst = BloodSugarReading.writePackedRecord(
+    var bytes = BloodSugarPackedReading.createHistory(2);
+    var wroteFirst = BloodSugarPackedReading.write(
         bytes,
         0,
         1234567890,
         5.67f,
-        BloodSugarReading.SOURCE_ID_MANUAL,
+        BloodSugarPackedReading.SOURCE_ID_MANUAL,
         1
     );
-    var wroteSecond = BloodSugarReading.writePackedRecord(
+    var wroteSecond = BloodSugarPackedReading.write(
         bytes,
         1,
         1234567990,
         12.34f,
-        BloodSugarReading.SOURCE_ID_LIBRE_LINK_UP,
+        BloodSugarPackedReading.SOURCE_ID_LIBRE_LINK_UP,
         3
     );
 
@@ -63,29 +63,29 @@ function testBloodSugarPackedRoundTrip(logger as Test.Logger) as Boolean {
         wroteSecond,
         "The second packed record should be written"
     );
-    Test.assertEqual(2, BloodSugarReading.getPackedCount(bytes));
-    Test.assertEqual(1234567890, BloodSugarReading.getPackedTime(bytes, 0));
-    Test.assertEqual(1234567990, BloodSugarReading.getPackedTime(bytes, 1));
+    Test.assertEqual(2, BloodSugarPackedReading.getCount(bytes));
+    Test.assertEqual(1234567890, BloodSugarPackedReading.getTime(bytes, 0));
+    Test.assertEqual(1234567990, BloodSugarPackedReading.getTime(bytes, 1));
     Test.assertMessage(
-        Math.abs(BloodSugarReading.getPackedValueMmol(bytes, 0) - 5.67f) <
+        Math.abs(BloodSugarPackedReading.getValueMmol(bytes, 0) - 5.67f) <
             0.001f,
         "The first glucose value should survive packing"
     );
     Test.assertMessage(
-        Math.abs(BloodSugarReading.getPackedValueMmol(bytes, 1) - 12.34f) <
+        Math.abs(BloodSugarPackedReading.getValueMmol(bytes, 1) - 12.34f) <
             0.001f,
         "The second glucose value should survive packing"
     );
     Test.assertEqual(
-        BloodSugarReading.SOURCE_ID_MANUAL,
-        BloodSugarReading.getPackedSourceId(bytes, 0)
+        BloodSugarPackedReading.SOURCE_ID_MANUAL,
+        BloodSugarPackedReading.getSourceIdAt(bytes, 0)
     );
-    Test.assertEqual(1, BloodSugarReading.getPackedContextId(bytes, 0));
+    Test.assertEqual(1, BloodSugarPackedReading.getContextIdAt(bytes, 0));
     Test.assertEqual(
-        BloodSugarReading.SOURCE_ID_LIBRE_LINK_UP,
-        BloodSugarReading.getPackedSourceId(bytes, 1)
+        BloodSugarPackedReading.SOURCE_ID_LIBRE_LINK_UP,
+        BloodSugarPackedReading.getSourceIdAt(bytes, 1)
     );
-    Test.assertEqual(3, BloodSugarReading.getPackedContextId(bytes, 1));
+    Test.assertEqual(3, BloodSugarPackedReading.getContextIdAt(bytes, 1));
 
     return true;
 }
@@ -94,30 +94,30 @@ function testBloodSugarPackedRoundTrip(logger as Test.Logger) as Boolean {
 function testBloodSugarPackedValidation(logger as Test.Logger) as Boolean {
     logger.debug("Checking packed-history validation");
 
-    var bytes = BloodSugarReading.createPackedHistory(1);
+    var bytes = BloodSugarPackedReading.createHistory(1);
 
     Test.assertMessage(
-        BloodSugarReading.isPackedHistory(bytes),
+        BloodSugarPackedReading.isHistory(bytes),
         "A newly allocated packed history should be valid"
     );
     Test.assertMessage(
-        !BloodSugarReading.canPackValue(0.0f),
+        !BloodSugarPackedReading.canPackValue(0.0f),
         "Zero is not a valid glucose value"
     );
     Test.assertMessage(
-        !BloodSugarReading.canPackValue(-1.0f),
+        !BloodSugarPackedReading.canPackValue(-1.0f),
         "Negative glucose values are invalid"
     );
     Test.assertMessage(
-        BloodSugarReading.canPackValue(5.5f),
+        BloodSugarPackedReading.canPackValue(5.5f),
         "A normal glucose value should be packable"
     );
     Test.assertMessage(
-        !BloodSugarReading.canPackValue(700.0f),
+        !BloodSugarPackedReading.canPackValue(700.0f),
         "Values larger than the packed representation should be rejected"
     );
     Test.assertMessage(
-        !BloodSugarReading.writePackedRecord(
+        !BloodSugarPackedReading.write(
             bytes,
             -1,
             1234567890,
@@ -128,11 +128,11 @@ function testBloodSugarPackedValidation(logger as Test.Logger) as Boolean {
         "A negative record index should be rejected"
     );
     Test.assertMessage(
-        !BloodSugarReading.writePackedRecord(bytes, 1, 1234567890, 5.5f, 0, 0),
+        !BloodSugarPackedReading.write(bytes, 1, 1234567890, 5.5f, 0, 0),
         "An index beyond the allocated history should be rejected"
     );
     Test.assertMessage(
-        !BloodSugarReading.writePackedRecord(bytes, 0, 0, 5.5f, 0, 0),
+        !BloodSugarPackedReading.write(bytes, 0, 0, 5.5f, 0, 0),
         "A non-positive timestamp should be rejected"
     );
 
@@ -143,38 +143,38 @@ function testBloodSugarPackedValidation(logger as Test.Logger) as Boolean {
 function testBloodSugarPackedCopy(logger as Test.Logger) as Boolean {
     logger.debug("Copying a packed record");
 
-    var source = BloodSugarReading.createPackedHistory(1);
-    var destination = BloodSugarReading.createPackedHistory(1);
+    var source = BloodSugarPackedReading.createHistory(1);
+    var destination = BloodSugarPackedReading.createHistory(1);
 
     Test.assertMessage(
-        BloodSugarReading.writePackedRecord(
+        BloodSugarPackedReading.write(
             source,
             0,
             1234567890,
             8.25f,
-            BloodSugarReading.SOURCE_ID_BLE,
+            BloodSugarPackedReading.SOURCE_ID_BLE,
             4
         ),
         "The source record should be written"
     );
 
-    BloodSugarReading.copyPackedRecord(source, 0, destination, 0);
+    BloodSugarPackedReading.copy(source, 0, destination, 0);
 
     Test.assertEqual(
-        BloodSugarReading.getPackedTime(source, 0),
-        BloodSugarReading.getPackedTime(destination, 0)
+        BloodSugarPackedReading.getTime(source, 0),
+        BloodSugarPackedReading.getTime(destination, 0)
     );
     Test.assertEqual(
-        BloodSugarReading.getPackedValueMmol(source, 0),
-        BloodSugarReading.getPackedValueMmol(destination, 0)
+        BloodSugarPackedReading.getValueMmol(source, 0),
+        BloodSugarPackedReading.getValueMmol(destination, 0)
     );
     Test.assertEqual(
-        BloodSugarReading.getPackedSourceId(source, 0),
-        BloodSugarReading.getPackedSourceId(destination, 0)
+        BloodSugarPackedReading.getSourceIdAt(source, 0),
+        BloodSugarPackedReading.getSourceIdAt(destination, 0)
     );
     Test.assertEqual(
-        BloodSugarReading.getPackedContextId(source, 0),
-        BloodSugarReading.getPackedContextId(destination, 0)
+        BloodSugarPackedReading.getContextIdAt(source, 0),
+        BloodSugarPackedReading.getContextIdAt(destination, 0)
     );
 
     return true;
@@ -229,20 +229,20 @@ function testBloodSugarSourceMappings(logger as Test.Logger) as Boolean {
     logger.debug("Checking blood sugar source mappings");
 
     Test.assertEqual(
-        BloodSugarReading.SOURCE_ID_MANUAL,
-        BloodSugarReading.getSourceId(BloodSugarReading.SOURCE_MANUAL)
+        BloodSugarPackedReading.SOURCE_ID_MANUAL,
+        BloodSugarPackedReading.getSourceId(BloodSugarReading.SOURCE_MANUAL)
     );
     Test.assertEqual(
-        BloodSugarReading.SOURCE_ID_LIBRE_LINK_UP,
-        BloodSugarReading.getSourceId(BloodSugarReading.SOURCE_LIBRE_LINK_UP)
+        BloodSugarPackedReading.SOURCE_ID_LIBRE_LINK_UP,
+        BloodSugarPackedReading.getSourceId(BloodSugarReading.SOURCE_LIBRE_LINK_UP)
     );
     Test.assertEqual(
-        BloodSugarReading.SOURCE_ID_BLE,
-        BloodSugarReading.getSourceId(BloodSugarReading.SOURCE_BLE)
+        BloodSugarPackedReading.SOURCE_ID_BLE,
+        BloodSugarPackedReading.getSourceId(BloodSugarReading.SOURCE_BLE)
     );
     Test.assertEqual(
         BloodSugarReading.SOURCE_UNKNOWN,
-        BloodSugarReading.getSourceFromId(99)
+        BloodSugarPackedReading.getSource(99)
     );
 
     return true;

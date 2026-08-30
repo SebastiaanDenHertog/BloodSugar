@@ -42,16 +42,16 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
 
     public function isConfigured() as Boolean {
         return (
-            BloodSugarStore.getApiUsername(getMonitorId()).length() > 0 &&
-            BloodSugarStore.getApiPassword(getMonitorId()).length() > 0
+            BloodSugarApiStore.getUsername(getMonitorId()).length() > 0 &&
+            BloodSugarApiStore.getPassword(getMonitorId()).length() > 0
         );
     }
 
     public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
-        var username = BloodSugarStore.getApiUsername(getMonitorId());
-        var password = BloodSugarStore.getApiPassword(getMonitorId());
-        var server = BloodSugarStore.getApiServer(
+        var username = BloodSugarApiStore.getUsername(getMonitorId());
+        var password = BloodSugarApiStore.getPassword(getMonitorId());
+        var server = BloodSugarApiStore.getServer(
             getMonitorId(),
             username,
             DexcomApi.DEFAULT_SERVER
@@ -61,7 +61,6 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
             finishError("Dexcom account is not configured");
             return;
         }
-
         _api = new DexcomApi(username, password, server);
 
         (_api as DexcomApi).read(method(:onApiReadComplete));
