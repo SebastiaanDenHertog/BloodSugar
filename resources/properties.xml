@@ -1,17 +1,24 @@
 <properties>
     <!-- Keep this below 1.0.0 while the app is manual-entry only. -->
-    <property id="appName" type="string">Blood Sugar logger</property>
-    <property id="appVersion" type="string">0.9.1</property>
-    <property id="appCreator" type="string">Sebastiaan den Hertog</property>
+    <property id="appVersion" type="string">0.9.61</property>
+    <property id="compactHistoryProfile" type="boolean">true</property>
 
-    <property id="setupDone" type="boolean">false</property>
     <property id="useMgdl" type="boolean">false</property>
-    
     <property id="dangerLow" type="float">80.0</property>
     <property id="Low" type="float">90.0</property>
     <property id="High" type="float">140.0</property>
     <property id="dangerHigh" type="float">220.0</property>
 
+    <property id="notificationsEnabled" type="boolean">true</property>
+    <property id="notificationLow" type="float">70.0</property>
+    <property id="notificationHigh" type="float">180.0</property>
+
+    <property id="bloodMonitorIndex" type="number">0</property>
     <property id="defaultContextIndex" type="number">0</property>
+    <property id="customContexts" type="array"></property>
     <property id="confirmBeforeSave" type="boolean">true</property>
+
+    <property id="username" type="string"></property>
+    <property id="password" type="string"></property>
+
 </properties>

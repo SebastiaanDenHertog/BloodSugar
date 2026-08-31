@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <layout
+        id="BloodSugarGlanceLayout"
+        scope="glance">
+
+        <label
+            id="GlanceTitle"
+            text="Blood Sugar"
+            x="3"
+            y="1"
+            font="Graphics.FONT_XTINY"
+            color="Graphics.COLOR_WHITE"
+            justification="Graphics.TEXT_JUSTIFY_LEFT"
+        />
+
+        <label
+            id="GlanceValue"
+            text=""
+            x="23%"
+            y="35%"
+            font="Graphics.FONT_TINY"
+            color="Graphics.COLOR_WHITE"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+        />
+
+        <label
+            id="GlanceUnit"
+            text=""
+            x="70%"
+            y="40%"
+            font="Graphics.FONT_XTINY"
+            color="Graphics.COLOR_WHITE"
+            justification="Graphics.TEXT_JUSTIFY_RIGHT"
+        />
+
+        <label
+            id="GlanceStatus"
+            text=""
+            x="23%"
+            y="70%"
+            font="Graphics.FONT_XTINY"
+            color="Graphics.COLOR_WHITE"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+        />
+
+        <label
+            id="GlanceAge"
+            text=""
+            x="73%"
+            y="70%"
+            font="Graphics.FONT_XTINY"
+            color="Graphics.COLOR_WHITE"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+        />
+    </layout>
+
+    <layout id="BloodSugarHomeLayout">
+
+        <bitmap
+            id="hintHomeLeftMiddle"
+            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
+        />
+        <bitmap
+            id="hintHomeRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintHomeRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="homeTitle"
+            x="center"
+            y="8%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="homeValue"
+            x="center"
+            y="35%"
+            font="Graphics.FONT_LARGE"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="homeUnit"
+            x="center"
+            y="57%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="homeSubtitle"
+            x="center"
+            y="68%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="homeNoReadings"
+            x="center"
+            y="42%"
+            font="Graphics.FONT_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarInfoLayout">
+
+        <bitmap
+            id="hintInfoRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="infoMessage"
+            x="center"
+            y="25%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarInputLayout">
+
+        <bitmap
+            id="hintInputLeftMiddle"
+            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
+        />
+        <bitmap
+            id="hintInputLeftBottom"
+            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
+        />
+        <bitmap
+            id="hintInputRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintInputRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="inputTitle"
+            x="center"
+            y="8%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="inputValue"
+            x="center"
+            y="31%"
+            font="Graphics.FONT_LARGE"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="inputUnit"
+            x="center"
+            y="58%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="inputContext"
+            x="center"
+            y="72%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarModeLayout">
+
+        <bitmap
+            id="hintModeRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintModeRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="modeTitle"
+            x="center"
+            y="22%"
+            font="Graphics.FONT_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="modeQuestion"
+            x="center"
+            y="47%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="modeInstruction"
+            x="center"
+            y="72%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+    <layout id="BloodSugarSetupUnitLayout">
+
+        <label
+            id="unitTitle"
+            x="center"
+            y="8%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="unitPrompt"
+            x="center"
+            y="34%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="unitValue"
+            x="center"
+            y="53%"
+            font="Graphics.FONT_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+    <layout id="BloodSugarSetupMonitorLayout">
+
+        <label
+            id="monitorTitle"
+            x="center"
+            y="8%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="monitorPrompt"
+            x="center"
+            y="31%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="monitorName"
+            x="center"
+            y="51%"
+            font="Graphics.FONT_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+   
+    <layout id="BloodSugarSetupBleLayout">
+
+        <bitmap
+            id="hintBleRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintBleRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="bleTitle"
+            x="center"
+            y="8%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="bleStatus"
+            x="center"
+            y="38%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="bleDevice"
+            x="center"
+            y="58%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarSetupApiLayout">
+
+        <label
+            id="apiTitle"
+            x="center"
+            y="10%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="apiUsername"
+            x="center"
+            y="20%"
+            font="Graphics.FONT_TINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="apiPassword"
+            x="center"
+            y="40%"
+            font="Graphics.FONT_TINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="apiConnect"
+            x="center"
+            y="60%"
+            font="Graphics.FONT_TINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="apiStatus"
+            x="center"
+            y="73%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarHistoryLayout">
+
+        <bitmap
+            id="hintHistoryLeftMiddle"
+            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
+        />
+        <bitmap
+            id="hintHistoryLeftBottom"
+            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
+        />
+        <bitmap
+            id="hintHistoryRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintHistoryRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="historyTitle"
+            x="center"
+            y="4%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyValue"
+            x="center"
+            y="84%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyNoData"
+            x="center"
+            y="42%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarHistoryListLayout">
+
+        <bitmap
+            id="hintHistoryListLeftMiddle"
+            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
+        />
+        <bitmap
+            id="hintHistoryListLeftBottom"
+            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
+        />
+        <bitmap
+            id="hintHistoryListRightTop"
+            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
+        />
+        <bitmap
+            id="hintHistoryListRightBottom"
+            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
+        />
+
+        <label
+            id="historyListPosition"
+            x="center"
+            y="2%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_LT_GRAY"
+        />
+
+        <label
+            id="historyListNoData"
+            x="center"
+            y="40%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyDetailValue"
+            x="center"
+            y="25%"
+            font="Graphics.FONT_NUMBER_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyDetailUnit"
+            x="center"
+            y="53%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyDetailZone"
+            x="center"
+            y="66%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="historyDetailDate"
+            x="center"
+            y="77%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_LT_GRAY"
+        />
+
+    </layout>
+
+    <layout id="BloodSugarKeyboardLayout">
+
+        <label
+            id="keyboardTitle"
+            x="center"
+            y="5%"
+            font="Graphics.FONT_MEDIUM"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="keyboardInput"
+            x="center"
+            y="20%"
+            font="Graphics.FONT_SMALL"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+        <label
+            id="keyboardCounter"
+            x="center"
+            y="33%"
+            font="Graphics.FONT_XTINY"
+            justification="Graphics.TEXT_JUSTIFY_CENTER"
+            color="Graphics.COLOR_WHITE"
+        />
+
+    </layout>
+</resources>
