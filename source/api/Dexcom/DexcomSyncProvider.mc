@@ -54,7 +54,7 @@ class DexcomSyncProvider extends BloodSugarSyncProvider {
         var server = BloodSugarApiStore.getServer(
             getMonitorId(),
             username,
-            DexcomApi.DEFAULT_SERVER
+            DexcomShareConfig.DEFAULT_SERVER
         );
 
         if (username.length() == 0 || password.length() == 0) {

@@ -110,7 +110,7 @@ function testDexcomApiConstruction(logger as Test.Logger) as Boolean {
     var client = new DexcomApi(
         "constructor-test@example.com",
         "password",
-        DexcomApi.US_SERVER
+        DexcomShareConfig.US_SERVER
     );
     client.cancel();
 

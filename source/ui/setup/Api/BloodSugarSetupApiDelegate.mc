@@ -63,11 +63,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
             var savedServer = BloodSugarApiStore.getServer(
                 _monitorId,
                 _username,
-                DexcomApi.DEFAULT_SERVER
+                DexcomShareConfig.DEFAULT_SERVER
             );
-            if (savedServer == DexcomApi.US_SERVER) {
+            if (savedServer == DexcomShareConfig.US_SERVER) {
                 _dexcomRegion = DEXCOM_REGION_US;
-            } else if (savedServer == DexcomApi.JP_SERVER) {
+            } else if (savedServer == DexcomShareConfig.JP_SERVER) {
                 _dexcomRegion = DEXCOM_REGION_JP;
             }
         }
@@ -249,12 +249,13 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
 
     private function getDexcomServer() as String {
         if (_dexcomRegion == DEXCOM_REGION_US) {
-            return DexcomApi.US_SERVER;
+            return DexcomShareConfig.US_SERVER;
         }
         if (_dexcomRegion == DEXCOM_REGION_JP) {
-            return DexcomApi.JP_SERVER;
+            return DexcomShareConfig.JP_SERVER;
         }
-        return DexcomApi.OUS_SERVER;
+
+        return DexcomShareConfig.OUS_SERVER;
     }
 
     private function startConnecting() as Void {

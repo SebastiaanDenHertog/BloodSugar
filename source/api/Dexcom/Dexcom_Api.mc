@@ -29,17 +29,7 @@ import Toybox.System;
 
 import api;
 
-(:background)
 class DexcomApi {
-    const US_SERVER = "https://share2.dexcom.com/ShareWebServices/Services/";
-    const OUS_SERVER =
-        "https://shareous1.dexcom.com/ShareWebServices/Services/";
-    const JP_SERVER = "https://share.dexcom.jp/ShareWebServices/Services/";
-
-    const DEFAULT_SERVER = OUS_SERVER;
-
-    const STANDARD_APPLICATION_ID = "d89443d2-327c-4a6f-89e5-496bbb0317db";
-    const JP_APPLICATION_ID = "d8665ade-9673-4e27-9ff6-92db4ce13d13";
     const DEFAULT_UUID = "00000000-0000-0000-0000-000000000000";
 
     const AUTHENTICATE_PATH = "General/AuthenticatePublisherAccount";
@@ -72,10 +62,17 @@ class DexcomApi {
     ) {
         _username = username;
         _password = password;
-        _baseUrl = isShareServer(server) ? server : DEFAULT_SERVER;
-        _applicationId = _baseUrl.equals(JP_SERVER)
-            ? JP_APPLICATION_ID
-            : STANDARD_APPLICATION_ID;
+        if (
+            server == DexcomShareConfig.US_SERVER ||
+            server == DexcomShareConfig.JP_SERVER
+        ) {
+            _baseUrl = server;
+        } else {
+            _baseUrl = DexcomShareConfig.OUS_SERVER;
+        }
+        _applicationId = _baseUrl == DexcomShareConfig.JP_SERVER
+            ? DexcomShareConfig.JP_APPLICATION_ID
+            : DexcomShareConfig.STANDARD_APPLICATION_ID;
 
         _accountId = BloodSugarApiStore.getAccountId(
             BloodSugarMonitor.DEXCOM,
@@ -327,9 +324,7 @@ class DexcomApi {
             return;
         }
 
-        var addedCount = BloodSugarBackgroundHistoryStore.addReadings(
-            readings
-        );
+        var addedCount = BloodSugarBackgroundHistoryStore.addReadings(readings);
         if (addedCount < 0) {
             fail("Dexcom Share readings could not be stored");
             return;
@@ -384,14 +379,6 @@ class DexcomApi {
             value.substring(18, 19).equals("-") &&
             value.substring(23, 24).equals("-") &&
             !value.equals(DEFAULT_UUID)
-        );
-    }
-
-    private function isShareServer(server as String) as Boolean {
-        return (
-            server.equals(US_SERVER) ||
-            server.equals(OUS_SERVER) ||
-            server.equals(JP_SERVER)
         );
     }
 
