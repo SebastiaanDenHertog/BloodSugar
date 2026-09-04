@@ -1,6 +1,6 @@
 <properties>
-    <!-- Keep this below 1.0.0 while the app is manual-entry only. -->
-    <property id="appVersion" type="string">0.9.61</property>
+    <!-- Keep this below 1.0.0 while the API integrations are in beta. -->
+    <property id="appVersion" type="string">0.9.7</property>
     <property id="compactHistoryProfile" type="boolean">true</property>
 
     <property id="useMgdl" type="boolean">false</property>

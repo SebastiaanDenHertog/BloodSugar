@@ -2,7 +2,8 @@
 
 BloodSugar is a Garmin Connect IQ watch app for manually logging glucose
 readings and viewing recent glucose history. It supports mmol/L and mg/dL,
-configurable glucose zones, notifications, and Abbott FreeStyle integration.
+configurable glucose zones, notifications, and Abbott FreeStyle, Dexcom Share,
+and xDrip+ integrations.
 
 ## Requirements
 
@@ -35,6 +36,12 @@ Dexcom Share is unofficial and can change without notice. Credentials are
 stored on the watch for background synchronization; consider a trusted backend
 instead if that storage model is not acceptable for the intended release.
 
+## xDrip+ connection
+
+The xDrip+ integration reads glucose values from the local xDrip web service at
+`http://127.0.0.1:17580/sgv.json`. Select xDrip+ during monitor setup and choose
+Connect. No username or password is required.
+
 ## Memory efficiency
 
 - Glucose history is packed into a compact `ByteArray`.
@@ -59,6 +66,19 @@ instead if that storage model is not acceptable for the intended release.
   must be shortened.
 
 ## Change log
+
+### v0.9.7
+
+- Added Fenix 9 support.
+- Added Dexcom Share sign-in with United States, Japan, and everywhere-else
+  regions, reusable sessions, and background glucose synchronization.
+- Added credential-free xDrip+ setup and glucose synchronization through the
+  local xDrip web service.
+- Split API, settings, and packed-history storage into smaller shared modules
+  for foreground, background, and glance use.
+- Improved the connection screen with clear HTTP and network errors, an
+  explicit connected state, and a short delay before opening history or home.
+- Improved credential entry and display for long usernames and passwords.
 
 ### v0.9.63
 
