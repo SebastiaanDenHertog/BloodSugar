@@ -47,7 +47,8 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     private var _monitorId as Number;
     private var _navigationTimer as Timer.Timer?;
 
-    private var _apiClient as AbbottFreeStyleApi or DexcomApi or Null;
+    private var _apiClient as
+        AbbottFreeStyleApi or DexcomApi or xDripApi or Null;
 
     public function initialize(
         view as BloodSugarSetupApiView,
@@ -175,6 +176,11 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     public function connect() as Void {
+        if (_monitorId == BloodSugarStore.MONITOR_XDRIP) {
+            startxDripConnection();
+            return;
+        }
+
         if (_username.length() == 0) {
             _view.focusItem(FIELD_USERNAME);
             _status = "Enter your username";
@@ -196,23 +202,52 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
             startDexcomConnection();
             return;
         }
-
         _status = "Unsupported account provider";
         updateView();
     }
 
     private function startAbbottConnection() as Void {
         startConnecting();
-        var client = new AbbottFreeStyleApi(_username, _password);
-        _apiClient = client;
-        client.read(method(:onApiReadComplete));
+        try {
+            var client = new AbbottFreeStyleApi(
+                _username,
+                _password,
+                getAbbottFreeStyleServer()
+            );
+            _apiClient = client;
+            client.read(method(:onApiReadComplete));
+        } catch (error) {
+            System.println("Could not start Abbott request: " + error.toString());
+            showConnectionError("Could not start request");
+        }
     }
 
     private function startDexcomConnection() as Void {
         startConnecting();
-        var client = new DexcomApi(_username, _password, getDexcomServer());
-        _apiClient = client;
-        client.read(method(:onApiReadComplete));
+        try {
+            var client = new DexcomApi(
+                _username,
+                _password,
+                getDexcomServer()
+            );
+            _apiClient = client;
+            client.read(method(:onApiReadComplete));
+        } catch (error) {
+            System.println("Could not start Dexcom request: " + error.toString());
+            showConnectionError("Could not start request");
+        }
+    }
+
+    private function startxDripConnection() as Void {
+        startConnecting();
+        try {
+            var client = new xDripApi(getxDripServer());
+            _apiClient = client;
+            client.read(method(:onApiReadComplete));
+        } catch (error) {
+            System.println("Could not start xDrip request: " + error.toString());
+            showConnectionError("Could not start request");
+        }
     }
 
     private function openDexcomRegionPicker() as Void {
@@ -258,6 +293,14 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         return DexcomShareConfig.OUS_SERVER;
     }
 
+    private function getAbbottFreeStyleServer() as String {
+        return AbbottFreeStyleShareConfig.DEFAULT_SERVER;
+    }
+
+    private function getxDripServer() as String {
+        return xDripShareConfig.DEFAULT_SERVER;
+    }
+
     private function startConnecting() as Void {
         _busy = true;
         _status = "Connecting to " + getProviderName() + "...";
@@ -274,17 +317,16 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         _busy = false;
 
         if (!success) {
-            _status = getShortError(errorMessage);
-            _apiClient = null;
-            updateView();
+            showConnectionError(errorMessage);
             return;
         }
         BloodSugarStore.invalidateHistoryCache();
-        var saved = BloodSugarApiStore.saveCredentials(
-            _monitorId,
-            _username,
-            _password
-        );
+        var saved = _monitorId == BloodSugarStore.MONITOR_XDRIP ||
+            BloodSugarApiStore.saveCredentials(
+                _monitorId,
+                _username,
+                _password
+            );
         if (!saved) {
             _status = "Connected, but login was not saved";
             _apiClient = null;
@@ -296,6 +338,13 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         (Application.getApp() as BloodSugarApp).updateBackgroundSync();
         _apiClient = null;
         showConnectedStatus(addedCount);
+    }
+
+    private function showConnectionError(errorMessage as String) as Void {
+        _busy = false;
+        _status = getShortError(errorMessage);
+        _apiClient = null;
+        updateView();
     }
 
     private function showConnectedStatus(addedCount as Number) as Void {
@@ -341,6 +390,21 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     private function getShortError(errorMessage as String) as String {
+        if (errorMessage.find("HTTP 404") != null) {
+            return "Endpoint not found (HTTP 404)";
+        }
+
+        var httpIndex = errorMessage.find("HTTP ");
+        if (httpIndex != null) {
+            var codeStart = (httpIndex as Number) + 5;
+            if (errorMessage.length() >= codeStart + 3) {
+                return "Request failed (HTTP " +
+                    errorMessage.substring(codeStart, codeStart + 3) +
+                    ")";
+            }
+            return "HTTP request failed";
+        }
+
         if (errorMessage.find("Bad credentials") != null) {
             return "Incorrect username or password";
         }

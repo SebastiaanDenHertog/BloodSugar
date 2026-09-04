@@ -27,11 +27,11 @@ import Toybox.Timer;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
-class AbbottFreeStylePollingManager {
+class xDripPollingManager {
     const POLL_INTERVAL_MS = 60 * 1000;
 
     private var _timer as Timer.Timer?;
-    private var _client as AbbottFreeStyleApi?;
+    private var _client as xDripApi?;
     private var _requestRunning as Boolean;
 
     public function initialize() {
@@ -56,7 +56,7 @@ class AbbottFreeStylePollingManager {
         }
 
         if (_client != null) {
-            (_client as AbbottFreeStyleApi).cancel();
+            (_client as xDripApi).cancel();
         }
 
         _client = null;
@@ -68,28 +68,18 @@ class AbbottFreeStylePollingManager {
             return;
         }
 
-        var username = BloodSugarApiStore.getUsername(
-            BloodSugarMonitor.ABBOTT_FREE_STYLE
-        );
-        var password = BloodSugarApiStore.getPassword(
-            BloodSugarMonitor.ABBOTT_FREE_STYLE
-        );
-        if (username.length() == 0 || password.length() == 0) {
-            return;
-        }
-
         if (_client == null) {
             var server = BloodSugarApiStore.getServer(
-                BloodSugarMonitor.ABBOTT_FREE_STYLE,
-                username,
-                AbbottFreeStyleShareConfig.DEFAULT_SERVER
+                BloodSugarMonitor.XDRIP,
+                "",
+                xDripShareConfig.DEFAULT_SERVER
             );
-            _client = new AbbottFreeStyleApi(username, password, server);
+            _client = new xDripApi(server);
         }
 
         _requestRunning = true;
 
-        (_client as AbbottFreeStyleApi).read(method(:onReadComplete));
+        (_client as xDripApi).read(method(:onReadComplete));
     }
 
     public function onReadComplete(
@@ -102,7 +92,7 @@ class AbbottFreeStylePollingManager {
         _requestRunning = false;
 
         if (!success) {
-            System.println("Abbott polling error: " + errorMessage);
+            System.println("Xdrip polling error: " + errorMessage);
             return;
         }
 

@@ -71,8 +71,8 @@ class DexcomApi {
             _baseUrl = DexcomShareConfig.OUS_SERVER;
         }
         _applicationId = _baseUrl == DexcomShareConfig.JP_SERVER
-            ? DexcomShareConfig.JP_APPLICATION_ID
-            : DexcomShareConfig.STANDARD_APPLICATION_ID;
+                ? DexcomShareConfig.JP_APPLICATION_ID
+                : DexcomShareConfig.STANDARD_APPLICATION_ID;
 
         _accountId = BloodSugarApiStore.getAccountId(
             BloodSugarMonitor.DEXCOM,
@@ -416,10 +416,17 @@ class DexcomApi {
             }
 
             if (code.length() > 0) {
-                return "Dexcom Share " + code;
+                return "Dexcom Share " +
+                    code +
+                    " (HTTP " +
+                    responseCode.toString() +
+                    ")";
             }
             if (message.length() > 0) {
-                return message;
+                return message +
+                    " (HTTP " +
+                    responseCode.toString() +
+                    ")";
             }
         }
 

@@ -33,12 +33,25 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.PickerDelegate {
     }
 
     public function onCancel() as Boolean {
-        WatchUi.popView(WatchUi.SLIDE_LEFT);
-        return true;
+        BloodSugarStore.setBloodMonitor(BloodSugarStore.MONITOR_NONE);
+        BloodSugarStore.setSetupDone(true);
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_UP
+        );
     }
 
     public function onBack() as Boolean {
-        WatchUi.popView(WatchUi.SLIDE_LEFT);
+        BloodSugarStore.setBloodMonitor(BloodSugarStore.MONITOR_NONE);
+        BloodSugarStore.setSetupDone(true);
+        var homeView = new BloodSugarHomeView();
+        WatchUi.switchToView(
+            homeView,
+            new BloodSugarHomeDelegate(homeView),
+            WatchUi.SLIDE_UP
+        );
     }
 
     public function onAccept(values as Array) as Boolean {
@@ -54,7 +67,8 @@ class BloodSugarSetupMonitorDelegate extends WatchUi.PickerDelegate {
 
         if (
             monitorId == BloodSugarStore.MONITOR_ABBOTT ||
-            monitorId == BloodSugarStore.MONITOR_DEXCOM
+            monitorId == BloodSugarStore.MONITOR_DEXCOM ||
+            monitorId == BloodSugarStore.MONITOR_XDRIP
         ) {
             BloodSugarStore.setBloodMonitor(monitorId);
             var apiView = new BloodSugarSetupApiView(monitorId);

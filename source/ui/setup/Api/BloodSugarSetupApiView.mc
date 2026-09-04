@@ -29,6 +29,7 @@ import Toybox.Lang;
 class BloodSugarSetupApiView extends WatchUi.Menu2 {
     private var _providerName as String;
     private var _isDexcom as Boolean;
+    private var _requiresCredentials as Boolean;
     private var _usernameItem as WatchUi.MenuItem;
     private var _passwordItem as WatchUi.MenuItem;
     private var _regionItem as WatchUi.MenuItem?;
@@ -37,8 +38,12 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
     public function initialize(monitorId as Number) {
         _providerName = BloodSugarStore.getBloodMonitorText(monitorId);
         _isDexcom = monitorId == BloodSugarStore.MONITOR_DEXCOM;
+        _requiresCredentials = monitorId != BloodSugarStore.MONITOR_XDRIP;
         _regionItem = null;
-        Menu2.initialize({ :title => _providerName + " account" });
+        Menu2.initialize({
+            :title => _providerName +
+                (_requiresCredentials ? " account" : " setup")
+        });
 
         var usernameLabel = "Username";
         var passwordLabel = "Password";
@@ -70,8 +75,10 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
             {}
         );
 
-        addItem(_usernameItem);
-        addItem(_passwordItem);
+        if (_requiresCredentials) {
+            addItem(_usernameItem);
+            addItem(_passwordItem);
+        }
         if (_regionItem != null) {
             addItem(_regionItem as WatchUi.MenuItem);
         }
@@ -85,8 +92,10 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
         status as String,
         busy as Boolean
     ) as Void {
-        _usernameItem.setSubLabel(getUsernameDisplay(username));
-        _passwordItem.setSubLabel(getPasswordDisplay(password));
+        if (_requiresCredentials) {
+            _usernameItem.setSubLabel(getUsernameDisplay(username));
+            _passwordItem.setSubLabel(getPasswordDisplay(password));
+        }
         if (_regionItem != null) {
             (_regionItem as WatchUi.MenuItem).setSubLabel(region);
         }
@@ -95,12 +104,18 @@ class BloodSugarSetupApiView extends WatchUi.Menu2 {
             status.length() > 0 ? status : "Test and save " + _providerName
         );
 
-        updateItem(_usernameItem, 0);
-        updateItem(_passwordItem, 1);
+        if (_requiresCredentials) {
+            updateItem(_usernameItem, 0);
+            updateItem(_passwordItem, 1);
+        }
         if (_regionItem != null) {
             updateItem(_regionItem as WatchUi.MenuItem, 2);
         }
-        updateItem(_connectItem, _isDexcom ? 3 : 2);
+        updateItem(
+            _connectItem,
+            _requiresCredentials ? (_isDexcom ? 3 : 2) : 0
+        );
+        WatchUi.requestUpdate();
     }
 
     public function focusItem(index as Number) as Void {

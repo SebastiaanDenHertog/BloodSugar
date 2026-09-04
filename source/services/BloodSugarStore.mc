@@ -88,12 +88,13 @@ module BloodSugarStore {
     const MONITOR_NONE = 0;
     const MONITOR_ABBOTT = 1;
     const MONITOR_DEXCOM = 2;
-    const MONITOR_BLE = 3;
+    const MONITOR_XDRIP = 3;
+    const MONITOR_BLE = 4;
 
     var _historyBytes as Lang.ByteArray? = null;
     var _historyNeedsRepair as Boolean = false;
     var _historyWritable as Boolean = true;
-    
+
     (:typecheck(false))
     function readStorageValue(key as String) as Object? {
         return BloodSugarSharedStorage.readValue(key);
@@ -903,7 +904,10 @@ module BloodSugarStore {
         sourceId as Number,
         contextId as Number
     ) as Lang.ByteArray? {
-        if (timestamp <= 0 || !BloodSugarPackedReading.canPackValue(valueMmol)) {
+        if (
+            timestamp <= 0 ||
+            !BloodSugarPackedReading.canPackValue(valueMmol)
+        ) {
             return null;
         }
 
@@ -1027,7 +1031,8 @@ module BloodSugarStore {
                 return "Abbott FreeStyle";
             case MONITOR_DEXCOM:
                 return "Dexcom";
-
+            case MONITOR_XDRIP:
+                return "Xdrip+";
             case MONITOR_BLE:
                 return "Bluetooth LE";
         }
@@ -1509,7 +1514,6 @@ module BloodSugarStore {
         return _bleSupportedCache as Boolean;
     }
 
-
     function hasReadingByTime(timestamp as Number) as Boolean {
         var value = load();
         if (!(value instanceof Lang.ByteArray)) {
@@ -1548,7 +1552,8 @@ module BloodSugarStore {
     }
 
     public function getBloodMonitors() as Array<String> {
-        var monitors = ["Abbott FreeStyle", "Dexcom"] as Array<String>;
+        var monitors =
+            ["Abbott FreeStyle", "Dexcom", "XDrip+"] as Array<String>;
 
         if (isBleSupported()) {
             monitors.add("Bluetooth LE");
@@ -1564,8 +1569,11 @@ module BloodSugarStore {
         if (index == 1) {
             return MONITOR_DEXCOM;
         }
+        if (index == 2) {
+            return MONITOR_XDRIP;
+        }
 
-        if (index == 2 && isBleSupported()) {
+        if (index == 3 && isBleSupported()) {
             return MONITOR_BLE;
         }
 
@@ -1594,7 +1602,6 @@ module BloodSugarStore {
 
         return selected;
     }
-
 
     function getNotificationsEnabled() as Boolean {
         if (_notificationsEnabledCache == null) {
