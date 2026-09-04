@@ -34,7 +34,6 @@ import api;
 
 (:background)
 class AbbottFreeStyleApi {
-    const DEFAULT_SERVER = "https://api-us.libreview.io";
     const LOGIN_PATH = "/llu/auth/login";
     const CONNECTIONS_PATH = "/llu/connections";
     const COUNTRIES_PATH = "/llu/config/country?country=DE";
@@ -59,15 +58,11 @@ class AbbottFreeStyleApi {
     private var _serverFallbackRetried as Boolean;
     private var _cancelled as Boolean;
 
-    public function initialize(email as String, password as String) {
+    public function initialize(email as String, password as String, server as String) {
         _email = email;
         _password = password;
 
-        _baseUrl = BloodSugarApiStore.getServer(
-            BloodSugarMonitor.ABBOTT_FREE_STYLE,
-            _email,
-            DEFAULT_SERVER
-        );
+        _baseUrl = server;
         _jwtToken = null;
         _accountIdHash = null;
         _redirectRegion = null;
@@ -131,12 +126,12 @@ class AbbottFreeStyleApi {
 
         if (responseCode != 200) {
             /* A previously discovered regional endpoint may have changed. */
-            if (!_serverFallbackRetried && !_baseUrl.equals(DEFAULT_SERVER)) {
+            if (!_serverFallbackRetried && !_baseUrl.equals(AbbottFreeStyleShareConfig.DEFAULT_SERVER)) {
                 _serverFallbackRetried = true;
                 BloodSugarApiStore.clearServer(
                     BloodSugarMonitor.ABBOTT_FREE_STYLE
                 );
-                _baseUrl = DEFAULT_SERVER;
+                _baseUrl = AbbottFreeStyleShareConfig.DEFAULT_SERVER;
                 login();
                 return;
             }

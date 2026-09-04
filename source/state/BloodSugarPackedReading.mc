@@ -30,6 +30,7 @@ module BloodSugarPackedReading {
     const SOURCE_MANUAL = "manual";
     const SOURCE_LIBRE_LINK_UP = "libre_link_up";
     const SOURCE_DEXCOM = "dexcom";
+    const SOURCE_XDRIP = "Xdrip+";
     const SOURCE_BLE = "ble";
     const SOURCE_AGGREGATE = "aggregate";
     const SOURCE_UNKNOWN = "unknown";
@@ -66,9 +67,11 @@ module BloodSugarPackedReading {
             return false;
         }
         var bytes = value as Lang.ByteArray;
-        return bytes.size() >= HEADER_SIZE &&
+        return (
+            bytes.size() >= HEADER_SIZE &&
             bytes[0].toNumber() == STORAGE_SCHEMA &&
-            (bytes.size() - HEADER_SIZE) % RECORD_SIZE == 0;
+            (bytes.size() - HEADER_SIZE) % RECORD_SIZE == 0
+        );
     }
 
     function getCount(bytes as Lang.ByteArray) as Number {
@@ -121,28 +124,25 @@ module BloodSugarPackedReading {
 
     function getTime(bytes as Lang.ByteArray, index as Number) as Number {
         var offset = getOffset(index) + TIME_OFFSET;
-        return bytes[offset].toNumber() |
+        return (
+            bytes[offset].toNumber() |
             (bytes[offset + 1].toNumber() << 8) |
             (bytes[offset + 2].toNumber() << 16) |
-            (bytes[offset + 3].toNumber() << 24);
+            (bytes[offset + 3].toNumber() << 24)
+        );
     }
 
-    function getValueMmol(
-        bytes as Lang.ByteArray,
-        index as Number
-    ) as Float {
+    function getValueMmol(bytes as Lang.ByteArray, index as Number) as Float {
         var offset = getOffset(index) + GLUCOSE_OFFSET;
         var scaled =
             bytes[offset].toNumber() | (bytes[offset + 1].toNumber() << 8);
         return scaled.toFloat() / GLUCOSE_SCALE;
     }
 
-    function getSourceIdAt(
-        bytes as Lang.ByteArray,
-        index as Number
-    ) as Number {
-        return (bytes[getOffset(index) + METADATA_OFFSET].toNumber() >> 4) &
-            0x0f;
+    function getSourceIdAt(bytes as Lang.ByteArray, index as Number) as Number {
+        return (
+            (bytes[getOffset(index) + METADATA_OFFSET].toNumber() >> 4) & 0x0f
+        );
     }
 
     function getContextIdAt(
@@ -161,7 +161,8 @@ module BloodSugarPackedReading {
         var sourceOffset = getOffset(sourceIndex);
         var destinationOffset = getOffset(destinationIndex);
         for (var index = 0; index < RECORD_SIZE; index += 1) {
-            destination[destinationOffset + index] = source[sourceOffset + index];
+            destination[destinationOffset + index] =
+                source[sourceOffset + index];
         }
     }
 

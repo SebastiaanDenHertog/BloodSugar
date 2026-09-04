@@ -35,6 +35,10 @@ module BloodSugarMonitorRegistry {
             return new DexcomSyncProvider();
         }
 
+        if (monitorId == BloodSugarMonitor.XDRIP) {
+            return new xDripSyncProvider();
+        }
+
         return null;
     }
 
@@ -64,7 +68,8 @@ module BloodSugarMonitorRegistry {
         var monitorId = BloodSugarSharedSettings.getMonitor();
         if (
             monitorId == BloodSugarMonitor.ABBOTT_FREE_STYLE ||
-            monitorId == BloodSugarMonitor.DEXCOM
+            monitorId == BloodSugarMonitor.DEXCOM ||
+            monitorId == BloodSugarMonitor.XDRIP
         ) {
             return true;
         }

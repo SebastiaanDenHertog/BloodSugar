@@ -22,12 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-(:background)
-module BloodSugarMonitor {
-    const NONE = 0;
-    const ABBOTT_FREE_STYLE = 1;
-    const DEXCOM = 2;
-    const XDRIP = 3;
-
-    const BACKGROUND_INTERVAL_SECONDS = 5 * 60;
+/* Neutral configuration shared by foreground setup and background API code. */
+module xDripShareConfig {
+    const DEFAULT_SERVER = "http://127.0.0.1:17580";
 }

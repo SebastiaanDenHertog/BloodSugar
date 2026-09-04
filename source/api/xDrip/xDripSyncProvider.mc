@@ -25,8 +25,8 @@ SOFTWARE.
 import Toybox.Lang;
 
 (:background)
-class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
-    private var _api as AbbottFreeStyleApi?;
+class xDripSyncProvider extends BloodSugarSyncProvider {
+    private var _api as xDripApi?;
     private var _completion as BloodSugarSyncCallback?;
 
     public function initialize() {
@@ -37,35 +37,24 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
     }
 
     public function getMonitorId() as Number {
-        return BloodSugarMonitor.ABBOTT_FREE_STYLE;
+        return BloodSugarMonitor.XDRIP;
     }
 
     public function isConfigured() as Boolean {
-        return (
-            BloodSugarApiStore.getUsername(getMonitorId()).length() > 0 &&
-            BloodSugarApiStore.getPassword(getMonitorId()).length() > 0
-        );
+        return true;
     }
 
     public function sync(completion as BloodSugarSyncCallback) as Void {
         _completion = completion;
-        var username = BloodSugarApiStore.getUsername(getMonitorId());
-        var password = BloodSugarApiStore.getPassword(getMonitorId());
         var server = BloodSugarApiStore.getServer(
             getMonitorId(),
-            username,
-            AbbottFreeStyleShareConfig.DEFAULT_SERVER
+            "",
+            xDripShareConfig.DEFAULT_SERVER
         );
 
-        if (username.length() == 0 || password.length() == 0) {
-            finishError("Abbott account is not configured");
+        _api = new xDripApi(server);
 
-            return;
-        }
-
-        _api = new AbbottFreeStyleApi(username, password, server);
-
-        (_api as AbbottFreeStyleApi).read(method(:onApiReadComplete));
+        (_api as xDripApi).read(method(:onApiReadComplete));
     }
 
     public function onApiReadComplete(
@@ -108,7 +97,7 @@ class AbbottFreeStyleSyncProvider extends BloodSugarSyncProvider {
 
     public function stop() as Void {
         if (_api != null) {
-            (_api as AbbottFreeStyleApi).cancel();
+            (_api as xDripApi).cancel();
         }
 
         _api = null;
