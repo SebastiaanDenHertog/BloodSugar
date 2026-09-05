@@ -24,6 +24,7 @@ SOFTWARE.
 
 import Toybox.Lang;
 
+(:glance,:background)
 module BloodSugarPackedReading {
     typedef IncomingRecord as [Number, Float, String, String];
 

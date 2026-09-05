@@ -61,6 +61,11 @@ Connect. No username or password is required.
   reading arrays.
 - Keyboard key and width tables are shared instead of recreated during each
   draw or tap.
+- All supported button-only watches exclude the touchscreen keyboard at build
+  time; credential entry uses the character picker. This saves program memory
+  on constrained devices such as the 96 KiB Descent G1 and Instinct Crossover.
+  Keep the target exclusions in `monkey.jungle` aligned with Garmin device
+  profiles when adding watches; touchscreen models retain the keyboard.
 - Settings reuse one state object and one glucose-zone buffer.
 - Text fitting avoids temporary font arrays and uses a binary search when text
   must be shortened.

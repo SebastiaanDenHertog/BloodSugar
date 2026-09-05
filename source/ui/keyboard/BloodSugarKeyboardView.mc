@@ -26,6 +26,7 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
+(:touchKeyboard)
 class BloodSugarKeyboardView extends WatchUi.View {
     const ROW_COUNT = 4;
 

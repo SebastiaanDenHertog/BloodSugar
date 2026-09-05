@@ -26,7 +26,7 @@ import Toybox.Application.Properties;
 import Toybox.Application.Storage;
 import Toybox.Lang;
 
-/* Small persistence boundary shared by foreground, glance, and background. */
+(:glance :background)
 module BloodSugarSharedStorage {
     (:typecheck(false))
     function readValue(key as String) as Object? {

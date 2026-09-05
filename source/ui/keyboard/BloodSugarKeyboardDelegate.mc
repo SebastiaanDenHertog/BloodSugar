@@ -26,6 +26,7 @@ import Toybox.System;
 import Toybox.WatchUi;
 import Toybox.Lang;
 
+(:touchKeyboard)
 class BloodSugarKeyboardDelegate extends WatchUi.BehaviorDelegate {
     private var _view as BloodSugarKeyboardView;
     private var _parent as BloodSugarSetupApiDelegate;

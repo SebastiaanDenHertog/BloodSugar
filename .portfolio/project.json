@@ -1,0 +1,16 @@
+{
+  "slug": "blood-sugar",
+  "name": "BloodSugar",
+  "description": "A Garmin Connect IQ application for recording blood sugar measurements directly from a compatible Garmin device.",
+  "project_type": "Garmin Connect IQ",
+  "icon": "fa-droplet",
+  "branch_color": "#00b4d8",
+  "tags": [
+    "Monkey C",
+    "Garmin",
+    "Connect IQ"
+  ],
+  "repository_url": "https://github.com/SebastiaanDenHertog/BloodSugar",
+  "started_at": "2026-06-20T00:00:00+12:00",
+  "status": "active"
+}

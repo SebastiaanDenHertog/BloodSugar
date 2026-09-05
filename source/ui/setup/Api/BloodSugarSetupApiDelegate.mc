@@ -126,22 +126,32 @@ class BloodSugarSetupApiDelegate extends WatchUi.Menu2InputDelegate {
         var title = isPasswordField ? "Password" : "Username";
         var initialText = isPasswordField ? _password : _username;
         var allowSpace = isPasswordField;
-        if (!System.getDeviceSettings().isTouchScreen) {
-            var picker = new BloodSugarCharacterPicker(
-                initialText,
-                title,
-                96,
-                allowSpace,
-                false
-            );
-            WatchUi.pushView(
-                picker,
-                new BloodSugarCharacterPickerDelegate(picker, self, field),
-                WatchUi.SLIDE_UP
-            );
+        if (self has :openTouchKeyboard && System.getDeviceSettings().isTouchScreen) {
+            openTouchKeyboard(field, initialText, title, allowSpace);
             return;
         }
 
+        var picker = new BloodSugarCharacterPicker(
+            initialText,
+            title,
+            96,
+            allowSpace,
+            false
+        );
+        WatchUi.pushView(
+            picker,
+            new BloodSugarCharacterPickerDelegate(picker, self, field),
+            WatchUi.SLIDE_UP
+        );
+    }
+
+    (:touchKeyboard)
+    protected function openTouchKeyboard(
+        field as Number,
+        initialText as String,
+        title as String,
+        allowSpace as Boolean
+    ) as Void {
         var keyboardView = new BloodSugarKeyboardView(
             initialText,
             false,

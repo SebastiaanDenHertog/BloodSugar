@@ -24,6 +24,7 @@ SOFTWARE.
 
 import Toybox.Lang;
 
+(:glance)
 module BloodSugarHistoryStorage {
     const STORAGE_KEY = "BloodSugarHistory";
 
@@ -93,9 +94,9 @@ module BloodSugarHistoryStorage {
         var count = BloodSugarPackedReading.getCount(bytes as Lang.ByteArray);
         return index >= 0 && index < count
             ? BloodSugarPackedReading.getValueMmol(
-                bytes as Lang.ByteArray,
-                index
-            )
+                  bytes as Lang.ByteArray,
+                  index
+              )
             : null;
     }
 }

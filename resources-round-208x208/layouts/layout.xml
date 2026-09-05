@@ -58,20 +58,6 @@
     </layout>
 
     <layout id="BloodSugarHomeLayout">
-
-        <bitmap
-            id="hintHomeLeftMiddle"
-            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
-        />
-        <bitmap
-            id="hintHomeRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintHomeRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
-
         <label
             id="homeTitle"
             x="center"
@@ -120,12 +106,6 @@
     </layout>
 
     <layout id="BloodSugarInfoLayout">
-
-        <bitmap
-            id="hintInfoRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
-
         <label
             id="infoMessage"
             x="center"
@@ -138,23 +118,6 @@
     </layout>
 
     <layout id="BloodSugarInputLayout">
-
-        <bitmap
-            id="hintInputLeftMiddle"
-            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
-        />
-        <bitmap
-            id="hintInputLeftBottom"
-            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
-        />
-        <bitmap
-            id="hintInputRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintInputRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
 
         <label
             id="inputTitle"
@@ -195,15 +158,6 @@
     </layout>
 
     <layout id="BloodSugarModeLayout">
-
-        <bitmap
-            id="hintModeRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintModeRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
 
         <label
             id="modeTitle"
@@ -296,15 +250,6 @@
    
     <layout id="BloodSugarSetupBleLayout">
 
-        <bitmap
-            id="hintBleRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintBleRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
-
         <label
             id="bleTitle"
             x="center"
@@ -385,23 +330,6 @@
 
     <layout id="BloodSugarHistoryLayout">
 
-        <bitmap
-            id="hintHistoryLeftMiddle"
-            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
-        />
-        <bitmap
-            id="hintHistoryLeftBottom"
-            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
-        />
-        <bitmap
-            id="hintHistoryRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintHistoryRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
-
         <label
             id="historyTitle"
             x="center"
@@ -432,23 +360,6 @@
     </layout>
 
     <layout id="BloodSugarHistoryListLayout">
-
-        <bitmap
-            id="hintHistoryListLeftMiddle"
-            personality="system_icon_dark__hint_button_left_middle system_loc__hint_button_left_middle"
-        />
-        <bitmap
-            id="hintHistoryListLeftBottom"
-            personality="system_icon_dark__hint_button_left_bottom system_loc__hint_button_left_bottom"
-        />
-        <bitmap
-            id="hintHistoryListRightTop"
-            personality="system_icon_dark__hint_button_right_top system_loc__hint_button_right_top"
-        />
-        <bitmap
-            id="hintHistoryListRightBottom"
-            personality="system_icon_dark__hint_button_right_bottom system_loc__hint_button_right_bottom"
-        />
 
         <label
             id="historyListPosition"
