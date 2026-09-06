@@ -57,11 +57,7 @@ vivoactive4s.personality = $(vivoactive4s.personality);resources-legacy-hints
 approachs62.personality = $(approachs62.personality);resources-legacy-hints
 d2charlie.personality = $(d2charlie.personality);resources-legacy-hints
 
-
-
-# Button-only targets use the character picker for credential entry.
-# Omit the unused touchscreen keyboard, especially on 96/128 KiB watches.
-# Target list follows simulator.json isTouch in the Garmin device profiles.
+# no keyboard for watch without touchscreen.
 d2charlie.excludeAnnotations = $(base.excludeAnnotations);touchKeyboard
 d2delta.excludeAnnotations = $(base.excludeAnnotations);touchKeyboard
 d2deltapx.excludeAnnotations = $(base.excludeAnnotations);touchKeyboard
